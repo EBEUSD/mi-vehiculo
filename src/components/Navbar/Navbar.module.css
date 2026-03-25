@@ -308,3 +308,9 @@
     background: #fff;
   }
 }
+
+@media (max-width: 520px) {
+  .logoImg {
+    height: 36px;
+  }
+}
