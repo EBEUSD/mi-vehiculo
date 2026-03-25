@@ -60,5 +60,26 @@
 @media (max-width: 640px) {
   .card {
     grid-template-columns: repeat(2, 1fr);
+    padding: 1rem 0.7rem;
+    border-radius: 18px;
+  }
+
+  .item {
+    padding: 0.8rem 0.3rem;
+  }
+
+  .icon {
+    width: 46px;
+    height: 46px;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .item h3 {
+    font-size: 0.95rem;
+  }
+
+  .item span {
+    font-size: 0.82rem;
   }
 }

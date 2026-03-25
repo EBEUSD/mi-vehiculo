@@ -41,6 +41,14 @@
   }
 
   .floatingCategories {
-    margin-top: -24px;
+    margin-top: -18px;
+  }
+
+  .filtersSection {
+    margin-top: 1rem;
+  }
+
+  .featuredSection {
+    margin-top: 1.5rem;
   }
 }

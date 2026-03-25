@@ -146,13 +146,27 @@
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.45rem;
   }
 
   .topbar h2 {
-    font-size: 1.55rem;
+    font-size: 1.65rem;
   }
 
   .grid {
     grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+
+  .imageWrap {
+    height: 210px;
+  }
+
+  .price {
+    font-size: 1.65rem;
+  }
+
+  .info {
+    padding: 0.95rem;
   }
 }
