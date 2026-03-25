@@ -1,0 +1,323 @@
+.footer {
+  margin-top: 4rem;
+}
+
+.container {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.howItWorks {
+  background: #eef4ff;
+  border-top: 1px solid #dde7fb;
+  border-bottom: 1px solid #d8e3f8;
+  padding: 2rem 0 2.2rem;
+}
+
+.howItWorks h3 {
+  margin: 0 0 1.4rem;
+  color: #183153;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+.stepCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  min-height: 88px;
+}
+
+.stepIcon {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 50%;
+  background: #0d56c9;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  box-shadow: 0 10px 18px rgba(13, 86, 201, 0.18);
+}
+
+.stepCard h4 {
+  margin: 0 0 0.35rem;
+  color: #17325c;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.stepCard p {
+  margin: 0;
+  color: #51627f;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  max-width: 240px;
+}
+
+.statsBar {
+  background: linear-gradient(90deg, #083a98, #0a49b8);
+  padding: 1.25rem 0;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  color: #fff;
+  min-height: 58px;
+}
+
+.statIcon {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+.statItem strong {
+  display: block;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.statItem span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.4;
+}
+
+.subscribeBar {
+  background: #f7c948;
+  padding: 1.2rem 0;
+}
+
+.subscribeBar .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.subscribeLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #1f2937;
+}
+
+.subscribeIcon {
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.subscribeLeft strong {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.subscribeLeft p {
+  margin: 0.25rem 0 0;
+  font-size: 0.98rem;
+  color: #5b4a17;
+  line-height: 1.45;
+}
+
+.subscribeForm {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 420px;
+}
+
+.subscribeForm input {
+  width: 100%;
+  height: 48px;
+  border: none;
+  outline: none;
+  border-radius: 12px;
+  padding: 0 1rem;
+  background: #fff8dd;
+  color: #1f2937;
+  font-size: 0.98rem;
+}
+
+.subscribeForm button {
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  padding: 0 1.25rem;
+  background: #0a49b8;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.bottomBar {
+  background: linear-gradient(135deg, #06162f, #081d3f);
+  color: #fff;
+  padding-top: 1.35rem;
+}
+
+.bottomBar .container {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  padding-bottom: 1.2rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brandImg {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.4rem;
+}
+
+.links a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.socials {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.socials a {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.copy {
+  text-align: center;
+  padding: 1rem 1rem 1.1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+  .stepsGrid,
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .subscribeBar .container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .subscribeForm {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .subscribeForm input {
+    width: 100%;
+    flex: 1;
+  }
+
+  .bottomBar .container {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: min(100% - 1rem, 1180px);
+  }
+
+  .howItWorks {
+    padding: 1.6rem 0 1.8rem;
+  }
+
+  .howItWorks h3 {
+    font-size: 1.6rem;
+  }
+
+  .stepsGrid,
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+
+  .stepCard,
+  .statItem {
+    min-height: auto;
+  }
+
+  .subscribeLeft {
+    align-items: flex-start;
+  }
+
+  .subscribeLeft strong {
+    font-size: 1.15rem;
+  }
+
+  .subscribeForm {
+    flex-direction: column;
+  }
+
+  .subscribeForm input,
+  .subscribeForm button {
+    width: 100%;
+  }
+
+  .links {
+    gap: 0.9rem;
+  }
+}

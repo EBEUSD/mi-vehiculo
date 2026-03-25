@@ -1,0 +1,55 @@
+.filters {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 1.2rem;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e5edf7;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.header button {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.group:last-child {
+  margin-bottom: 0;
+}
+
+.group label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.group select {
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid #d9e4f2;
+  padding: 0 0.9rem;
+  outline: none;
+  font-size: 0.95rem;
+  background: #fff;
+}
