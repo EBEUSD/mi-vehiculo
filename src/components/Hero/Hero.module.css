@@ -3,32 +3,18 @@
   overflow: hidden;
   min-height: 420px;
   background:
-    radial-gradient(circle at 70% 45%, rgba(59, 130, 246, 0.24), transparent 28%),
-    radial-gradient(circle at 85% 20%, rgba(96, 165, 250, 0.12), transparent 25%),
-    linear-gradient(135deg, #011844 0%, #032967 48%, #07378b 100%);
+    linear-gradient(90deg, rgba(1, 24, 68, 0.9), rgba(3, 41, 103, 0.78)),
+    url("https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1800&q=80")
+      center/cover no-repeat;
 }
 
-.bgGlowOne,
-.bgGlowTwo {
+.overlay {
   position: absolute;
-  border-radius: 50%;
+  inset: 0;
+  background:
+    radial-gradient(circle at 70% 45%, rgba(59, 130, 246, 0.18), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(96, 165, 250, 0.1), transparent 25%);
   pointer-events: none;
-}
-
-.bgGlowOne {
-  width: 760px;
-  height: 760px;
-  right: -220px;
-  top: -240px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.16), transparent 70%);
-}
-
-.bgGlowTwo {
-  width: 620px;
-  height: 620px;
-  right: 60px;
-  bottom: -320px;
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.18), transparent 68%);
 }
 
 .container {
@@ -58,29 +44,50 @@
 
 .content p {
   margin: 1rem 0 0;
-  color: rgba(255, 255, 255, 0.84);
+  color: rgba(255, 255, 255, 0.88);
   font-size: 1.08rem;
   line-height: 1.65;
   max-width: 560px;
 }
 
-.cta {
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
   margin-top: 1.8rem;
-  border: none;
-  background: #fff;
-  color: #0a2e74;
-  font-weight: 800;
-  padding: 1rem 1.35rem;
+}
+
+.primaryBtn,
+.secondaryBtn {
   border-radius: 999px;
-  cursor: pointer;
+  font-weight: 800;
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.7rem;
-  box-shadow: 0 16px 30px rgba(3, 17, 47, 0.18);
   transition: 0.2s ease;
 }
 
-.cta:hover {
+.primaryBtn {
+  border: none;
+  background: #fff;
+  color: #0a2e74;
+  padding: 1rem 1.35rem;
+  box-shadow: 0 16px 30px rgba(3, 17, 47, 0.18);
+}
+
+.secondaryBtn {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  padding: 1rem 1.2rem;
+  backdrop-filter: blur(8px);
+}
+
+.primaryBtn:hover,
+.secondaryBtn:hover {
   transform: translateY(-2px);
 }
 
@@ -112,6 +119,10 @@
   .content p {
     margin-left: auto;
     margin-right: auto;
+  }
+
+  .actions {
+    justify-content: center;
   }
 
   .carWrap {
@@ -173,9 +184,14 @@
     max-width: 320px;
   }
 
-  .cta {
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryBtn,
+  .secondaryBtn {
     width: 100%;
     max-width: 290px;
-    justify-content: center;
   }
 }

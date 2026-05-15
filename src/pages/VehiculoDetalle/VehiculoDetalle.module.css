@@ -1,0 +1,819 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+.main {
+  padding: 1.5rem 0 3rem;
+}
+
+.container {
+  width: min(1280px, calc(100% - 2rem));
+  margin: 0 auto;
+}
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.breadcrumbs a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.topActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.topRightActions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.iconAction {
+  height: 42px;
+  padding: 0 0.95rem;
+  border-radius: 12px;
+  border: 1px solid #dbe4f0;
+  background: #fff;
+  color: #35507b;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.topSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 360px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.galleryColumn,
+.sidebar {
+  min-width: 0;
+}
+
+.sidebar {
+  position: sticky;
+  top: 90px;
+}
+
+.mainImageWrap {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e5ecf5;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.mainImage {
+  width: 100%;
+  height: 520px;
+  object-fit: cover;
+  display: block;
+}
+
+.badge,
+.badgeInline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+}
+
+.badgeInline {
+  margin-bottom: 0.8rem;
+}
+
+.green {
+  background: #22c55e;
+}
+
+.blue {
+  background: #2563eb;
+}
+
+.gray {
+  background: #6b7280;
+}
+
+.favoriteBtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.galleryArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.leftArrow {
+  left: 14px;
+}
+
+.rightArrow {
+  right: 14px;
+}
+
+.galleryCounter {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  background: rgba(17, 24, 39, 0.76);
+  color: #fff;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+}
+
+.thumbRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+
+.thumbBtn {
+  border: 1px solid #dce7f5;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  padding: 0;
+  cursor: pointer;
+}
+
+.thumbBtn img {
+  width: 100%;
+  height: 94px;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbActive {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.specsQuick {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.8rem;
+}
+
+.quickItem {
+  background: #fff;
+  border: 1px solid #e5ecf5;
+  border-radius: 16px;
+  padding: 0.9rem;
+  text-align: center;
+}
+
+.quickItem strong {
+  display: block;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.quickItem span {
+  display: block;
+  margin-top: 0.2rem;
+  color: #6b7280;
+  font-size: 0.84rem;
+}
+
+.card {
+  margin-top: 1rem;
+  background: #fff;
+  border: 1px solid #e5ecf5;
+  border-radius: 18px;
+  padding: 1.1rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.card h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.15rem;
+}
+
+.card p {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.65;
+}
+
+.card ul {
+  margin: 0.9rem 0 0;
+  padding-left: 1.1rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 1rem;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #eef3f8;
+  padding-bottom: 0.55rem;
+}
+
+.detailRow span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.detailRow strong {
+  text-align: right;
+  font-size: 0.92rem;
+}
+
+.priceCard,
+.sellerCard,
+.mapCard {
+  background: #fff;
+  border: 1px solid #e5ecf5;
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.priceCard h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.meta {
+  margin: 0 0 0.8rem;
+  color: #6b7280;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.price {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.7rem;
+}
+
+.location {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.8rem;
+  color: #4b5563;
+}
+
+.sellerTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: #f3f8ff;
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.primaryBtn,
+.whatsappBtn,
+.secondaryBtn,
+.sellerButtons button,
+.notFoundCard button {
+  height: 46px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryBtn {
+  border: none;
+  background: linear-gradient(135deg, #032860, #0b3c92);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.whatsappBtn {
+  border: 1px solid #8fddb0;
+  background: #effcf4;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.secondaryBtn {
+  border: 1px solid #d8e4f3;
+  background: #fff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.helperText {
+  margin: 0.9rem 0 0;
+  color: #6b7280;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.sellerCard {
+  margin-top: 1rem;
+}
+
+.sellerHeader {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.sellerAvatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #111827, #374151);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.sellerVerified {
+  display: inline-block;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.sellerHeader h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.sellerHeader p {
+  margin: 0.3rem 0 0;
+  color: #6b7280;
+  font-size: 0.88rem;
+}
+
+.sellerButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.sellerButtons button {
+  border: 1px solid #d8e4f3;
+  background: #f8fbff;
+  color: #2563eb;
+}
+
+.mapCard {
+  margin-top: 1rem;
+}
+
+.mapCard h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+}
+
+.mapPlaceholder {
+  height: 220px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.02)),
+    #eef4fb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: #35507b;
+  text-align: center;
+  padding: 1rem;
+}
+
+.mapPlaceholder a {
+  margin-top: 0.2rem;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.mapPin {
+  font-size: 2rem;
+}
+
+.similarSection {
+  margin-top: 2rem;
+}
+
+.similarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.similarHeader h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.similarHeader a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.notFoundWrapper {
+  width: min(900px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 4rem 0;
+}
+
+.notFoundCard {
+  background: #fff;
+  border: 1px solid #e5ecf5;
+  border-radius: 20px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.notFoundCard h1 {
+  margin: 0 0 0.7rem;
+}
+
+.notFoundCard p {
+  margin: 0 0 1rem;
+  color: #6b7280;
+}
+
+.notFoundCard button {
+  border: none;
+  background: linear-gradient(135deg, #032860, #0b3c92);
+  color: #fff;
+  padding: 0 1.2rem;
+}
+
+@media (max-width: 1100px) {
+  .topSection {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .mainImage {
+    height: 440px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    width: min(100% - 1rem, 1280px);
+  }
+
+  .main {
+    padding: 1rem 0 2rem;
+  }
+
+  .topActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topRightActions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .iconAction {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .mainImage {
+    height: 300px;
+  }
+
+  .galleryArrow {
+    width: 36px;
+    height: 36px;
+  }
+
+  .thumbRow {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+
+  .thumbBtn img {
+    height: 72px;
+  }
+
+  .specsQuick {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sellerButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .similarHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .breadcrumbs {
+    font-size: 0.82rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .topActions {
+    gap: 0.75rem;
+  }
+
+  .backBtn {
+    font-size: 0.95rem;
+  }
+
+  .topRightActions {
+    gap: 0.55rem;
+  }
+
+  .iconAction {
+    height: 40px;
+    font-size: 0.9rem;
+    padding: 0 0.8rem;
+  }
+
+  .mainImageWrap {
+    border-radius: 18px;
+  }
+
+  .mainImage {
+    height: 230px;
+  }
+
+  .galleryArrow {
+    width: 34px;
+    height: 34px;
+  }
+
+  .galleryCounter {
+    font-size: 0.76rem;
+  }
+
+  .thumbRow {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .thumbBtn img {
+    height: 58px;
+  }
+
+  .specsQuick {
+    gap: 0.55rem;
+  }
+
+  .quickItem {
+    padding: 0.75rem 0.55rem;
+  }
+
+  .quickItem strong {
+    font-size: 0.92rem;
+  }
+
+  .quickItem span {
+    font-size: 0.78rem;
+  }
+
+  .card,
+  .priceCard,
+  .sellerCard,
+  .mapCard {
+    padding: 0.95rem;
+    border-radius: 16px;
+  }
+
+  .priceCard h1 {
+    font-size: 1.3rem;
+  }
+
+  .price {
+    font-size: 1.7rem;
+  }
+
+  .meta,
+  .location,
+  .helperText {
+    font-size: 0.86rem;
+  }
+
+  .primaryBtn,
+  .whatsappBtn,
+  .secondaryBtn,
+  .sellerButtons button {
+    height: 44px;
+    font-size: 0.92rem;
+  }
+
+  .mapPlaceholder {
+    height: 190px;
+  }
+
+  .similarHeader h2 {
+    font-size: 1.3rem;
+  }
+}
+
+.iconActionActive {
+  color: #ef4444;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.zoomBtn {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 25, 0.92);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.lightboxInner {
+  position: relative;
+  width: min(1200px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightboxImage {
+  width: 100%;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 18px;
+}
+
+.lightboxClose,
+.lightboxArrow {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.lightboxClose {
+  top: -56px;
+  right: 0;
+}
+
+.lightboxArrow {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lightboxLeft {
+  left: 16px;
+}
+
+.lightboxRight {
+  right: 16px;
+}
+
+@media (max-width: 520px) {
+  .zoomBtn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .lightboxOverlay {
+    padding: 1rem;
+  }
+
+  .lightboxClose {
+    top: -48px;
+  }
+
+  .lightboxArrow {
+    width: 38px;
+    height: 38px;
+  }
+}

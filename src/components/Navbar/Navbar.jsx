@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import styles from "./Navbar.module.css";
 import {
   FaCarSide,
@@ -6,7 +7,7 @@ import {
   FaTruckPickup,
   FaTruck,
   FaCog,
-  FaShoppingCart,
+  FaHeart,
 } from "react-icons/fa";
 import { MdLogin } from "react-icons/md";
 import { HiMenuAlt3, HiX } from "react-icons/hi";
@@ -27,13 +28,13 @@ const Navbar = () => {
     <header className={styles.wrapper}>
       <div className={styles.topBar}>
         <div className={styles.container}>
-          <a href="#" className={styles.logo} onClick={handleCloseMenu}>
+          <Link to="/" className={styles.logo} onClick={handleCloseMenu}>
             <img
               src={logoVehiculo}
               alt="Mi Vehículo"
               className={styles.logoImg}
             />
-          </a>
+          </Link>
 
           <div className={styles.search}>
             <input
@@ -44,12 +45,13 @@ const Navbar = () => {
           </div>
 
           <nav className={styles.topNav}>
-            <a href="#">Categorías</a>
+            <Link to="/vehiculos">Categorías</Link>
             <a href="#">Ofrecé tu vehículo</a>
+            <Link to="/favoritos">Favoritos</Link>
             <a href="#">Iniciar sesión</a>
-            <a href="#" className={styles.cartBtn} aria-label="Carrito">
-              <FaShoppingCart />
-            </a>
+            <Link to="/favoritos" className={styles.cartBtn} aria-label="Favoritos">
+              <FaHeart  />
+            </Link>
           </nav>
 
           <button
@@ -66,22 +68,22 @@ const Navbar = () => {
       <div className={styles.subBar}>
         <div className={styles.container}>
           <nav className={styles.subNav}>
-            <a href="#">
+            <Link to="/vehiculos">
               <FaCarSide />
               <span>Autos</span>
-            </a>
-            <a href="#">
+            </Link>
+            <Link to="/vehiculos?type=Motos">
               <FaMotorcycle />
               <span>Motos</span>
-            </a>
-            <a href="#">
+            </Link>
+            <Link to="/vehiculos?type=Camionetas">
               <FaTruckPickup />
               <span>Camionetas</span>
-            </a>
-            <a href="#">
+            </Link>
+            <Link to="/vehiculos?type=Camiones">
               <FaTruck />
               <span>Camiones</span>
-            </a>
+            </Link>
             <a href="#">
               <FaCog />
               <span>Repuestos</span>
@@ -100,45 +102,44 @@ const Navbar = () => {
       </div>
 
       <div
-        className={`${styles.mobilePanel} ${
-          menuOpen ? styles.mobilePanelOpen : ""
-        }`}
+        className={`${styles.mobilePanel} ${menuOpen ? styles.mobilePanelOpen : ""
+          }`}
       >
         <div className={styles.mobilePanelInner}>
           <nav className={styles.mobileNavPrimary}>
-            <a href="#" onClick={handleCloseMenu}>
+            <Link to="/vehiculos" onClick={handleCloseMenu}>
               Categorías
-            </a>
+            </Link>
             <a href="#" onClick={handleCloseMenu}>
               Ofrecé tu vehículo
             </a>
+            <Link to="/favoritos" onClick={handleCloseMenu}>
+              Favoritos
+            </Link>
             <a href="#" onClick={handleCloseMenu}>
               Iniciar sesión
-            </a>
-            <a href="#" onClick={handleCloseMenu}>
-              Favoritos
             </a>
           </nav>
 
           <div className={styles.mobileDivider} />
 
           <nav className={styles.mobileNavCategories}>
-            <a href="#" onClick={handleCloseMenu}>
+            <Link to="/vehiculos" onClick={handleCloseMenu}>
               <FaCarSide />
               <span>Autos</span>
-            </a>
-            <a href="#" onClick={handleCloseMenu}>
+            </Link>
+            <Link to="/vehiculos?type=Motos" onClick={handleCloseMenu}>
               <FaMotorcycle />
               <span>Motos</span>
-            </a>
-            <a href="#" onClick={handleCloseMenu}>
+            </Link>
+            <Link to="/vehiculos?type=Camionetas" onClick={handleCloseMenu}>
               <FaTruckPickup />
               <span>Camionetas</span>
-            </a>
-            <a href="#" onClick={handleCloseMenu}>
+            </Link>
+            <Link to="/vehiculos?type=Camiones" onClick={handleCloseMenu}>
               <FaTruck />
               <span>Camiones</span>
-            </a>
+            </Link>
             <a href="#" onClick={handleCloseMenu}>
               <FaCog />
               <span>Repuestos</span>
@@ -158,10 +159,14 @@ const Navbar = () => {
             <a href="#" onClick={handleCloseMenu}>
               Consejos e información
             </a>
-            <a href="#" onClick={handleCloseMenu} className={styles.mobileCart}>
-              <FaShoppingCart />
-              <span>Carrito</span>
-            </a>
+            <Link
+              to="/favoritos"
+              onClick={handleCloseMenu}
+              className={styles.mobileCart}
+            >
+              <FaHeart />
+              <span>Favoritos</span>
+            </Link>
           </nav>
         </div>
       </div>

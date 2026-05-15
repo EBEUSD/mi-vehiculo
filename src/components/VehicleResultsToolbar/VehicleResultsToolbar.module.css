@@ -1,0 +1,89 @@
+.wrapper {
+  margin-bottom: 1rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-bottom: 0.9rem;
+}
+
+.chip {
+  min-height: 34px;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #dbe7f7;
+  background: #f8fbff;
+  color: #35507b;
+  font-size: 0.86rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.chip button {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.clearBtn {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bar p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.92rem;
+}
+
+.sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sort span {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.sort button {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 2px solid transparent;
+}
+
+.active {
+  color: #2563eb !important;
+  border-bottom-color: #2563eb !important;
+}
+
+@media (max-width: 900px) {
+  .bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

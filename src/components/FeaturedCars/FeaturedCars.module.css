@@ -170,3 +170,15 @@
     padding: 0.95rem;
   }
 }
+
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.favoriteActive {
+  color: #ef4444;
+  background: #fff1f2;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.16);
+}
