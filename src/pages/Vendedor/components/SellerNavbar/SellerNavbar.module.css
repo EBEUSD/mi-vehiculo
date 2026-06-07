@@ -1,0 +1,295 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  background: #06285f;
+  color: #ffffff;
+  box-shadow: 0 14px 38px rgba(3, 18, 49, 0.22);
+}
+
+.topRow {
+  background: #061f4d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.topInner {
+  min-height: 86px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: grid;
+  grid-template-columns: 230px minmax(360px, 520px) 1fr;
+  align-items: center;
+  gap: 28px;
+}
+
+.logo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 48px;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.logo span {
+  position: relative;
+  z-index: 2;
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: -0.7px;
+  color: #0b3c8f;
+}
+
+.logoMark {
+  position: absolute;
+  left: -2px;
+  top: 5px;
+  width: 106px;
+  height: 31px;
+  border-top: 4px solid #f2cf00;
+  border-radius: 50%;
+  transform: rotate(-11deg);
+}
+
+.logoMark::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: -8px;
+  width: 92px;
+  height: 32px;
+  border-top: 3px solid #0d58e8;
+  border-radius: 50%;
+}
+
+.searchForm {
+  height: 48px;
+  display: grid;
+  grid-template-columns: 42px 1fr 92px;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(179, 205, 255, 0.75);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.searchForm svg {
+  color: #09214f;
+  margin-left: 16px;
+}
+
+.searchForm input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #07153f;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.searchForm input::placeholder {
+  color: #8c96aa;
+}
+
+.searchForm button {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: linear-gradient(135deg, #3a80ff 0%, #1763ef 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.searchForm button:hover {
+  background: linear-gradient(135deg, #246fff 0%, #0757ec 100%);
+}
+
+.mainNav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 22px;
+}
+
+.mainNav a,
+.accountButton {
+  border: 0;
+  background: transparent;
+  color: #f3f7ff;
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.mainNav a:hover,
+.accountButton:hover {
+  color: #8ebaff;
+}
+
+.accountButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.favoriteButton {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(62, 126, 255, 0.2);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.favoriteButton:hover {
+  background: rgba(62, 126, 255, 0.34);
+  transform: translateY(-1px);
+}
+
+.mobileButton {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  place-items: center;
+  cursor: pointer;
+}
+
+.bottomRow {
+  background: #082d69;
+}
+
+.bottomInner {
+  min-height: 52px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.categoryNav,
+.infoNav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.categoryNav a,
+.infoNav a {
+  color: #e9f1ff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 850;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: 0.2s ease;
+}
+
+.categoryNav a:hover,
+.infoNav a:hover {
+  color: #98c0ff;
+}
+
+@media (max-width: 1160px) {
+  .topInner {
+    grid-template-columns: 190px minmax(280px, 1fr) auto;
+    gap: 18px;
+  }
+
+  .mainNav {
+    gap: 14px;
+  }
+
+  .mainNav a:nth-child(1),
+  .mainNav a:nth-child(3),
+  .accountButton {
+    display: none;
+  }
+
+  .bottomInner {
+    overflow-x: auto;
+  }
+
+  .categoryNav,
+  .infoNav {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 780px) {
+  .topInner {
+    min-height: auto;
+    padding: 16px;
+    grid-template-columns: 1fr auto;
+  }
+
+  .logo span {
+    font-size: 22px;
+  }
+
+  .searchForm {
+    order: 3;
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .mainNav a,
+  .accountButton,
+  .favoriteButton {
+    display: none;
+  }
+
+  .mobileButton {
+    display: grid;
+  }
+
+  .bottomInner {
+    padding: 0 16px;
+  }
+
+  .infoNav {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .searchForm {
+    grid-template-columns: 40px 1fr 78px;
+  }
+
+  .searchForm button {
+    font-size: 13px;
+  }
+
+  .categoryNav {
+    gap: 18px;
+  }
+}

@@ -1,0 +1,219 @@
+﻿.documentCard {
+  border: 1px solid #d8e1ee;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  padding: 22px;
+  box-shadow:
+    0 10px 24px rgba(12, 34, 80, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.documentCard + .documentCard {
+  margin-top: 14px;
+}
+
+.documentCard h3 {
+  margin: 0 0 18px;
+  color: #10204c;
+  font-size: 17px;
+  font-weight: 950;
+  letter-spacing: -0.2px;
+}
+
+.documentationGrid {
+  display: grid;
+  grid-template-columns: 0.75fr 1.4fr 1.1fr 1fr;
+  gap: 24px;
+  align-items: end;
+}
+
+.segmentGroup {
+  min-width: 0;
+}
+
+.segmentGroup label,
+.field label {
+  display: block;
+  margin-bottom: 10px;
+  color: #18264d;
+  font-size: 13.7px;
+  font-weight: 900;
+}
+
+.segmentGroup label span,
+.field label span {
+  color: #ff4055;
+}
+
+.field select {
+  width: 100%;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid #cbd6e5;
+  background: #ffffff;
+  padding: 0 14px;
+  color: #12214b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.segmentControl,
+.wideSegmentControl {
+  display: grid;
+  border: 1px solid #cbd6e5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.segmentControl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.threeColumns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wideSegmentControl {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.segmentBtn {
+  min-height: 42px;
+  border: 0;
+  border-right: 1px solid #d8e1ee;
+  background: #ffffff;
+  color: #4f5f7c;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.segmentBtn:last-child {
+  border-right: 0;
+}
+
+.segmentBtn:hover {
+  background: #f4f8ff;
+  color: #1265f3;
+}
+
+.segmentActive {
+  background: #f0f6ff;
+  color: #005bea;
+  box-shadow: inset 0 0 0 2px #1a6eff;
+}
+
+.fieldHelper,
+.cardDescription {
+  margin: 10px 0 0;
+  color: #6a7892;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.cardDescription {
+  margin: -8px 0 12px;
+}
+
+.textareaWrap {
+  position: relative;
+}
+
+.textareaWrap textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  border-radius: 12px;
+  border: 1px solid #cbd6e5;
+  background: #ffffff;
+  padding: 16px 18px 28px;
+  outline: none;
+  color: #12214b;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.textareaWrap textarea:focus {
+  border-color: #216ff3;
+  box-shadow: 0 0 0 4px rgba(33, 111, 243, 0.11);
+}
+
+.textareaWrap span {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  color: #7a879f;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.trustNotice {
+  margin-top: 14px;
+  min-height: 58px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #edf5ff 0%, #f4f8ff 100%);
+  border: 1px solid rgba(190, 211, 246, 0.56);
+  color: #536b96;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+}
+
+.trustIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #1265f3;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.trustNotice strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #1265f3;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.trustNotice p {
+  margin: 0;
+  color: #62728d;
+  font-size: 13.2px;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+@media (max-width: 1180px) {
+  .documentationGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wideSegmentControl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .documentationGrid,
+  .wideSegmentControl {
+    grid-template-columns: 1fr;
+  }
+
+  .segmentBtn {
+    border-right: 0;
+    border-bottom: 1px solid #d8e1ee;
+  }
+
+  .segmentBtn:last-child {
+    border-bottom: 0;
+  }
+}

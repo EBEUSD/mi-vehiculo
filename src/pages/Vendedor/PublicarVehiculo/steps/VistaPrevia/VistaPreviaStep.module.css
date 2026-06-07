@@ -1,0 +1,370 @@
+﻿.previewEditRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.previewEditBtn {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 2px solid #1a6eff;
+  background: #ffffff;
+  color: #1265f3;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.previewLayout {
+  display: grid;
+  grid-template-columns: 430px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+
+.previewMainPhoto {
+  position: relative;
+  height: 330px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #d8e1ee;
+  box-shadow: 0 12px 28px rgba(12, 34, 80, 0.09);
+}
+
+.previewMainPhoto::before,
+.previewThumb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(4, 15, 38, 0.25) 100%),
+    var(--preview-bg);
+  background-size: cover;
+  background-position: center;
+}
+
+.previewPhotoMain {
+  --preview-bg:
+    radial-gradient(circle at 50% 53%, #2f3744 0 18%, transparent 19%),
+    radial-gradient(circle at 33% 62%, #111827 0 6%, transparent 7%),
+    radial-gradient(circle at 74% 62%, #111827 0 6%, transparent 7%),
+    linear-gradient(135deg, #657282 0%, #b9c1c9 46%, #374151 100%);
+}
+
+.previewPhotoBack {
+  --preview-bg:
+    radial-gradient(circle at 52% 55%, #374151 0 16%, transparent 17%),
+    linear-gradient(135deg, #5f6b75 0%, #9aa5ad 48%, #334155 100%);
+}
+
+.previewPhotoInterior {
+  --preview-bg:
+    linear-gradient(90deg, #111827 0 22%, transparent 23% 77%, #111827 78%),
+    linear-gradient(135deg, #374151 0%, #9ca3af 52%, #1f2937 100%);
+}
+
+.previewPhotoSeats {
+  --preview-bg:
+    radial-gradient(circle at 34% 50%, #111827 0 18%, transparent 19%),
+    radial-gradient(circle at 68% 50%, #111827 0 18%, transparent 19%),
+    linear-gradient(135deg, #4b5563 0%, #a1a1aa 48%, #27272a 100%);
+}
+
+.previewPhotoTrunk {
+  --preview-bg:
+    radial-gradient(circle at 50% 36%, #111827 0 22%, transparent 23%),
+    linear-gradient(135deg, #4b5563 0%, #a1a1aa 48%, #27272a 100%);
+}
+
+.previewCounter {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  right: 16px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: rgba(10, 19, 43, 0.78);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.galleryArrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #10204c;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(12, 34, 80, 0.16);
+}
+
+.galleryPrev {
+  left: 12px;
+}
+
+.galleryNext {
+  right: 12px;
+}
+
+.previewThumbs {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.previewThumb {
+  position: relative;
+  height: 66px;
+  border-radius: 9px;
+  border: 2px solid transparent;
+  overflow: hidden;
+  background: #e5ecf5;
+  cursor: pointer;
+}
+
+.previewThumbActive {
+  border-color: #1265f3;
+  box-shadow: 0 0 0 3px rgba(18, 101, 243, 0.12);
+}
+
+.sellerBox {
+  margin-top: 28px;
+  border: 1px solid #d8e1ee;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 18px 22px;
+  box-shadow: 0 10px 24px rgba(12, 34, 80, 0.045);
+}
+
+.sellerBox h3 {
+  margin: 0 0 14px;
+  color: #10204c;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.sellerContent {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.sellerAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #eaf2ff;
+  color: #1265f3;
+  display: grid;
+  place-items: center;
+}
+
+.sellerContent strong {
+  display: block;
+  color: #14214a;
+  font-size: 14.5px;
+  font-weight: 950;
+}
+
+.sellerContent p {
+  margin: 4px 0 0;
+  color: #65738f;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.whatsappSellerBtn {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid #16a34a;
+  background: #ffffff;
+  color: #138a3d;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.previewInfo h2 {
+  margin: 0 0 10px;
+  color: #08183f;
+  font-size: 29px;
+  line-height: 1.15;
+  letter-spacing: -0.8px;
+  font-weight: 950;
+}
+
+.previewPrice {
+  display: block;
+  color: #0062ff;
+  font-size: 31px;
+  line-height: 1.1;
+  font-weight: 950;
+  letter-spacing: -0.6px;
+}
+
+.previewLocation {
+  margin-top: 12px;
+  color: #53637f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 750;
+}
+
+.previewSpecs {
+  margin-top: 20px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #dbe3ef;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 34px;
+}
+
+.previewSpec {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #53637f;
+}
+
+.previewSpec svg {
+  color: #51617c;
+  flex-shrink: 0;
+}
+
+.previewSpec span {
+  display: block;
+  margin-bottom: 4px;
+  color: #53637f;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.previewSpec strong {
+  color: #172550;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 850;
+}
+
+.previewDescription {
+  margin-top: 18px;
+}
+
+.previewDescription h3 {
+  margin: 0 0 10px;
+  color: #10204c;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.previewDescription p {
+  margin: 0;
+  color: #53637f;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 650;
+}
+
+.previewTags {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.previewTags span {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #d8e1ee;
+  background: #ffffff;
+  color: #53637f;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.previewTags svg {
+  color: #1265f3;
+}
+
+.previewNotice {
+  margin-top: 20px;
+  min-height: 46px;
+  border-radius: 10px;
+  border: 1px solid rgba(190, 211, 246, 0.56);
+  background: linear-gradient(90deg, #edf5ff 0%, #f4f8ff 100%);
+  color: #536b96;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.previewNotice p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.previewNotice svg {
+  color: #1265f3;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1180px) {
+  .previewLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .previewMainPhoto {
+    height: 360px;
+  }
+}
+
+@media (max-width: 820px) {
+  .previewMainPhoto {
+    height: 260px;
+  }
+
+  .previewSpecs {
+    grid-template-columns: 1fr;
+  }
+
+  .sellerContent {
+    grid-template-columns: auto 1fr;
+  }
+
+  .whatsappSellerBtn {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
