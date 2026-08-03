@@ -80,6 +80,9 @@ const PublicarRepuesto = () => {
       const v = formData[field];
       if (v === undefined || v === null || String(v).trim() === "") stepErrors[field] = msg;
     });
+    if (stepId === 4 && !(formData.fotos || []).length) {
+      stepErrors.fotos = "Subí al menos 1 foto para continuar.";
+    }
     if (Object.keys(stepErrors).length) { setErrors(stepErrors); return false; }
     return true;
   };
