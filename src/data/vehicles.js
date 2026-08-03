@@ -1,17 +1,17 @@
 export const vehicles = [
   {
     id: 1,
-    title: "Toyota Corolla 1.8 XEi CVT",
+    title: "Toyota Corolla 1.8 XEI CVT",
     brand: "Toyota",
     model: "Corolla",
     type: "Autos",
     sellerType: "Concesionario",
     transmission: "Automática",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2018,
     km: 124278,
-    price: 18500000,
-    location: "Buenos Aires, CABA",
+    price: 9500,
+    location: "San Salvador, San Salvador",
     image:
       "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=1200&q=80",
     tag: "DESTACADO",
@@ -25,11 +25,11 @@ export const vehicles = [
     type: "Autos",
     sellerType: "Concesionario",
     transmission: "Manual",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2023,
     km: 19000,
-    price: 15900000,
-    location: "Córdoba, Córdoba",
+    price: 16900,
+    location: "Santa Ana, Santa Ana",
     image:
       "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1200&q=80",
     tag: "NUEVO",
@@ -43,11 +43,11 @@ export const vehicles = [
     type: "Autos",
     sellerType: "Particular",
     transmission: "Automática",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2021,
     km: 36800,
-    price: 22800000,
-    location: "Santa Fe, Rosario",
+    price: 18500,
+    location: "La Libertad, Santa Tecla",
     image:
       "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1200&q=80",
     tag: "USADO",
@@ -64,8 +64,8 @@ export const vehicles = [
     fuel: "Diésel",
     year: 2020,
     km: 72000,
-    price: 28900000,
-    location: "Mendoza, Mendoza",
+    price: 24000,
+    location: "San Miguel, San Miguel",
     image:
       "https://images.unsplash.com/photo-1517524206127-48bbd363f3d7?auto=format&fit=crop&w=1200&q=80",
     tag: "DESTACADO",
@@ -82,8 +82,8 @@ export const vehicles = [
     fuel: "Diésel",
     year: 2019,
     km: 91000,
-    price: 32500000,
-    location: "Neuquén, Neuquén",
+    price: 22500,
+    location: "Sonsonate, Sonsonate",
     image:
       "https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=1200&q=80",
     tag: "USADO",
@@ -97,11 +97,11 @@ export const vehicles = [
     type: "Motos",
     sellerType: "Concesionario",
     transmission: "Manual",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2022,
     km: 5800,
-    price: 3200000,
-    location: "Buenos Aires, CABA",
+    price: 2800,
+    location: "La Libertad, Antiguo Cuscatlán",
     image:
       "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80",
     tag: "DESTACADO",
@@ -115,11 +115,11 @@ export const vehicles = [
     type: "Autos",
     sellerType: "Particular",
     transmission: "Manual",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2020,
     km: 41000,
-    price: 12750000,
-    location: "La Plata, Buenos Aires",
+    price: 8500,
+    location: "San Salvador, San Salvador",
     image:
       "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
     tag: "USADO",
@@ -133,11 +133,11 @@ export const vehicles = [
     type: "Autos",
     sellerType: "Concesionario",
     transmission: "Automática",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2023,
     km: 12000,
-    price: 17800000,
-    location: "Salta, Salta",
+    price: 14900,
+    location: "Chalatenango, Chalatenango",
     image:
       "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1200&q=80",
     tag: "NUEVO",
@@ -151,11 +151,11 @@ export const vehicles = [
     type: "Autos",
     sellerType: "Concesionario",
     transmission: "Automática",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2020,
     km: 55000,
-    price: 19900000,
-    location: "Tucumán, Tucumán",
+    price: 13500,
+    location: "La Paz, Zacatecoluca",
     image:
       "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1200&q=80",
     tag: "USADO",
@@ -169,11 +169,11 @@ export const vehicles = [
     type: "Autos",
     sellerType: "Particular",
     transmission: "Manual",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2019,
     km: 69000,
-    price: 11600000,
-    location: "Santa Fe, Santa Fe",
+    price: 7800,
+    location: "Usulután, Usulután",
     image:
       "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80",
     tag: "USADO",
@@ -187,11 +187,11 @@ export const vehicles = [
     type: "Motos",
     sellerType: "Particular",
     transmission: "Manual",
-    fuel: "Nafta",
+    fuel: "Gasolina",
     year: 2021,
     km: 14000,
-    price: 5400000,
-    location: "Córdoba, Córdoba",
+    price: 3200,
+    location: "Sonsonate, Sonsonate",
     image:
       "https://images.unsplash.com/photo-1517846693594-1567da72af75?auto=format&fit=crop&w=1200&q=80",
     tag: "USADO",
@@ -208,8 +208,8 @@ export const vehicles = [
     fuel: "Diésel",
     year: 2022,
     km: 34000,
-    price: 41800000,
-    location: "Buenos Aires, CABA",
+    price: 38500,
+    location: "San Salvador, San Salvador",
     image:
       "https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1200&q=80",
     tag: "DESTACADO",
@@ -217,15 +217,18 @@ export const vehicles = [
   },
 ];
 
-export const formatPriceARS = (value) =>
-  new Intl.NumberFormat("es-AR", {
+export const formatPrice = (value) =>
+  new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "ARS",
+    currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
 
+// backward compat alias
+export const formatPriceARS = formatPrice;
+
 export const formatKm = (value) =>
-  new Intl.NumberFormat("es-AR").format(value);
+  new Intl.NumberFormat("es-SV").format(value);
 
 export const brands = [...new Set(vehicles.map((v) => v.brand))].sort();
 export const models = [...new Set(vehicles.map((v) => v.model))].sort();

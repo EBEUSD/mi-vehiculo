@@ -140,7 +140,7 @@ const VehicleFiltersSidebar = ({
       <div className={styles.group}>
         <label>Combustible</label>
         <div className={styles.checks}>
-          {["Nafta", "Diésel", "Híbrido", "Eléctrico"].map((fuel) => (
+          {["Gasolina", "Diésel", "Híbrido", "Eléctrico"].map((fuel) => (
             <label key={fuel}>
               <input
                 type="checkbox"
@@ -177,7 +177,7 @@ const VehicleFiltersSidebar = ({
           value={filters.location}
           onChange={(e) => onFilterChange("location", e.target.value)}
         >
-          <option value="">Todas las provincias</option>
+          <option value="">Todos los departamentos</option>
           {locations.map((location) => (
             <option key={location} value={location}>
               {location}

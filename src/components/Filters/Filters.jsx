@@ -44,7 +44,7 @@ const Filters = () => {
         <label>Combustible</label>
         <select>
           <option>Todos</option>
-          <option>Nafta</option>
+          <option>Gasolina</option>
           <option>Diésel</option>
           <option>Híbrido</option>
           <option>Eléctrico</option>

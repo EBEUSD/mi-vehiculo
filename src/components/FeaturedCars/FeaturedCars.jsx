@@ -74,7 +74,7 @@ const FeaturedCars = () => {
                   </strong>
                   <h3>{vehicle.title}</h3>
                   <p className={styles.meta}>
-                    {vehicle.year} • {vehicle.km.toLocaleString("es-AR")} km •{" "}
+                    {vehicle.year} • {vehicle.km.toLocaleString("en-US")} km •{" "}
                     {vehicle.location}
                   </p>
                   <span className={styles.type}>

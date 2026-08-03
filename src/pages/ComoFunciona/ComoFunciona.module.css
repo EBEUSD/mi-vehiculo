@@ -1,0 +1,121 @@
+.page { background: #f7f9fc; min-height: 100vh; font-family: "Inter", system-ui, sans-serif; }
+
+.hero {
+  text-align: center;
+  padding: 52px 24px 40px;
+  background: #fff;
+  border-bottom: 1px solid #e8edf6;
+}
+.heroTitle { font-size: 34px; font-weight: 700; color: #07153f; margin: 0 0 12px; letter-spacing: -0.4px; }
+.heroHighlight { color: #1570ff; }
+.heroSub { font-size: 16px; color: #6b7a99; margin: 0; }
+
+.shell { width: min(1100px, 100% - 48px); margin: 0 auto; padding: 40px 0 60px; display: flex; flex-direction: column; gap: 24px; }
+
+/* Flow cards */
+.flowCard {
+  background: #fff;
+  border: 1px solid #e8edf6;
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow: hidden;
+}
+.flowCardGreen { border-color: rgba(22,163,74,0.15); }
+
+.flowLabel { display: flex; align-items: flex-start; gap: 16px; min-width: 210px; padding-right: 28px; }
+.flowLabelIcon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.flowLabelTitle { font-size: 20px; font-weight: 700; color: #07153f; margin: 0 0 6px; }
+.flowLabelSub { font-size: 13.5px; color: #6b7a99; margin: 0; line-height: 1.5; }
+
+.flowDivider { width: 1px; background: #e8edf6; align-self: stretch; margin: 0 28px; flex-shrink: 0; }
+
+.flowSteps { flex: 1; min-width: 0; }
+
+/* Steps row */
+.stepsRow { display: flex; align-items: flex-start; }
+.stepWrap { display: flex; align-items: flex-start; flex: 1; min-width: 0; }
+
+.step { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 8px; }
+
+.stepNum {
+  width: 26px; height: 26px; border-radius: 50%;
+  font-size: 12px; font-weight: 700; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px; flex-shrink: 0;
+}
+
+.stepIcon {
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 2px solid;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.stepTitle { font-size: 13.5px; font-weight: 700; color: #07153f; margin: 0 0 6px; }
+.stepDesc { font-size: 12.5px; color: #6b7a99; margin: 0; line-height: 1.5; }
+
+.connector {
+  flex: 0 0 24px;
+  border-top: 2px dashed;
+  opacity: 0.35;
+  margin-top: 42px; /* aligns with center of icon circle (26+10+60/2 = 66 → 42 from top of step) */
+  align-self: flex-start;
+}
+
+/* Trust banner */
+.trustBanner {
+  background: linear-gradient(135deg, #eef4ff 0%, #f0f7ff 100%);
+  border: 1px solid rgba(21,112,255,0.15);
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.trustLeft { display: flex; align-items: flex-start; gap: 16px; flex: 1; min-width: 0; }
+.trustIcon { width: 48px; height: 48px; border-radius: 12px; background: rgba(21,112,255,0.1); color: #1570ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.trustTitle { font-size: 16px; font-weight: 700; color: #07153f; margin: 0 0 4px; }
+.trustDesc { font-size: 13.5px; color: #6b7a99; margin: 0; line-height: 1.5; }
+.trustCta {
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  padding: 11px 22px; background: #07153f; color: #fff; border-radius: 12px;
+  text-decoration: none; font-size: 14px; font-weight: 600;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.trustCta:hover { background: #0f2660; }
+
+/* Benefits */
+.benefitsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.benefitItem { display: flex; align-items: flex-start; gap: 14px; }
+.benefitIcon { width: 40px; height: 40px; border-radius: 10px; background: rgba(21,112,255,0.08); color: #1570ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.benefitItem strong { display: block; font-size: 13.5px; font-weight: 700; color: #07153f; margin-bottom: 4px; }
+.benefitItem p { font-size: 12.5px; color: #6b7a99; margin: 0; line-height: 1.5; }
+
+/* Mobile */
+@media (max-width: 1024px) {
+  .benefitsGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .flowCard { flex-direction: column; gap: 24px; }
+  .flowDivider { width: 100%; height: 1px; margin: 0; }
+  .flowLabel { min-width: unset; padding-right: 0; }
+  .stepsRow { flex-wrap: wrap; gap: 20px; justify-content: center; }
+  .stepWrap { flex-direction: column; align-items: center; flex: 0 0 calc(50% - 10px); }
+  .connector { display: none; }
+}
+
+@media (max-width: 560px) {
+  .heroTitle { font-size: 26px; }
+  .benefitsGrid { grid-template-columns: 1fr; }
+  .trustBanner { flex-direction: column; }
+  .trustCta { width: 100%; justify-content: center; }
+  .stepWrap { flex: 0 0 100%; }
+}

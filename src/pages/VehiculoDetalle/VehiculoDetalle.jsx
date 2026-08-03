@@ -14,7 +14,6 @@ import {
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import Navbar from "../../components/Navbar/Navbar";
-import Footer from "../../components/Footer/Footer";
 import VehicleGrid from "../../components/VehicleGrid/VehicleGrid";
 import { vehicles, formatKm, formatPriceARS } from "../../data/vehicles";
 import { getFavorites, toggleFavorite } from "../../utils/favorites";
@@ -73,7 +72,6 @@ const VehiculoDetalle = () => {
             </button>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -412,7 +410,6 @@ const VehiculoDetalle = () => {
         </div>
       )}
 
-      <Footer />
     </div>
   );
 };

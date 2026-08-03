@@ -43,19 +43,15 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               name="precio"
               value={formData.precio}
               onChange={onChange}
-              placeholder="18.900.000"
+              placeholder="12,500"
             />
           </div>
         </div>
 
         <div className={styles.field}>
-          <label>
-            Moneda <span>*</span>
-          </label>
-
+          <label>Moneda</label>
           <select name="moneda" value={formData.moneda} onChange={onChange}>
-            <option value="ARS">ARS - Peso argentino</option>
-            <option value="USD">USD - Dólar estadounidense</option>
+            <option value="USD">USD — Dólar estadounidense</option>
           </select>
         </div>
 
@@ -71,7 +67,7 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               onClick={() => setValue("aceptaPermuta", "Si")}
             >
               <span className={styles.choiceIcon}>
-                <ArrowLeftRight size={27} />
+                <ArrowLeftRight size={16} />
               </span>
 
               <span className={styles.choiceText}>
@@ -87,7 +83,7 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               onClick={() => setValue("aceptaPermuta", "No")}
             >
               <span className={styles.choiceIcon}>
-                <CircleSlash size={27} />
+                <CircleSlash size={16} />
               </span>
 
               <span className={styles.choiceText}>
@@ -109,7 +105,7 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               onClick={() => setValue("precioNegociable", "Si")}
             >
               <span className={styles.choiceIcon}>
-                <Tag size={27} />
+                <Tag size={16} />
               </span>
 
               <span className={styles.choiceText}>
@@ -125,7 +121,7 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               onClick={() => setValue("precioNegociable", "No")}
             >
               <span className={styles.choiceIcon}>
-                <Lock size={27} />
+                <Lock size={16} />
               </span>
 
               <span className={styles.choiceText}>
@@ -147,7 +143,7 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               onClick={() => setValue("financiacion", "Si")}
             >
               <span className={styles.choiceIcon}>
-                <Building2 size={27} />
+                <Building2 size={16} />
               </span>
 
               <span className={styles.choiceText}>
@@ -163,7 +159,7 @@ const PrecioOperacionStep = ({ formData, onChange }) => {
               onClick={() => setValue("financiacion", "No")}
             >
               <span className={styles.choiceIcon}>
-                <Ban size={27} />
+                <Ban size={16} />
               </span>
 
               <span className={styles.choiceText}>

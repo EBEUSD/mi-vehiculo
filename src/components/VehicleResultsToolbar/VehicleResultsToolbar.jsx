@@ -29,7 +29,7 @@ const VehicleResultsToolbar = ({
 
       <div className={styles.bar}>
         <p>
-          Mostrando {start} - {end} de {total.toLocaleString("es-AR")} resultados
+          Mostrando {start} - {end} de {total.toLocaleString("en-US")} resultados
         </p>
 
         <div className={styles.sort}>

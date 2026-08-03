@@ -8,7 +8,6 @@ import {
 } from "react-icons/fi";
 import { FaCarSide, FaMotorcycle, FaTruckPickup, FaTruck } from "react-icons/fa";
 import Navbar from "../../components/Navbar/Navbar";
-import Footer from "../../components/Footer/Footer";
 import VehicleGrid from "../../components/VehicleGrid/VehicleGrid";
 import { vehicles } from "../../data/vehicles";
 import { clearFavorites, getFavorites } from "../../utils/favorites";
@@ -275,7 +274,6 @@ const Favoritos = () => {
         </div>
       </main>
 
-      <Footer />
     </div>
   );
 };

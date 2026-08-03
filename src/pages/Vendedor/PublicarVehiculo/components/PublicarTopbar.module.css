@@ -1,149 +1,148 @@
-﻿.topbar {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(43, 118, 255, 0.22), transparent 30%),
-    linear-gradient(90deg, #04173d 0%, #06245c 50%, #04173d 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 38px rgba(4, 19, 54, 0.18);
+.topbar {
+  background: linear-gradient(90deg, #041640 0%, #071f54 55%, #041640 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(4, 22, 58, 0.28);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.topbarInner {
+.inner {
   width: min(100%, 1360px);
-  min-height: 82px;
+  min-height: 66px;
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
-.brand {
-  color: #ffffff;
-  display: flex;
+.logo {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 31px;
-  font-style: italic;
-  font-weight: 950;
-  letter-spacing: -1.3px;
+  flex-shrink: 0;
+  text-decoration: none;
 }
 
-.logoMi {
-  color: #1476ff;
+.logoImg {
+  height: 31px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
-.topbarDivider {
+.divider {
   width: 1px;
-  height: 38px;
-  background: rgba(255, 255, 255, 0.24);
+  height: 30px;
+  background: rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
 }
 
-.topbarTitle {
+.title {
   margin: 0;
-  color: #ffffff;
-  font-size: 20px;
-  font-weight: 900;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.1px;
 }
 
-.topbarActions {
+/* ── Right side actions ─────────────────── */
+.actions {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
-.draftGhostBtn,
-.iconBtn,
-.avatarBtn {
-  border: 0;
-  color: #ffffff;
+.saveBtn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
   font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
-.draftGhostBtn {
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.48);
-  background: transparent;
-  display: inline-flex;
+.saveBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.saveBtnSaved {
+  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(52, 211, 153, 0.08);
+  color: #6ee7b7;
+}
+
+.userChip {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 850;
-  transition: 0.2s ease;
+  gap: 8px;
+  padding: 0 4px;
 }
 
-.draftGhostBtn:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.iconBtn {
-  position: relative;
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.08);
-  display: grid;
-  place-items: center;
-  transition: 0.2s ease;
-}
-
-.iconBtn span {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 19px;
-  height: 19px;
+.avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: #1265f3;
-  color: #ffffff;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 950;
-}
-
-.avatarBtn {
-  min-height: 46px;
-  padding: 0 10px 0 0;
-  border-radius: 999px;
-  background: transparent;
-  display: inline-flex;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
 }
 
-.avatarBtn strong {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.28), transparent 36%),
-    linear-gradient(135deg, #66799d 0%, #3b4c70 100%);
-  display: grid;
-  place-items: center;
-  font-size: 14px;
-  font-weight: 900;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+.userName {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 600;
 }
 
+.closeBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+}
+
+/* ── Responsive ─────────────────────────── */
 @media (max-width: 820px) {
-  .topbarInner {
-    min-height: 74px;
-    padding: 0 16px;
-  }
+  .inner { min-height: 58px; padding: 0 16px; }
+  .divider { display: none; }
+  .title { font-size: 12.5px; }
+  .userName { display: none; }
+  .saveBtn { padding: 0 11px; font-size: 12px; }
+}
 
-  .topbarDivider,
-  .draftGhostBtn {
-    display: none;
-  }
-
-  .brand {
-    font-size: 24px;
-  }
-
-  .topbarTitle {
-    font-size: 16px;
-  }
+@media (max-width: 480px) {
+  .saveBtn span { display: none; }
+  .saveBtn { padding: 0 10px; width: 36px; justify-content: center; }
 }

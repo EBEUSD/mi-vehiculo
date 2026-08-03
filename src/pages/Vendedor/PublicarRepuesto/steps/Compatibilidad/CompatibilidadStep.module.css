@@ -1,0 +1,94 @@
+.section { display: flex; flex-direction: column; gap: 24px; }
+
+.universalRow {
+  padding: 18px 20px;
+  background: linear-gradient(90deg, #eef5ff 0%, #f5f9ff 100%);
+  border: 1px solid rgba(190,211,246,0.5);
+  border-radius: 14px;
+}
+
+.universalLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #1a3566;
+}
+
+.universalCheck {
+  width: 18px;
+  height: 18px;
+  accent-color: #1a6eff;
+  cursor: pointer;
+}
+
+.field { display: flex; flex-direction: column; gap: 10px; }
+
+.field label {
+  font-size: 13.7px;
+  font-weight: 900;
+  color: #18264d;
+}
+
+.field input {
+  height: 54px;
+  border-radius: 12px;
+  border: 1px solid #cbd6e5;
+  background: linear-gradient(180deg, #fff 0%, #fbfcff 100%);
+  padding: 0 16px;
+  outline: none;
+  color: #12214b;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  transition: 0.18s ease;
+}
+
+.field input::placeholder { color: #94a2b8; }
+
+.field input:focus {
+  border-color: #216ff3;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(33,111,243,0.11);
+}
+
+.marcasGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.marcaChip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #d1daea;
+  background: #f8fafc;
+  color: #3d4f6e;
+  font-size: 13px;
+  font-weight: 750;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.marcaChip:hover { border-color: #1a6eff; color: #1a6eff; background: #eef5ff; }
+
+.marcaChipActive {
+  border-color: #1a6eff;
+  background: #1a6eff;
+  color: #fff;
+}
+
+.marcaChipActive:hover { background: #155ee0; border-color: #155ee0; color: #fff; }
+
+.fieldsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 600px) {
+  .fieldsRow { grid-template-columns: 1fr; }
+}

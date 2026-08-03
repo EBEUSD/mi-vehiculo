@@ -10,42 +10,20 @@ import {
   Info,
   MapPin,
   MessageCircle,
-  Pencil,
-  Snowflake,
-  Smartphone,
   User,
   Wrench,
 } from "lucide-react";
 import styles from "./VistaPreviaStep.module.css";
 
-const equipment = [
-  { label: "Aire acondicionado", icon: Snowflake },
-  { label: "Android Auto / CarPlay", icon: Smartphone },
-  { label: "Cámara de retroceso", icon: Camera },
-  { label: "Control crucero", icon: Gauge },
-  { label: "Sensores de estacionamiento", icon: Wrench },
-];
-
 const formatPrice = (price) => {
-  if (!price) {
-    return "18.900.000";
-  }
-
-  const numbers = String(price).replace(/\D/g, "");
-
-  if (!numbers) {
-    return price;
-  }
-
-  return new Intl.NumberFormat("es-AR").format(Number(numbers));
+  const numbers = String(price || "").replace(/\D/g, "");
+  if (!numbers) return null;
+  return new Intl.NumberFormat("en-US").format(Number(numbers));
 };
 
 const VistaPreviaStep = ({ formData }) => {
   const photos = formData.fotos || [];
-  const mainPhotoIndex = Math.max(
-    0,
-    photos.findIndex((photo) => photo.isMain)
-  );
+  const mainPhotoIndex = Math.max(0, photos.findIndex((p) => p.isMain));
 
   const [activePhotoIndex, setActivePhotoIndex] = useState(
     mainPhotoIndex >= 0 ? mainPhotoIndex : 0
@@ -53,22 +31,23 @@ const VistaPreviaStep = ({ formData }) => {
 
   const activePhoto = photos[activePhotoIndex] || photos[0];
 
-  const title = `${formData.marca || "Toyota"} ${
-    formData.modelo || "Corolla"
-  } ${formData.motor || "2.0"} XEI CVT ${formData.anio || "2021"}`;
+  const title = [formData.marca, formData.modelo, formData.version, formData.anio]
+    .filter(Boolean).join(" ") || "Sin título";
 
   const price = formatPrice(formData.precio);
-  const location = `${formData.provincia || "CABA"}, ${
-    formData.ciudad || "Palermo"
-  }`;
+  const location = [formData.ciudad, formData.provincia].filter(Boolean).join(", ") || null;
+  const description = formData.descripcion || formData.observaciones || null;
 
-  const visibleThumbs = useMemo(() => {
-    if (photos.length === 0) {
-      return [];
-    }
+  const chips = [
+    formData.color,
+    formData.carroceria,
+    formData.traccion,
+    formData.aceptaPermuta === "Si" ? "Acepta permuta" : null,
+    formData.precioNegociable === "Si" ? "Precio negociable" : null,
+    formData.financiacion === "Si" ? "Acepta financiación" : null,
+  ].filter(Boolean);
 
-    return photos.slice(0, 6);
-  }, [photos]);
+  const visibleThumbs = useMemo(() => photos.slice(0, 6), [photos]);
 
   const goPrevPhoto = () => {
     if (photos.length === 0) {
@@ -100,13 +79,6 @@ const VistaPreviaStep = ({ formData }) => {
 
   return (
     <>
-      <div className={styles.previewEditRow}>
-        <button type="button" className={styles.previewEditBtn}>
-          <Pencil size={18} />
-          Editar publicación
-        </button>
-      </div>
-
       <div className={styles.previewLayout}>
         <div className={styles.previewGallery}>
           <div className={styles.previewMainPhoto}>
@@ -176,13 +148,13 @@ const VistaPreviaStep = ({ formData }) => {
               </div>
 
               <div className={styles.sellerText}>
-                <strong>{formData.nombreContacto || "Juan Manuel Pérez"}</strong>
-                <p>Usuario desde 2021</p>
+                <strong>{formData.nombreContacto || "Tu nombre"}</strong>
+                <p>Vendedor en Mi Vehículo</p>
               </div>
 
               <button type="button" className={styles.whatsappSellerBtn}>
                 <MessageCircle size={20} />
-                Enviar mensaje por WhatsApp
+                {formData.whatsapp ? `Escribir al ${formData.whatsapp}` : "WhatsApp"}
               </button>
             </div>
           </div>
@@ -192,12 +164,18 @@ const VistaPreviaStep = ({ formData }) => {
           <div className={styles.previewTitleBlock}>
             <h2>{title}</h2>
 
-            <strong className={styles.previewPrice}>$ {price}</strong>
+            {price ? (
+              <strong className={styles.previewPrice}>$ {price}</strong>
+            ) : (
+              <strong className={styles.previewPrice} style={{ color: "#94a3b8" }}>Sin precio</strong>
+            )}
 
-            <div className={styles.previewLocation}>
-              <MapPin size={18} />
-              {location}
-            </div>
+            {location && (
+              <div className={styles.previewLocation}>
+                <MapPin size={18} />
+                {location}
+              </div>
+            )}
           </div>
 
           <div className={styles.previewSpecs}>
@@ -237,7 +215,7 @@ const VistaPreviaStep = ({ formData }) => {
               <Fuel size={22} />
               <div>
                 <span>Combustible</span>
-                <strong>{formData.combustible || "Nafta"}</strong>
+                <strong>{formData.combustible || "Gasolina"}</strong>
               </div>
             </div>
 
@@ -250,29 +228,20 @@ const VistaPreviaStep = ({ formData }) => {
             </div>
           </div>
 
-          <div className={styles.previewDescription}>
-            <h3>Descripción</h3>
+          {description && (
+            <div className={styles.previewDescription}>
+              <h3>Descripción</h3>
+              <p>{description}</p>
+            </div>
+          )}
 
-            <p>
-              {formData.observaciones ||
-                "Único dueño. Service oficiales al día. Muy buen estado general. Equipamiento completo, cámara de retroceso, sensores de estacionamiento, control crucero y pantalla multimedia."}
-            </p>
-          </div>
-
-          <div className={styles.previewTags}>
-            {equipment.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <span key={item.label}>
-                  <Icon size={16} />
-                  {item.label}
-                </span>
-              );
-            })}
-
-            <span>+ 3 más</span>
-          </div>
+          {chips.length > 0 && (
+            <div className={styles.previewTags}>
+              {chips.map((chip) => (
+                <span key={chip}>{chip}</span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

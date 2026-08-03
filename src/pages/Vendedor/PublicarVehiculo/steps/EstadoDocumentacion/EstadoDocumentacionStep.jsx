@@ -2,7 +2,7 @@
 import styles from "./EstadoDocumentacionStep.module.css";
 
 const papersOptions = ["Sí", "No"];
-const vtvOptions = ["Vigente", "Vencida", "No aplica"];
+const vtvOptions = ["Al día", "Vencida", "No aplica"];
 const debtOptions = ["Sin deudas", "Tiene deudas"];
 const ownershipOptions = ["Titular", "Familiar", "Gestor", "Concesionaria"];
 const conditionOptions = ["Excelente", "Muy bueno", "Bueno", "Regular"];
@@ -46,7 +46,7 @@ const EstadoDocumentacionStep = ({ formData, onChange }) => {
 
           <div className={styles.segmentGroup}>
             <label>
-              VTV <span>*</span>
+              Tarjeta de circulación <span>*</span>
             </label>
 
             <div className={`${styles.segmentControl} ${styles.threeColumns}`}>

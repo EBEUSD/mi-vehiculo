@@ -314,3 +314,186 @@
     height: 36px;
   }
 }
+
+/* Auth button in top nav (desktop) */
+.authBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: inherit;
+  color: rgba(255, 255, 255, 0.82);
+  padding: 0;
+  font-weight: 400;
+  transition: color 0.15s;
+}
+
+.authBtn:hover {
+  color: #fff;
+}
+
+/* Auth button in mobile menu */
+.mobileAuthBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 12px 0;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.mobileAuthBtn:hover {
+  color: #fff;
+}
+
+/* =========================
+   ACCOUNT DROPDOWN
+========================= */
+
+.accountWrap {
+  position: relative;
+}
+
+.accountDropBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.accountDropBtn:hover {
+  color: #dbeafe;
+}
+
+.accountAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.adminAvatar {
+  background: rgba(251, 146, 60, 0.25);
+  border-color: rgba(251, 146, 60, 0.6);
+}
+
+.adminMenuHeader {
+  background: #fffbeb !important;
+  border-bottom: 1px solid #fde68a;
+}
+
+.adminMenuHeader strong { color: #92400e !important; }
+.adminMenuHeader span   { color: #b45309 !important; font-weight: 600 !important; }
+
+.chevron {
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  transition: transform 0.2s ease;
+}
+
+.accountMenu {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  min-width: 210px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow:
+    0 16px 48px rgba(5, 20, 60, 0.18),
+    0 2px 8px rgba(5, 20, 60, 0.08);
+  border: 1px solid rgba(210, 225, 255, 0.5);
+  overflow: hidden;
+  z-index: 200;
+  animation: menuIn 0.15s ease;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.accountMenuHeader {
+  padding: 14px 17px 12px;
+  background: #f8faff;
+}
+
+.accountMenuHeader strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #07153f;
+  line-height: 1.3;
+}
+
+.accountMenuHeader span {
+  display: block;
+  font-size: 12px;
+  color: #6b7a99;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.accountMenuDivider {
+  height: 1px;
+  background: #f0f4fb;
+}
+
+/* higher specificity to beat .topNav a { color: rgba(255,255,255,…) } */
+.accountMenu .accountMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 17px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #07153f;
+  text-decoration: none;
+  transition: background 0.12s;
+}
+
+.accountMenu .accountMenuItem:hover {
+  background: #f5f8ff;
+  color: #1570ff;
+}
+
+.accountMenuSignOut {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 17px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #dc2626;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+
+.accountMenuSignOut:hover {
+  background: #fff5f5;
+}

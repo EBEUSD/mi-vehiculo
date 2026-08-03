@@ -35,7 +35,7 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
           <div className={styles.contactGrid}>
             <div className={styles.field}>
               <label>
-                Provincia <span>*</span>
+                Departamento <span>*</span>
               </label>
 
               <select
@@ -43,18 +43,27 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
                 value={formData.provincia}
                 onChange={onChange}
               >
-                <option value="">Seleccioná la provincia</option>
-                <option value="Buenos Aires">Buenos Aires</option>
-                <option value="CABA">CABA</option>
-                <option value="Córdoba">Córdoba</option>
-                <option value="Santa Fe">Santa Fe</option>
-                <option value="Mendoza">Mendoza</option>
+                <option value="">Seleccioná el departamento</option>
+                <option value="Ahuachapán">Ahuachapán</option>
+                <option value="Cabañas">Cabañas</option>
+                <option value="Chalatenango">Chalatenango</option>
+                <option value="Cuscatlán">Cuscatlán</option>
+                <option value="La Libertad">La Libertad</option>
+                <option value="La Paz">La Paz</option>
+                <option value="La Unión">La Unión</option>
+                <option value="Morazán">Morazán</option>
+                <option value="San Miguel">San Miguel</option>
+                <option value="San Salvador">San Salvador</option>
+                <option value="San Vicente">San Vicente</option>
+                <option value="Santa Ana">Santa Ana</option>
+                <option value="Sonsonate">Sonsonate</option>
+                <option value="Usulután">Usulután</option>
               </select>
             </div>
 
             <div className={styles.field}>
               <label>
-                Ciudad <span>*</span>
+                Municipio <span>*</span>
               </label>
 
               <select
@@ -62,12 +71,21 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
                 value={formData.ciudad}
                 onChange={onChange}
               >
-                <option value="">Seleccioná la ciudad</option>
-                <option value="La Plata">La Plata</option>
-                <option value="Mar del Plata">Mar del Plata</option>
-                <option value="Palermo">Palermo</option>
-                <option value="Córdoba Capital">Córdoba Capital</option>
-                <option value="Rosario">Rosario</option>
+                <option value="">Seleccioná el municipio</option>
+                <option value="San Salvador">San Salvador</option>
+                <option value="Santa Ana">Santa Ana</option>
+                <option value="San Miguel">San Miguel</option>
+                <option value="Santa Tecla">Santa Tecla</option>
+                <option value="Antiguo Cuscatlán">Antiguo Cuscatlán</option>
+                <option value="Soyapango">Soyapango</option>
+                <option value="Apopa">Apopa</option>
+                <option value="Mejicanos">Mejicanos</option>
+                <option value="Sonsonate">Sonsonate</option>
+                <option value="Ahuachapán">Ahuachapán</option>
+                <option value="Zacatecoluca">Zacatecoluca</option>
+                <option value="Cojutepeque">Cojutepeque</option>
+                <option value="Chalatenango">Chalatenango</option>
+                <option value="Usulután">Usulután</option>
               </select>
             </div>
           </div>
@@ -100,15 +118,15 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
               </label>
 
               <div className={styles.phoneInput}>
-                <span>AR</span>
-                <small>+54</small>
+                <span>SV</span>
+                <small>+503</small>
 
                 <input
                   type="text"
                   name="whatsapp"
                   value={formData.whatsapp}
                   onChange={onChange}
-                  placeholder="11 2345 6789"
+                  placeholder="7000-0000"
                 />
               </div>
             </div>

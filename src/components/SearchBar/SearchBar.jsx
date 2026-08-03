@@ -10,12 +10,12 @@ const SearchBar = () => {
 
       <div className={styles.field}>
         <label>Ubicación</label>
-        <input type="text" placeholder="Ej: Buenos Aires" />
+        <input type="text" placeholder="Ej: San Salvador" />
       </div>
 
       <div className={styles.field}>
         <label>Precio máximo</label>
-        <input type="text" placeholder="Ej: USD 20.000" />
+        <input type="text" placeholder="Ej: USD 20,000" />
       </div>
 
       <button className={styles.searchBtn}>Buscar</button>

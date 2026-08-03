@@ -1,33 +1,50 @@
-﻿import { Bell, ChevronDown, Save } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Save, X, Check } from "lucide-react";
+import { useAuth } from "../../../../context/AuthContext";
+import logoVehiculo from "../../../../assets/logo-vehiculo.png";
 import styles from "./PublicarTopbar.module.css";
 
-const PublicarTopbar = () => {
+const PublicarTopbar = ({ onSaveDraft, draftSaved }) => {
+  const { user } = useAuth();
+  const navigate  = useNavigate();
+  const fullName  = user?.user_metadata?.full_name || user?.email || "Usuario";
+  const firstName = fullName.split(" ")[0];
+  const initial   = firstName.charAt(0).toUpperCase();
+
   return (
     <header className={styles.topbar}>
-      <div className={styles.topbarInner}>
-        <div className={styles.brand}>
-          <span className={styles.logoMi}>mi</span>
-          <span>vehiculo</span>
-        </div>
+      <div className={styles.inner}>
+        <Link to="/" className={styles.logo}>
+          <img src={logoVehiculo} alt="Mi Vehículo" className={styles.logoImg} />
+        </Link>
 
-        <div className={styles.topbarDivider}></div>
+        <span className={styles.divider} />
 
-        <h2 className={styles.topbarTitle}>Publicar vehiculo</h2>
+        <p className={styles.title}>Publicar vehículo</p>
 
-        <div className={styles.topbarActions}>
-          <button type="button" className={styles.draftGhostBtn}>
-            <Save size={18} />
-            Guardar borrador
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={`${styles.saveBtn} ${draftSaved ? styles.saveBtnSaved : ""}`}
+            onClick={onSaveDraft}
+          >
+            {draftSaved ? <Check size={15} strokeWidth={3} /> : <Save size={15} />}
+            <span>{draftSaved ? "Guardado" : "Guardar borrador"}</span>
           </button>
 
-          <button type="button" className={styles.iconBtn}>
-            <Bell size={18} />
-            <span>2</span>
-          </button>
+          <div className={styles.userChip}>
+            <span className={styles.avatar}>{initial}</span>
+            <span className={styles.userName}>{firstName}</span>
+          </div>
 
-          <button type="button" className={styles.avatarBtn}>
-            <strong>AV</strong>
-            <ChevronDown size={16} />
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={() => navigate("/vendedor")}
+            aria-label="Salir al panel"
+            title="Salir al panel"
+          >
+            <X size={18} />
           </button>
         </div>
       </div>

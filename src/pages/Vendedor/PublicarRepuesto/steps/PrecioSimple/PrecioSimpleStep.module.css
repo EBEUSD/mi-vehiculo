@@ -1,0 +1,89 @@
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 28px;
+}
+
+.field { min-width: 0; }
+.fullWidth { grid-column: 1 / -1; }
+
+.field label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13.7px;
+  font-weight: 900;
+  color: #18264d;
+}
+
+.field label span { color: #ff4055; }
+
+.priceWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.currency {
+  position: absolute;
+  left: 16px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #1a3a6c;
+  pointer-events: none;
+}
+
+.priceWrap input {
+  width: 100%;
+  height: 54px;
+  border-radius: 12px;
+  border: 1px solid #cbd6e5;
+  background: linear-gradient(180deg, #fff 0%, #fbfcff 100%);
+  padding: 0 16px 0 32px;
+  outline: none;
+  color: #12214b;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  transition: 0.18s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.95), 0 5px 14px rgba(10,28,70,0.025);
+}
+
+.priceWrap input:focus {
+  border-color: #216ff3;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(33,111,243,0.11);
+}
+
+.priceWrap input::placeholder { color: #c0c8d5; }
+
+.btnGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.groupBtn {
+  flex: 1;
+  height: 48px;
+  border-radius: 10px;
+  border: 1.5px solid #d0daea;
+  background: #f8fafc;
+  color: #4a5a78;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.groupBtn:hover { border-color: #1a6eff; color: #1a6eff; }
+
+.groupBtnActive {
+  border-color: #1a6eff;
+  background: #1a6eff;
+  color: #fff;
+}
+
+@media (max-width: 600px) {
+  .formGrid { grid-template-columns: 1fr; }
+  .fullWidth { grid-column: span 1; }
+}

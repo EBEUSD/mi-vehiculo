@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -5,80 +6,62 @@ import {
   Car,
   Bike,
   Truck,
-  Package,
-  Wrench,
   LogIn,
   User,
   ChevronDown,
   Menu,
+  LayoutDashboard,
+  UserCircle,
+  LogOut,
 } from "lucide-react";
-
+import { useAuth } from "../../../../context/AuthContext";
 import styles from "./SellerNavbar.module.css";
 
 const mainLinks = [
-  {
-    label: "Categorías",
-    path: "/vehiculos",
-  },
-  {
-    label: "Ofrecé tu vehículo",
-    path: "/vendedor",
-  },
-  {
-    label: "Favoritos",
-    path: "/favoritos",
-  },
-  {
-    label: "Iniciar sesión",
-    path: "/login",
-  },
+  { label: "Categorías",          path: "/vehiculos" },
+  { label: "Ofrecé tu vehículo",  path: "/vendedor"  },
+  { label: "Favoritos",           path: "/favoritos" },
 ];
 
 const categoryLinks = [
-  {
-    label: "Autos",
-    path: "/vehiculos?categoria=autos",
-    icon: Car,
-  },
-  {
-    label: "Motos",
-    path: "/vehiculos?categoria=motos",
-    icon: Bike,
-  },
-  {
-    label: "Camionetas",
-    path: "/vehiculos?categoria=camionetas",
-    icon: Truck,
-  },
-  {
-    label: "Camiones",
-    path: "/vehiculos?categoria=camiones",
-    icon: Truck,
-  },
-  {
-    label: "Repuestos",
-    path: "/repuestos",
-    icon: Package,
-  },
-  {
-    label: "Accesorios",
-    path: "/accesorios",
-    icon: Wrench,
-  },
+  { label: "Autos",      path: "/vehiculos?categoria=autos",      icon: Car   },
+  { label: "Motos",      path: "/vehiculos?categoria=motos",      icon: Bike  },
+  { label: "Camionetas", path: "/vehiculos?categoria=camionetas", icon: Truck },
+  { label: "Camiones",   path: "/vehiculos?categoria=camiones",   icon: Truck },
 ];
 
 const SellerNavbar = () => {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const { user, signOut } = useAuth();
+  const [dropOpen, setDropOpen] = useState(false);
+  const dropRef   = useRef(null);
+
+  const fullName   = user?.user_metadata?.full_name || user?.email || "Usuario";
+  const firstName  = fullName.split(" ")[0];
+  const initial    = firstName.charAt(0).toUpperCase();
+
+  /* close dropdown on outside click */
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) {
+        setDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleSearch = (event) => {
     event.preventDefault();
-
-    const formData = new FormData(event.currentTarget);
-    const query = formData.get("search")?.toString().trim();
-
+    const query = new FormData(event.currentTarget).get("search")?.toString().trim();
     if (!query) return;
-
     navigate(`/vehiculos?busqueda=${encodeURIComponent(query)}`);
+  };
+
+  const handleSignOut = async () => {
+    setDropOpen(false);
+    await signOut();
+    navigate("/");
   };
 
   return (
@@ -102,16 +85,61 @@ const SellerNavbar = () => {
 
           <nav className={styles.mainNav}>
             {mainLinks.map((link) => (
-              <Link key={link.label} to={link.path}>
-                {link.label}
-              </Link>
+              <Link key={link.label} to={link.path}>{link.label}</Link>
             ))}
 
-            <button type="button" className={styles.accountButton}>
-              <User size={18} />
-              <span>Mi cuenta</span>
-              <ChevronDown size={16} />
-            </button>
+            {/* Account — auth-aware */}
+            {user ? (
+              <div className={styles.accountWrap} ref={dropRef}>
+                <button
+                  type="button"
+                  className={styles.accountButton}
+                  onClick={() => setDropOpen((v) => !v)}
+                  aria-expanded={dropOpen}
+                >
+                  <span className={styles.accountAvatar}>{initial}</span>
+                  <span>{firstName}</span>
+                  <ChevronDown
+                    size={15}
+                    className={dropOpen ? styles.chevronOpen : styles.chevron}
+                  />
+                </button>
+
+                {dropOpen && (
+                  <div className={styles.accountMenu}>
+                    <div className={styles.accountMenuHeader}>
+                      <strong>{fullName}</strong>
+                      {user.email && user.email !== fullName && (
+                        <span>{user.email}</span>
+                      )}
+                    </div>
+                    <div className={styles.accountMenuDivider} />
+                    <Link
+                      to="/vendedor"
+                      className={styles.accountMenuItem}
+                      onClick={() => setDropOpen(false)}
+                    >
+                      <LayoutDashboard size={15} /> Mi panel
+                    </Link>
+                    <Link
+                      to="/vendedor?tab=perfil"
+                      className={styles.accountMenuItem}
+                      onClick={() => setDropOpen(false)}
+                    >
+                      <UserCircle size={15} /> Ver mi perfil
+                    </Link>
+                    <div className={styles.accountMenuDivider} />
+                    <button className={styles.accountMenuSignOut} onClick={handleSignOut}>
+                      <LogOut size={15} /> Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link to="/login" className={`${styles.accountButton} ${styles.loginLink}`}>
+                <LogIn size={17} /> Iniciar sesión
+              </Link>
+            )}
 
             <button
               type="button"
@@ -134,7 +162,6 @@ const SellerNavbar = () => {
           <nav className={styles.categoryNav}>
             {categoryLinks.map((item) => {
               const Icon = item.icon;
-
               return (
                 <Link key={item.label} to={item.path}>
                   <Icon size={16} />
@@ -145,8 +172,7 @@ const SellerNavbar = () => {
           </nav>
 
           <nav className={styles.infoNav}>
-            <Link to="/financiacion">Financiación</Link>
-            <Link to="/consejos">Consejos e información</Link>
+            <Link to="/faq">Consejos e información</Link>
           </nav>
         </div>
       </div>

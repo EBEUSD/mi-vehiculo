@@ -135,7 +135,7 @@ const SearchFilters = () => {
           <label>Ubicación</label>
           <input
             type="text"
-            placeholder="Todas las provincias"
+            placeholder="Todos los departamentos"
             value={form.location}
             onChange={(e) => handleChange("location", e.target.value)}
           />

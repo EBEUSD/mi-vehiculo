@@ -2,18 +2,33 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { FiSliders } from "react-icons/fi";
 import Navbar from "../../components/Navbar/Navbar";
-import Footer from "../../components/Footer/Footer";
 import VehicleFiltersSidebar from "../../components/VehicleFiltersSidebar/VehicleFiltersSidebar";
 import VehicleResultsToolbar from "../../components/VehicleResultsToolbar/VehicleResultsToolbar";
 import VehicleGrid from "../../components/VehicleGrid/VehicleGrid";
 import Pagination from "../../components/Pagination/Pagination";
-import {
-  vehicles,
-  brands,
-  locations,
-  models,
-} from "../../data/vehicles";
+import { supabase } from "../../lib/supabase";
 import styles from "./Vehiculos.module.css";
+
+const PLACEHOLDER_IMG =
+  "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&auto=format&fit=crop";
+
+const mapRow = (row) => ({
+  id: row.id,
+  title: [row.marca, row.modelo, row.version].filter(Boolean).join(" "),
+  brand: row.marca || "",
+  model: row.modelo || "",
+  year: row.anio || 0,
+  km: row.kilometraje || 0,
+  price: row.precio || 0,
+  type: row.tipo_vehiculo || "Autos",
+  fuel: row.combustible || "Gasolina",
+  transmission: row.transmision || "Manual",
+  condition: row.condicion === "Nuevo" ? "new" : "used",
+  location: [row.municipio, row.departamento].filter(Boolean).join(", "),
+  image: row.fotos?.[0] || PLACEHOLDER_IMG,
+  tag: row.plan === "premium" ? "DESTACADO" : row.condicion === "Nuevo" ? "NUEVO" : "USADO",
+  sellerType: "Particular",
+});
 
 const ITEMS_PER_PAGE = 9;
 const parseArray = (value) => (value ? value.split(",").filter(Boolean) : []);
@@ -21,6 +36,25 @@ const parseArray = (value) => (value ? value.split(",").filter(Boolean) : []);
 const Vehiculos = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [allListings, setAllListings] = useState([]);
+  const [loadingListings, setLoadingListings] = useState(true);
+
+  useEffect(() => {
+    const fetchListings = async () => {
+      setLoadingListings(true);
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("status", "activo");
+      if (!error && data) setAllListings(data.map(mapRow));
+      setLoadingListings(false);
+    };
+    fetchListings();
+  }, []);
+
+  const brands    = useMemo(() => [...new Set(allListings.map((v) => v.brand).filter(Boolean))].sort(), [allListings]);
+  const models    = useMemo(() => [...new Set(allListings.map((v) => v.model).filter(Boolean))].sort(), [allListings]);
+  const locations = useMemo(() => [...new Set(allListings.map((v) => v.location).filter(Boolean))].sort(), [allListings]);
 
   const filters = {
     type: searchParams.get("type") || "Autos",
@@ -29,7 +63,7 @@ const Vehiculos = () => {
     yearMin: Number(searchParams.get("yearMin") || 2018),
     yearMax: Number(searchParams.get("yearMax") || 2024),
     priceMin: Number(searchParams.get("priceMin") || 0),
-    priceMax: Number(searchParams.get("priceMax") || 40000000),
+    priceMax: Number(searchParams.get("priceMax") || 40000),
     kmMin: Number(searchParams.get("kmMin") || 0),
     kmMax: Number(searchParams.get("kmMax") || 150000),
     fuel: parseArray(searchParams.get("fuel")),
@@ -67,7 +101,7 @@ const Vehiculos = () => {
   };
 
   const filteredVehicles = useMemo(() => {
-    let result = [...vehicles];
+    let result = [...allListings];
 
     result = result.filter((vehicle) => {
       const matchesType = !filters.type || vehicle.type === filters.type;
@@ -145,7 +179,7 @@ const Vehiculos = () => {
     }
 
     return result;
-  }, [filters, sortBy]);
+  }, [allListings, filters, sortBy]);
 
   const totalResults = filteredVehicles.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / ITEMS_PER_PAGE));
@@ -202,9 +236,9 @@ const Vehiculos = () => {
       key: "year",
       label: `Año: ${filters.yearMin} - ${filters.yearMax}`,
     },
-    filters.priceMax !== 40000000 && {
+    filters.priceMax !== 40000 && {
       key: "priceMax",
-      label: `Precio hasta ${new Intl.NumberFormat("es-AR").format(
+      label: `Precio hasta ${new Intl.NumberFormat("en-US").format(
         filters.priceMax
       )}`,
     },
@@ -229,7 +263,7 @@ const Vehiculos = () => {
         updateParams({ yearMin: 2018, yearMax: 2024 });
         break;
       case "priceMax":
-        updateParams({ priceMax: 40000000 });
+        updateParams({ priceMax: 40000 });
         break;
       case "location":
         updateParams({ location: "" });
@@ -258,7 +292,7 @@ const Vehiculos = () => {
               <h1>
                 Resultados para <span>autos usados</span>
               </h1>
-              <p>{totalResults.toLocaleString("es-AR")} resultados encontrados</p>
+              <p>{totalResults.toLocaleString("en-US")} resultados encontrados</p>
             </div>
 
             <div className={styles.headingActions}>
@@ -299,10 +333,16 @@ const Vehiculos = () => {
                 onSortChange={(value) => updateParams({ sortBy: value })}
               />
 
-              <VehicleGrid
-                vehicles={paginatedVehicles}
-                currentSearch={searchParams.toString()}
-              />
+              {loadingListings ? (
+                <p style={{ padding: "2rem", color: "#6b7280", textAlign: "center" }}>
+                  Cargando vehículos…
+                </p>
+              ) : (
+                <VehicleGrid
+                  vehicles={paginatedVehicles}
+                  currentSearch={searchParams.toString()}
+                />
+              )}
 
               <Pagination
                 currentPage={safePage}
@@ -341,7 +381,6 @@ const Vehiculos = () => {
         </div>
       </div>
 
-      <Footer />
     </div>
   );
 };

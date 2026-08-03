@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import styles from "./CaracteristicasStep.module.css";
 
-const fuelOptions = ["Nafta", "Diésel", "GNC", "Híbrido", "Eléctrico"];
+const fuelOptions = ["Gasolina", "Diésel", "Híbrido", "Eléctrico", "Gas LP"];
 const transmissionOptions = ["Manual", "Automática"];
 const motorOptions = ["1.0", "1.4", "1.6", "2.0+"];
 const doorsOptions = ["2", "3", "4", "5"];

@@ -121,19 +121,19 @@
 
 .choiceCard {
   position: relative;
-  min-height: 92px;
-  border-radius: 14px;
+  min-height: 52px;
+  border-radius: 12px;
   border: 1px solid #cfd8e6;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-  padding: 0 22px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   font-family: inherit;
   cursor: pointer;
   color: #172550;
   transition: 0.2s ease;
-  box-shadow: 0 8px 18px rgba(12, 34, 80, 0.035);
+  box-shadow: 0 4px 12px rgba(12, 34, 80, 0.028);
   text-align: left;
 }
 
@@ -154,23 +154,19 @@
 .choiceActive::after {
   content: "";
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 22px;
-  height: 22px;
+  top: 8px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #1265f3;
-  color: #ffffff;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 950;
+  display: block;
 }
 
 .choiceIcon {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: #eef2f7;
   color: #7d8aa1;
   display: grid;
@@ -184,8 +180,8 @@
 }
 
 .choiceText strong {
-  font-size: 15px;
-  font-weight: 900;
+  font-size: 13.5px;
+  font-weight: 800;
   color: #14214a;
   line-height: 1.25;
 }

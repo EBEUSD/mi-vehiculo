@@ -17,7 +17,7 @@ const Hero = () => {
           </p>
 
           <div className={styles.actions}>
-            <Link to="/publicar" className={styles.primaryBtn}>
+            <Link to="/publicar/nuevo" className={styles.primaryBtn}>
               <FaCarSide />
               <span>Publicar mi vehículo</span>
             </Link>

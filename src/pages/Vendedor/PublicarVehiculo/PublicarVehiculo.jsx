@@ -1,12 +1,18 @@
 ﻿import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
+import { supabase } from "../../../lib/supabase";
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
   Check,
+  CheckCircle,
   MessageCircle,
   Pencil,
   Save,
+  Trash2,
+  Zap,
 } from "lucide-react";
 import PublicarTopbar from "./components/PublicarTopbar";
 import PublicarStepper from "./components/PublicarStepper";
@@ -18,6 +24,7 @@ import EstadoDocumentacionStep from "./steps/EstadoDocumentacion/EstadoDocumenta
 import FotosStep from "./steps/Fotos/FotosStep";
 import ContactoUbicacionStep from "./steps/ContactoUbicacion/ContactoUbicacionStep";
 import VistaPreviaStep from "./steps/VistaPrevia/VistaPreviaStep";
+import PlanPublicacionStep from "./steps/PlanPublicacion/PlanPublicacionStep";
 import styles from "./PublicarVehiculo.module.css";
 
 const steps = [
@@ -26,7 +33,8 @@ const steps = [
     label: "Datos básicos",
     title: "Datos básicos",
     formTitle: "Datos del vehículo",
-    description: "Completá la información principal para comenzar tu publicación.",
+    description:
+      "Completá la información principal para comenzar tu publicación.",
     sideText:
       "Contanos lo esencial de tu vehículo para que podamos ayudarte a llegar a más compradores.",
     helpTitle: "En este paso vas a completar",
@@ -36,6 +44,7 @@ const steps = [
       "Año y versión",
       "Kilometraje",
       "Condición del vehículo",
+      "Descripción (opcional)",
     ],
   },
   {
@@ -120,6 +129,22 @@ const steps = [
     helpTitle: "En este paso vas a",
     helpItems: ["Revisar tu publicación antes de hacerla pública"],
   },
+  {
+    id: 8,
+    label: "Plan",
+    title: "Plan de publicación",
+    formTitle: "Elegí tu plan",
+    description: "Elegí cómo querés destacar tu publicación y llegar a más compradores.",
+    sideText:
+      "Un plan de mayor visibilidad puede marcar la diferencia. Los avisos Premium aparecen en la página principal.",
+    helpTitle: "Los planes incluyen",
+    helpItems: [
+      "Duración extendida de la publicación",
+      "Mayor posición en búsquedas",
+      "Badge destacado en el aviso",
+      "Aparición en la página principal",
+    ],
+  },
 ];
 
 const initialForm = {
@@ -132,13 +157,13 @@ const initialForm = {
   condicion: "Nuevo",
 
   precio: "",
-  moneda: "ARS",
+  moneda: "USD",
   aceptaPermuta: "Si",
   precioNegociable: "Si",
   financiacion: "Si",
   infoFinanciacion: "",
 
-  combustible: "Nafta",
+  combustible: "Gasolina",
   transmision: "Manual",
   motor: "1.6",
   color: "Blanco",
@@ -147,11 +172,12 @@ const initialForm = {
   traccion: "Delantera 4x2",
 
   papelesAlDia: "Sí",
-  vtv: "Vigente",
+  vtv: "Al día",
   deudas: "Sin deudas",
   titularidad: "Titular",
   estadoGeneral: "Excelente",
   observaciones: "",
+  descripcion: "",
 
   provincia: "",
   ciudad: "",
@@ -162,6 +188,38 @@ const initialForm = {
   mostrarWhatsapp: "Si",
 
   fotos: [],
+  plan: "",
+};
+
+const DRAFT_KEY = "miVehiculo_publicarVehiculoDraft";
+
+const getInitialDraft = () => {
+  try {
+    const savedDraft = localStorage.getItem(DRAFT_KEY);
+
+    if (!savedDraft) {
+      return initialForm;
+    }
+
+    const parsedDraft = JSON.parse(savedDraft);
+
+    return {
+      ...initialForm,
+      ...parsedDraft.formData,
+      fotos: [],
+    };
+  } catch {
+    return initialForm;
+  }
+};
+
+const prepareDraftData = (data) => {
+  const { fotos, ...rest } = data;
+
+  return {
+    ...rest,
+    fotos: [],
+  };
 };
 
 const validators = {
@@ -191,32 +249,43 @@ const validators = {
   },
   4: {
     papelesAlDia: "Indicá si tiene papeles al día.",
-    vtv: "Seleccioná el estado de la VTV.",
+    vtv: "Seleccioná el estado de la tarjeta de circulación.",
     deudas: "Indicá si tiene deudas.",
     titularidad: "Seleccioná la titularidad.",
     estadoGeneral: "Seleccioná el estado general.",
   },
   5: {},
   6: {
-    provincia: "Seleccioná la provincia.",
-    ciudad: "Seleccioná la ciudad.",
+    provincia: "Seleccioná el departamento.",
+    ciudad: "Seleccioná el municipio.",
     nombreContacto: "Ingresá el nombre de contacto.",
     whatsapp: "Ingresá un número de WhatsApp.",
     email: "Ingresá un email de contacto.",
     horarioContacto: "Seleccioná un horario de contacto.",
   },
+  7: {},
+  8: {
+    plan: "Seleccioná un plan para continuar.",
+  },
 };
 
 const PublicarVehiculo = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState(initialForm);
+  const [formData, setFormData] = useState(getInitialDraft);
   const [errors, setErrors] = useState({});
+  const [draftMessage, setDraftMessage] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
 
   const currentStepData = useMemo(() => {
     return steps.find((step) => step.id === currentStep) || steps[0];
   }, [currentStep]);
 
-  const isLastStep = currentStep === steps.length;
+  const isPreviewStep = currentStep === 7;
+  const isPlanStep    = currentStep === 8;
+  const isLastStep    = isPlanStep;
   const currentErrors = Object.values(errors);
 
   const validateStep = (stepId = currentStep) => {
@@ -226,16 +295,25 @@ const PublicarVehiculo = () => {
     Object.entries(rules).forEach(([field, message]) => {
       const value = formData[field];
 
-      if (value === undefined || value === null || String(value).trim() === "") {
+      if (
+        value === undefined ||
+        value === null ||
+        String(value).trim() === ""
+      ) {
         stepErrors[field] = message;
       }
     });
 
     if (stepId === 1) {
       const year = Number(formData.anio);
-      const kilometers = Number(String(formData.kilometraje).replace(/\D/g, ""));
+      const kilometers = Number(
+        String(formData.kilometraje).replace(/\D/g, ""),
+      );
 
-      if (formData.anio && (!year || year < 1900 || year > new Date().getFullYear() + 1)) {
+      if (
+        formData.anio &&
+        (!year || year < 1900 || year > new Date().getFullYear() + 1)
+      ) {
         stepErrors.anio = "Ingresá un año válido.";
       }
 
@@ -299,6 +377,32 @@ const PublicarVehiculo = () => {
     });
   };
 
+  const saveDraft = () => {
+    const draftData = {
+      formData: prepareDraftData(formData),
+      savedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData));
+    setDraftMessage("Borrador guardado correctamente.");
+
+    setTimeout(() => {
+      setDraftMessage("");
+    }, 3000);
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setFormData(initialForm);
+    setErrors({});
+    setCurrentStep(1);
+    setDraftMessage("Borrador eliminado.");
+
+    setTimeout(() => {
+      setDraftMessage("");
+    }, 3000);
+  };
+
   const goPrev = () => {
     setErrors({});
     setCurrentStep((prev) => Math.max(prev - 1, 1));
@@ -332,16 +436,80 @@ const PublicarVehiculo = () => {
     setCurrentStep(stepId);
   };
 
+  /* Step 7: advance to plan selection (step 8) */
   const handleConfirmPublication = () => {
-    const invalidStep = steps.find((step) => !validateStep(step.id));
+    setErrors({});
+    setCurrentStep(8);
+  };
 
-    if (invalidStep) {
-      setCurrentStep(invalidStep.id);
+  /* Step 8: final publish with chosen plan */
+  const handlePublish = async () => {
+    const isValid = validateStep(8);
+    if (!isValid) return;
+    setErrors({});
+    setPublishError("");
+    setPublishing(true);
+
+    // Mock users: simulate publish in demo mode
+    if (user?.id?.startsWith("mock-")) {
+      await new Promise((r) => setTimeout(r, 800));
+      localStorage.removeItem(DRAFT_KEY);
+      setPublishing(false);
+      navigate("/vendedor?tab=publicaciones&success=1");
       return;
     }
 
-    setErrors({});
-    console.log("Publicación lista para enviar", formData);
+    const payload = {
+      seller_id:          user.id,
+      tipo_vehiculo:      formData.tipoVehiculo,
+      marca:              formData.marca,
+      modelo:             formData.modelo,
+      anio:               parseInt(formData.anio, 10) || null,
+      version:            formData.version,
+      kilometraje:        parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || null,
+      condicion:          formData.condicion,
+      precio:             parseFloat(String(formData.precio).replace(/,/g, "")) || null,
+      moneda:             formData.moneda,
+      acepta_permuta:     formData.aceptaPermuta,
+      precio_negociable:  formData.precioNegociable,
+      financiacion:       formData.financiacion,
+      info_financiacion:  formData.infoFinanciacion,
+      combustible:        formData.combustible,
+      transmision:        formData.transmision,
+      motor:              formData.motor,
+      color:              formData.color,
+      puertas:            formData.puertas,
+      carroceria:         formData.carroceria,
+      traccion:           formData.traccion,
+      papeles_al_dia:     formData.papelesAlDia,
+      tarjeta_circulacion: formData.vtv,
+      deudas:             formData.deudas,
+      titularidad:        formData.titularidad,
+      estado_general:     formData.estadoGeneral,
+      observaciones:      formData.observaciones,
+      descripcion:        formData.descripcion,
+      fotos:              (formData.fotos || []).filter((p) => p.url).map((p) => p.url),
+      departamento:       formData.provincia,
+      municipio:          formData.ciudad,
+      nombre_contacto:    formData.nombreContacto,
+      whatsapp:           formData.whatsapp,
+      email_contacto:     formData.email,
+      horario_contacto:   formData.horarioContacto,
+      mostrar_whatsapp:   formData.mostrarWhatsapp,
+      plan:               formData.plan,
+    };
+
+    const { error } = await supabase.from("listings").insert(payload);
+
+    setPublishing(false);
+
+    if (error) {
+      setPublishError("Error al publicar. Intentá de nuevo.");
+      return;
+    }
+
+    localStorage.removeItem(DRAFT_KEY);
+    navigate("/vendedor?tab=publicaciones&success=1");
   };
 
   const renderStep = () => {
@@ -350,19 +518,20 @@ const PublicarVehiculo = () => {
     }
 
     if (currentStep === 2) {
-      return <PrecioOperacionStep formData={formData} onChange={handleChange} />;
+      return (
+        <PrecioOperacionStep formData={formData} onChange={handleChange} />
+      );
     }
 
     if (currentStep === 3) {
-      return <CaracteristicasStep formData={formData} onChange={handleChange} />;
+      return (
+        <CaracteristicasStep formData={formData} onChange={handleChange} />
+      );
     }
 
     if (currentStep === 4) {
       return (
-        <EstadoDocumentacionStep
-          formData={formData}
-          onChange={handleChange}
-        />
+        <EstadoDocumentacionStep formData={formData} onChange={handleChange} />
       );
     }
 
@@ -376,27 +545,25 @@ const PublicarVehiculo = () => {
       );
     }
 
-    return <VistaPreviaStep formData={formData} />;
+    if (currentStep === 7) return <VistaPreviaStep formData={formData} />;
+
+    return <PlanPublicacionStep formData={formData} onChange={handleChange} />;
   };
 
   return (
     <div className={styles.page}>
-      <PublicarTopbar />
+      <PublicarTopbar
+        onSaveDraft={saveDraft}
+        draftSaved={draftMessage === "Borrador guardado correctamente."}
+      />
+
+      <PublicarStepper
+        steps={steps}
+        currentStep={currentStep}
+        onStepClick={goToStep}
+      />
 
       <main className={styles.wrapper}>
-        <section className={styles.pageHeader}>
-          <div>
-            <h1>Publicar vehículo</h1>
-            <p>Completá los pasos para publicar tu vehículo</p>
-          </div>
-
-          <PublicarStepper
-            steps={steps}
-            currentStep={currentStep}
-            onStepClick={goToStep}
-          />
-        </section>
-
         <section className={styles.contentLayout}>
           <PublicarSidebar
             currentStep={currentStep}
@@ -406,7 +573,7 @@ const PublicarVehiculo = () => {
 
           <div className={styles.mainColumn}>
             <div className={styles.formCard}>
-              {!isLastStep && (
+              {!isPlanStep && !isPreviewStep && (
                 <div className={styles.cardHeader}>
                   <div className={styles.cardHeaderIcon}>
                     <Check size={22} />
@@ -440,40 +607,55 @@ const PublicarVehiculo = () => {
               {renderStep()}
             </div>
 
-            {isLastStep ? (
+            {isPlanStep ? (
+              /* ── Step 8: Plan selection actions ── */
+              <div className={styles.planActions}>
+                <button type="button" className={styles.secondaryBtn} onClick={goPrev} disabled={publishing}>
+                  <ArrowLeft size={18} /> Anterior
+                </button>
+                <button
+                  type="button"
+                  className={styles.publishBtn}
+                  onClick={handlePublish}
+                  disabled={!formData.plan || publishing}
+                >
+                  <CheckCircle size={18} />
+                  {publishing
+                    ? "Publicando…"
+                    : formData.plan === "gratuito"
+                    ? "Publicar gratis"
+                    : formData.plan === "basico"
+                    ? "Pagar y publicar — $5"
+                    : formData.plan === "premium"
+                    ? "Pagar y publicar — $12"
+                    : "Publicar ahora"}
+                </button>
+                {publishError && (
+                  <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>
+                    <AlertCircle size={13} style={{ verticalAlign: "middle", marginRight: 4 }} />
+                    {publishError}
+                  </p>
+                )}
+                <p className={styles.termsText}>
+                  Al confirmar, aceptás nuestras <span>Condiciones de uso</span>{" "}
+                  y <span>Política de privacidad</span>.
+                </p>
+              </div>
+            ) : isPreviewStep ? (
+              /* ── Step 7: Vista previa actions ── */
               <div className={styles.finalActions}>
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={goPrev}
-                >
-                  <ArrowLeft size={18} />
-                  Anterior
+                <button type="button" className={styles.secondaryBtn} onClick={goPrev}>
+                  <ArrowLeft size={18} /> Anterior
                 </button>
-
-                <button
-                  type="button"
-                  className={styles.editBtn}
-                  onClick={() => setCurrentStep(1)}
-                >
-                  <Pencil size={18} />
-                  Volver a editar
+                <button type="button" className={styles.editBtn} onClick={() => setCurrentStep(1)}>
+                  <Pencil size={18} /> Volver a editar
                 </button>
-
                 <button type="button" className={styles.whatsappPreviewBtn}>
-                  <MessageCircle size={18} />
-                  Ver cómo se ve en WhatsApp
+                  <MessageCircle size={18} /> Ver cómo se ve en WhatsApp
                 </button>
-
-                <button
-                  type="button"
-                  className={styles.primaryBtn}
-                  onClick={handleConfirmPublication}
-                >
-                  <Check size={18} />
-                  Confirmar publicación
+                <button type="button" className={styles.primaryBtn} onClick={handleConfirmPublication}>
+                  <Zap size={18} /> Elegir plan y publicar
                 </button>
-
                 <p className={styles.termsText}>
                   Al confirmar, aceptás nuestras <span>Condiciones de uso</span>{" "}
                   y <span>Política de privacidad</span>.
@@ -492,9 +674,22 @@ const PublicarVehiculo = () => {
                     Anterior
                   </button>
 
-                  <button type="button" className={styles.draftBtn}>
+                  <button
+                    type="button"
+                    className={styles.draftBtn}
+                    onClick={saveDraft}
+                  >
                     <Save size={18} />
                     Guardar borrador
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles.clearDraftBtn}
+                    onClick={clearDraft}
+                  >
+                    <Trash2 size={17} />
+                    Limpiar borrador
                   </button>
 
                   <button
@@ -509,7 +704,7 @@ const PublicarVehiculo = () => {
 
                 <div className={styles.autosave}>
                   <Check size={16} />
-                  Se guardan los cambios automáticamente
+                  {draftMessage || "Se guardan los cambios automáticamente"}
                 </div>
               </>
             )}

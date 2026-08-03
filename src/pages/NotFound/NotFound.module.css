@@ -1,0 +1,118 @@
+.page {
+  min-height: 100vh;
+  background: #f5f8ff;
+}
+
+.hero {
+  min-height: calc(100vh - 128px);
+  background: linear-gradient(135deg, #07153f 0%, #0f2660 55%, #1a3a7a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(21, 112, 255, 0.18), transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(21, 112, 255, 0.12), transparent 45%);
+  pointer-events: none;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  max-width: 520px;
+}
+
+.code {
+  font-size: clamp(96px, 18vw, 160px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -6px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(147,197,255,0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+  user-select: none;
+}
+
+.title {
+  color: #fff;
+  font-size: clamp(22px, 4vw, 32px);
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  margin: 0 0 14px;
+}
+
+.sub {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 0 36px;
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 26px;
+  background: linear-gradient(135deg, #1570ff, #0c4bcc);
+  color: #fff;
+  border-radius: 13px;
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 10px 28px rgba(21, 112, 255, 0.35);
+  transition: 0.2s ease;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(21, 112, 255, 0.45);
+}
+
+.btnOutline {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 26px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border-radius: 13px;
+  font-size: 14.5px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: 0.2s ease;
+}
+
+.btnOutline:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 480px) {
+  .btnPrimary,
+  .btnOutline {
+    width: 100%;
+    justify-content: center;
+  }
+}

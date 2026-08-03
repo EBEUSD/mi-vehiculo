@@ -3,7 +3,7 @@ import Hero from "../../components/Hero/Hero";
 import CategoriesStrip from "../../components/CategoriesStrip/CategoriesStrip";
 import SearchFilters from "../../components/SearchFilters/SearchFilters";
 import FeaturedCars from "../../components/FeaturedCars/FeaturedCars";
-import Footer from "../../components/Footer/Footer";
+import HomePromo from "../../components/HomePromo/HomePromo";
 import styles from "./Home.module.css";
 
 const Home = () => {
@@ -27,7 +27,8 @@ const Home = () => {
         </section>
       </main>
 
-      <Footer />
+      <HomePromo />
+
     </div>
   );
 };
