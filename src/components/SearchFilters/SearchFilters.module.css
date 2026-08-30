@@ -294,36 +294,117 @@
 
 @media (max-width: 640px) {
   .wrapper {
-    padding: 1rem 1.1rem;
+    padding: 1.1rem 1rem 1rem;
     border-radius: 18px;
+    /* Sutil gradiente de fondo para distinguir la sección */
+    background: linear-gradient(160deg, #f8fbff 0%, #fff 60%);
+    border-color: #dce8f8;
   }
 
-  .filtersRow {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .actions {
+  /* Header: título + toggle en columna */
+  .header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
+    gap: 0.7rem;
+    margin-bottom: 0.85rem;
   }
 
-  .searchBtn,
-  .clearBtn {
+  .header h2 { font-size: 1.2rem; }
+
+  /* Toggle Usado/Nuevo/Todos más grande y táctil */
+  .condRow {
     width: 100%;
-    justify-content: center;
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .condBtn {
+    flex: 1;
+    height: 36px;
+    font-size: 0.85rem;
+    border-radius: 9px;
+    text-align: center;
+  }
+
+  /* Pills más cómodas */
+  .typePills {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
   }
 
   .typePill {
-    height: 32px;
-    font-size: 0.84rem;
-    padding: 0 0.9rem;
+    height: 36px;
+    font-size: 0.85rem;
+    padding: 0 1rem;
+    flex: 1;
+    text-align: center;
+    min-width: calc(50% - 0.2rem);
+  }
+
+  /* Grid de campos 2 columnas */
+  .filtersRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+
+  /* Inputs y selects más altos = mejor toque */
+  .field input,
+  .field select {
+    height: 48px;
+    font-size: 0.95rem;
+    border-radius: 12px;
+  }
+
+  .field label {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #475467;
+  }
+
+  /* Año: apilar los dos selects verticalmente */
+  .yearRange {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .yearRange select { width: 100%; }
+
+  .yearDash { display: none; }
+
+  /* Precio prefix */
+  .inputPrefix { border-radius: 12px; }
+  .inputPrefix input { height: 48px; font-size: 0.95rem; }
+
+  /* Botones al fondo, full width */
+  .actions {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .searchBtn {
+    width: 100%;
+    height: 50px;
+    justify-content: center;
+    font-size: 1rem;
+    border-radius: 14px;
+    box-shadow: 0 8px 22px rgba(21, 112, 255, 0.3);
+  }
+
+  .clearBtn {
+    width: 100%;
+    height: 44px;
+    justify-content: center;
+    border-radius: 12px;
   }
 }
 
 @media (max-width: 420px) {
+  /* A 420px los campos van a 1 columna */
   .filtersRow {
     grid-template-columns: 1fr;
   }
 
-  .yearRange { gap: 0.25rem; }
+  .typePill { min-width: 0; }
 }

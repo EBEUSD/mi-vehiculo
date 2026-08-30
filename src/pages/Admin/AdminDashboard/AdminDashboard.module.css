@@ -560,6 +560,24 @@
 .iconDanger:hover { border-color: #fca5a5 !important; color: #dc2626 !important; }
 
 /* =========================
+   MOBILE HEADER (hamburger)
+========================= */
+.mobileHeader {
+  display: none;
+}
+
+/* =========================
+   SIDEBAR OVERLAY (mobile)
+========================= */
+.sideOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 199;
+  animation: fadeOverlay 0.18s ease;
+}
+
+/* =========================
    RESPONSIVE
 ========================= */
 @media (max-width: 1200px) {
@@ -568,30 +586,115 @@
 }
 
 @media (max-width: 860px) {
+  /* Shell: full width, no sidebar column */
   .shell { grid-template-columns: 1fr; }
 
-  .sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
+  /* Mobile sticky topbar */
+  .mobileHeader {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #0f172a;
+    padding: 0 16px;
+    height: 54px;
     align-items: center;
-    padding: 12px 16px;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
   }
 
-  .sideTop { flex-direction: row; align-items: center; gap: 12px; }
-
-  .sideNav {
-    flex-direction: row;
-    gap: 4px;
+  .mobileLogo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
   }
 
-  .sideItem span { display: none; }
+  .mobileLogoText {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.2px;
+  }
 
-  .logoutBtn span { display: none; }
+  .mobileViewLabel {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+  }
+
+  .burgerBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .burgerBtn:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  /* Sidebar: hidden fixed drawer */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    z-index: 200;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px 12px;
+    transition: left 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    overflow-y: auto;
+    box-shadow: none;
+  }
+
+  .sidebarOpen {
+    left: 0;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.35);
+  }
+
+  /* Restore desktop sidebar item styles */
+  .sideItem {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13.5px;
+  }
+
+  .sideItem span { display: inline; }
+  .logoutBtn span { display: inline; }
+
+  .topBar { display: none; }  /* replaced by mobileHeader */
 
   .content { padding: 16px; }
-  .topBar  { padding: 14px 16px; }
   .statsGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .twoCol    { grid-template-columns: 1fr; }
+  .content   { padding: 12px; }
+
+  .searchBox { min-width: 0; width: 100%; }
+  .controls  { width: 100%; }
+  .panelHead { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+  .panel { overflow-x: auto; }
+
+  .table { font-size: 12.5px; }
+  .table th,
+  .table td { padding: 10px 10px; }
 }
 
 /* =========================

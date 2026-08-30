@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Car, MessageCircle, LogOut,
   Search, Eye, Pause, Play, Trash2,
   UserCheck, UserX, CheckCircle, X, ShieldCheck, Phone, Mail, Calendar,
-  DollarSign, TrendingUp, CreditCard, Award,
+  DollarSign, TrendingUp, CreditCard, Award, Menu,
 } from "lucide-react";
 import { api } from "../../../lib/api";
 import styles from "./AdminDashboard.module.css";
@@ -810,6 +810,7 @@ const AdminDashboard = () => {
   const { signOut } = useAuth();
   const [view, setView]               = useState("overview");
   const [selectedUser, setSelectedUser] = useState(null);
+  const [sideOpen, setSideOpen]       = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -820,63 +821,89 @@ const AdminDashboard = () => {
     setSelectedUser((prev) => (prev?.id === id ? { ...prev, role } : prev));
   };
 
+  const goTo = (id) => { setView(id); setSideOpen(false); };
+
   return (
-    <div className={styles.shell}>
-      {/* Sidebar */}
-      <aside className={styles.sidebar}>
-        <div className={styles.sideTop}>
-          <div className={styles.sideLogo}>
-            <span className={styles.sideLogoIcon}>A</span>
-            <span className={styles.sideLogoText}>Admin Panel</span>
-          </div>
-
-          <nav className={styles.sideNav}>
-            {NAV.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                className={`${styles.sideItem} ${view === id ? styles.sideActive : ""}`}
-                onClick={() => setView(id)}
-              >
-                <Icon size={17} />
-                {label}
-              </button>
-            ))}
-          </nav>
+    <>
+      {/* Mobile-only topbar */}
+      <header className={styles.mobileHeader}>
+        <div className={styles.mobileLogo}>
+          <span className={styles.sideLogoIcon}>A</span>
+          <span className={styles.mobileLogoText}>Admin Panel</span>
         </div>
-
-        <button className={styles.logoutBtn} onClick={handleLogout}>
-          <LogOut size={16} /> Cerrar sesión
-        </button>
-      </aside>
-
-      {/* Main content */}
-      <div className={styles.main}>
-        <header className={styles.topBar}>
-          <div>
-            <h1 className={styles.viewTitle}>
-              {NAV.find((n) => n.id === view)?.label}
-            </h1>
-            <p className={styles.viewSub}>Mi Vehículo · Backoffice</p>
-          </div>
-        </header>
-
-        <div className={styles.content}>
-          {view === "overview"      && <Overview />}
-          {view === "usuarios"      && <ViewUsuarios onViewProfile={setSelectedUser} />}
-          {view === "publicaciones" && <ViewPublicaciones />}
-          {view === "leads"         && <ViewLeads />}
-          {view === "facturacion"   && <ViewFacturacion />}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className={styles.mobileViewLabel}>
+            {NAV.find((n) => n.id === view)?.label}
+          </span>
+          <button className={styles.burgerBtn} onClick={() => setSideOpen(true)}>
+            <Menu size={20} />
+          </button>
         </div>
-      </div>
+      </header>
 
-      {selectedUser && (
-        <UserProfileDrawer
-          user={selectedUser}
-          onClose={() => setSelectedUser(null)}
-          onChangeRole={handleRoleChange}
-        />
+      {/* Sidebar overlay (mobile) */}
+      {sideOpen && (
+        <div className={styles.sideOverlay} onClick={() => setSideOpen(false)} />
       )}
-    </div>
+
+      <div className={styles.shell}>
+        {/* Sidebar */}
+        <aside className={`${styles.sidebar} ${sideOpen ? styles.sidebarOpen : ""}`}>
+          <div className={styles.sideTop}>
+            <div className={styles.sideLogo}>
+              <span className={styles.sideLogoIcon}>A</span>
+              <span className={styles.sideLogoText}>Admin Panel</span>
+            </div>
+
+            <nav className={styles.sideNav}>
+              {NAV.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  title={label}
+                  className={`${styles.sideItem} ${view === id ? styles.sideActive : ""}`}
+                  onClick={() => goTo(id)}
+                >
+                  <Icon size={17} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          <button className={styles.logoutBtn} onClick={handleLogout}>
+            <LogOut size={16} /> <span>Cerrar sesión</span>
+          </button>
+        </aside>
+
+        {/* Main content */}
+        <div className={styles.main}>
+          <header className={styles.topBar}>
+            <div>
+              <h1 className={styles.viewTitle}>
+                {NAV.find((n) => n.id === view)?.label}
+              </h1>
+              <p className={styles.viewSub}>Mi Vehículo · Backoffice</p>
+            </div>
+          </header>
+
+          <div className={styles.content}>
+            {view === "overview"      && <Overview />}
+            {view === "usuarios"      && <ViewUsuarios onViewProfile={setSelectedUser} />}
+            {view === "publicaciones" && <ViewPublicaciones />}
+            {view === "leads"         && <ViewLeads />}
+            {view === "facturacion"   && <ViewFacturacion />}
+          </div>
+        </div>
+
+        {selectedUser && (
+          <UserProfileDrawer
+            user={selectedUser}
+            onClose={() => setSelectedUser(null)}
+            onChangeRole={handleRoleChange}
+          />
+        )}
+      </div>
+    </>
   );
 };
 
