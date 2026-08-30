@@ -1,0 +1,676 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER      
+  SELLER    
+  ADMIN    
+}
+
+enum LeadSource {
+  FORM
+  WHATSAPP
+  EMAIL
+}
+
+enum VehicleCategory {
+  AUTO
+  MOTO
+  CAMIONETA
+  CAMION
+  ACUATICO
+  AEREO
+  BICICLETA
+  OTRO
+}
+
+enum VehicleCondition {
+  NEW
+  USED
+}
+
+enum VehicleStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  REJECTED
+  PAUSED
+  SOLD
+  DELETED
+}
+
+enum Currency {
+  ARS
+  USD
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  NEGOTIATING
+  WON
+  LOST
+}
+
+enum ProfileType {
+  INDIVIDUAL
+  DEALERSHIP
+}
+
+enum ProductCondition {
+  NEW
+  USED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  SOLD
+  DELETED
+}
+
+enum OwnershipType {
+  OWNER
+  BROKER
+  DEALERSHIP
+}
+
+enum GeneralCondition {
+  EXCELLENT
+  VERY_GOOD
+  GOOD
+  NEEDS_REVIEW
+}
+
+model Profile {
+  id String @id @db.Uuid
+
+  vehicleViews VehicleView[]
+  products Product[]
+  role UserRole @default(USER)
+  whatsappClicks WhatsappClick[]
+
+
+  email String @unique
+
+  fullName String?
+
+  phone String?
+
+  dealershipId String? @db.Uuid
+
+  dealership Dealership? @relation(fields:[dealershipId], references:[id])
+
+  vehicles Vehicle[]
+
+  leads Lead[]
+
+  favorites Favorite[]
+
+  productViews          ProductView[]
+  productWhatsappClicks ProductWhatsappClick[]
+
+  type ProfileType @default(INDIVIDUAL)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([role])
+}
+
+model Dealership {
+  id String @id @default(uuid()) @db.Uuid
+
+  isVerified Boolean @default(false)
+
+  name String
+
+  slug String @unique
+
+  logoUrl String?
+
+  description String?
+
+  phone String?
+
+  email String?
+
+  profiles Profile[]
+
+  vehicles Vehicle[]
+
+  // totalViews Int @default(0)
+  // totalLeads Int @default(0)
+  // totalVehiclesSold Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VehicleBrand {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  category VehicleCategory?
+
+  logoUrl String?
+
+  models VehicleModel[]
+  vehicles Vehicle[]
+  compatibilities ProductCompatibility[]
+
+  @@unique([name, category])
+}
+
+model VehicleModel {
+  id       Int    @id @default(autoincrement())
+  name     String
+
+  brandId  Int
+  brand    VehicleBrand @relation(fields: [brandId], references: [id])
+  compatibilities ProductCompatibility[]
+
+
+  vehicles Vehicle[]
+
+  @@unique([brandId, name])
+}
+
+model Vehicle {
+  id String @id @default(uuid()) @db.Uuid
+
+  moderationNotes String?
+  whatsappClicks WhatsappClick[]
+
+
+  sellerId String @db.Uuid
+  seller Profile @relation(fields: [sellerId], references: [id])
+
+  brandId           Int?
+  brand             VehicleBrand? @relation(fields: [brandId], references: [id])
+
+  favorites Favorite[]
+
+
+  modelId Int?
+  model VehicleModel? @relation(fields: [modelId], references: [id])
+
+  title             String
+  version           String?
+
+  category          VehicleCategory
+  condition         VehicleCondition
+
+  segmentId Int?
+  segment VehicleSegment? @relation(fields: [segmentId], references: [id])
+
+  slug              String @unique
+
+  contactPhone    String?
+  showWhatsapp    Boolean @default(true)
+  contactHours    String?
+
+  year Int?
+
+  mileage Int?
+
+  price             Decimal @db.Decimal(12,2)
+  currency          Currency
+
+  description       String?
+
+  dealershipId String? @db.Uuid
+  dealership Dealership? @relation(fields: [dealershipId], references: [id])
+
+  featuredUntil DateTime?
+
+  cityId Int
+  city City @relation(fields: [cityId], references: [id])
+
+  priceHistory VehiclePriceHistory[]
+
+  isVerified Boolean @default(false)
+
+  verifiedAt DateTime?
+  expiresAt DateTime?
+
+  images            VehicleImage[]
+  videos VehicleVideo[]
+  leads Lead[]
+  features VehicleFeature[]
+
+  attributes VehicleAttribute[]
+
+  status            VehicleStatus @default(DRAFT)
+
+  vehicleViews VehicleView[]
+
+  // whatsappClicks    Int @default(0)
+  // inquiriesCount    Int @default(0)
+
+  publishedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  acceptsExchange    Boolean  @default(false)
+  financingAvailable Boolean  @default(false)
+  negotiablePrice    Boolean  @default(false)
+
+  documentsUpToDate  Boolean?
+  hasVTV             Boolean?
+  hasDebts           Boolean?
+  ownershipType      OwnershipType?  
+
+  generalCondition   GeneralCondition? 
+
+  @@index([category])
+  @@index([brandId])
+  @@index([modelId])
+  @@index([segmentId])
+  @@index([cityId])
+  @@index([status])
+  @@index([price])
+  @@index([year])
+  @@index([publishedAt])
+  @@index([createdAt])
+  @@index([featuredUntil])
+  @@index([status, category])
+  @@index([status, cityId])
+  @@index([status, brandId])
+  @@index([status, featuredUntil])
+}
+
+model VehicleSegment {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  category VehicleCategory
+
+  vehicles Vehicle[]
+
+  sortOrder Int @default(0)
+
+  @@unique([name, category])
+}
+
+model VehicleImage {
+  id String @id @default(uuid()) @db.Uuid
+
+  vehicleId String @db.Uuid
+  vehicle     Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  url         String
+
+  type        VehicleImageType @default(OTRA)
+
+  isPrimary   Boolean @default(false)
+  sortOrder   Int @default(0)
+  createdAt   DateTime @default(now())
+  externalId  String?
+  provider    String?
+
+  @@index([vehicleId])
+  @@index([vehicleId, type])
+}
+
+model Province {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+
+  cities City[]
+}
+
+model City {
+  id Int @id @default(autoincrement())
+  
+
+  name String
+
+  provinceId Int
+
+  province Province @relation(fields:[provinceId], references:[id])
+
+  vehicles Vehicle[]
+
+  @@unique([name, provinceId])
+}
+
+model VehicleAttributeDefinition {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  category VehicleCategory
+
+  required Boolean @default(false)
+
+  filterable Boolean @default(true)
+
+  sortOrder Int @default(0)
+
+  unit String?
+
+  attributes VehicleAttribute[]
+
+  @@unique([name, category])
+}
+
+model VehicleAttribute {
+  id Int @id @default(autoincrement())
+
+  vehicleId String @db.Uuid
+
+  definitionId Int
+
+  value String
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  definition VehicleAttributeDefinition @relation(fields: [definitionId], references: [id])
+
+  @@unique([vehicleId, definitionId])
+  @@index([definitionId])
+  @@index([vehicleId])
+}
+
+model Favorite {
+  id String @id @default(uuid()) @db.Uuid
+
+  profileId String @db.Uuid
+  vehicleId String @db.Uuid
+
+  profile Profile @relation( fields: [profileId], references: [id], onDelete: Cascade )
+
+  vehicle Vehicle @relation( fields: [vehicleId], references: [id], onDelete: Cascade )
+
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, vehicleId])
+
+  @@index([profileId])
+  @@index([vehicleId])
+}
+
+model VehicleView {
+  id String @id @default(uuid()) @db.Uuid
+
+  vehicleId String @db.Uuid
+
+  profileId String? @db.Uuid
+
+  ipAddress String?
+
+  userAgent String?
+
+  viewedAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  @@index([vehicleId])
+  @@index([viewedAt])
+  @@index([profileId])
+  @@index([vehicleId, viewedAt])
+}
+
+model Lead {
+  id String @id @default(uuid()) @db.Uuid
+
+  vehicleId String @db.Uuid
+
+  profileId String? @db.Uuid
+
+  name String
+
+  email String?
+
+  phone String?
+
+  message String
+
+  notes String?
+
+  status LeadStatus @default(NEW)
+
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  source LeadSource @default(FORM)
+
+  @@index([vehicleId])
+  @@index([profileId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model VehicleVideo {
+  id String @id @default(uuid()) @db.Uuid
+
+  vehicleId String @db.Uuid
+
+  url String
+
+  externalId String? 
+  provider   String? 
+
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  vehicle Vehicle @relation( fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+model VehiclePriceHistory {
+  id String @id @default(uuid()) @db.Uuid
+
+  vehicleId String @db.Uuid
+
+  oldPrice Decimal @db.Decimal(12,2)
+
+  newPrice Decimal @db.Decimal(12,2)
+
+  changedAt DateTime @default(now())
+
+  vehicle Vehicle @relation( fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+model Feature {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+
+  vehicles VehicleFeature[]
+}
+
+model VehicleFeature {
+  vehicleId String @db.Uuid
+
+  featureId Int
+
+  vehicle Vehicle @relation( fields: [vehicleId], references: [id], onDelete: Cascade )
+
+  feature Feature @relation( fields: [featureId], references: [id] )
+
+  @@id([vehicleId, featureId])
+
+  @@index([vehicleId])
+  @@index([featureId])
+}
+
+model ProductCategory {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  slug String @unique
+
+  parentId Int?
+
+  parent ProductCategory? @relation("ProductCategoryTree", fields:[parentId], references:[id])
+
+  children ProductCategory[] @relation("ProductCategoryTree")
+
+  products Product[]
+}
+
+model Product {
+  id String @id @default(uuid()) @db.Uuid
+
+  sellerId String @db.Uuid
+
+  slug String @unique
+
+  seller Profile @relation(fields: [sellerId], references: [id])
+
+  compatibilities ProductCompatibility[]
+
+  title String
+
+  description String?
+
+  price Decimal @db.Decimal(12,2)
+
+  currency Currency
+
+  stock Int @default(1)
+
+  condition ProductCondition
+
+  categoryId Int
+
+  category ProductCategory @relation(fields: [categoryId], references: [id])
+
+  images ProductImage[]
+
+  views           ProductView[]
+  whatsappClicks  ProductWhatsappClick[]
+
+  status ProductStatus
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([price])
+  @@index([createdAt])
+}
+
+model ProductCompatibility {
+  id        Int    @id @default(autoincrement())
+  productId String @db.Uuid
+
+  brandId Int
+
+  modelId Int?
+
+  fromYear Int?
+
+  toYear Int?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  brand VehicleBrand @relation(fields: [brandId], references: [id])
+
+  model VehicleModel? @relation(fields: [modelId], references: [id])
+
+  @@unique([productId, brandId, modelId]) 
+  @@index([productId])                     
+
+}
+
+model ProductImage {
+  id String @id @default(uuid()) @db.Uuid
+
+  productId String @db.Uuid
+
+  externalId String?
+  provider   String?
+
+  url String
+
+  sortOrder Int @default(0)
+  isPrimary Boolean @default(false)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model WhatsappClick {
+  id        String   @id @default(uuid()) @db.Uuid
+  vehicleId String   @db.Uuid
+  profileId String?  @db.Uuid
+  ipAddress String?
+  clickedAt DateTime @default(now())
+
+  vehicle Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  @@index([vehicleId])
+  @@index([clickedAt])
+  @@index([vehicleId, clickedAt])
+}
+
+model ProductView {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  profileId String?  @db.Uuid
+  ipAddress String?
+  userAgent String?
+  viewedAt  DateTime @default(now())
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  @@index([productId])
+  @@index([viewedAt])
+  @@index([productId, viewedAt])
+}
+
+model ProductWhatsappClick {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  profileId String?  @db.Uuid
+  ipAddress String?
+  clickedAt DateTime @default(now())
+
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  profile Profile? @relation(fields: [profileId], references: [id])
+
+  @@index([productId])
+  @@index([clickedAt])
+  @@index([productId, clickedAt])
+}
+
+enum VehicleImageType {
+  FRENTE
+  LATERAL
+  TRASERA
+  INTERIOR
+  TABLERO
+  MOTOR
+  DOCUMENTACION
+  OTRA
+}

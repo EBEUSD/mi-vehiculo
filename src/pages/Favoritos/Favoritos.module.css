@@ -188,6 +188,13 @@
   color: #111827;
 }
 
+.categoryItemActive {
+  color: #1570ff;
+  font-weight: 600;
+}
+.categoryItemActive .categoryLabel svg { color: #1570ff; }
+.categoryItemActive strong { color: #1570ff; }
+
 .filterGroup {
   margin-bottom: 1.2rem;
 }

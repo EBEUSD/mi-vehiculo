@@ -1,37 +1,25 @@
-import { useState, useEffect, useMemo } from "react";
-import { supabase } from "../../../lib/supabase";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { api, clearTokens } from "../../../lib/api";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home, Car, MessageCircle, Heart, PlusCircle,
   Headphones, ArrowRight, Eye, Edit2, Trash2, Pause,
-  Play, CheckCircle, User, Save, Bell,
-  TrendingUp, ChevronRight, ShieldCheck, Upload,
-  CreditCard, AlertCircle, Loader2, Camera,
+  Play, CheckCircle, User, Save, ChevronRight, AlertCircle,
+  Camera, Building2, TrendingUp, Bell, ShieldAlert, Lock,
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import Navbar from "../../../components/Navbar/Navbar";
 import styles from "./VendedorDashboard.module.css";
 
 /* ── Helpers ──────────────────────────────────── */
-const mapRowToPub = (row) => ({
-  id:        row.id,
-  titulo:    [row.marca, row.modelo, row.version].filter(Boolean).join(" "),
-  año:       row.anio || 0,
-  km:        (row.kilometraje || 0).toLocaleString("en-US"),
-  precio:    `$${new Intl.NumberFormat("en-US").format(row.precio || 0)}`,
-  status:    row.status || "activo",
-  vistas:    row.vistas || 0,
-  consultas: 0,
-  favoritos: 0,
-});
+const STATUS_LABEL = { ACTIVE: "activo", DRAFT: "pausado", PAUSED: "pausado", SOLD: "vendido" };
 
-const CONSULTAS = [
-  { id: 1, nombre: "Juan García",    vehiculo: "Toyota Corolla XEI 2020",  msg: "Hola, me interesa el vehículo. ¿Sigue disponible? ¿Lo podría ver este fin de semana?", hora: "hace 2h",     leido: false },
-  { id: 2, nombre: "María López",    vehiculo: "Honda Civic EX 2019",       msg: "¿El precio es negociable? ¿Aceptás permutas con diferencia?",                            hora: "hace 5h",     leido: false },
-  { id: 3, nombre: "Carlos Pérez",   vehiculo: "Toyota Corolla XEI 2020",  msg: "¿Tiene los service al día? ¿Cuántos dueños tuvo? ¿Hubo algún golpe?",                    hora: "ayer",         leido: true  },
-  { id: 4, nombre: "Ana Rodríguez",  vehiculo: "Ford Focus Trend 2018",     msg: "¿Se puede ver el fin de semana en zona norte?",                                          hora: "hace 3 días",  leido: true  },
-  { id: 5, nombre: "Roberto Silva",  vehiculo: "Volkswagen Golf GTI 2021",  msg: "¿Por qué está pausado? ¿Tiene algún inconveniente el vehículo?",                         hora: "hace 5 días",  leido: true  },
-];
+// API expects "individual" | "dealer" — map from the 3 internal UI values
+const SELLER_TYPE_TO_API = { particular: "individual", concesionario: "dealer", empresa: "dealer" };
+// Map API value back to the closest UI option
+const SELLER_TYPE_FROM_API = (v) =>
+  v === "dealer" ? "concesionario" : v === "individual" ? "particular" : v || "particular";
+const STATUS_API   = { activo: "ACTIVE", pausado: "PAUSED", vendido: "SOLD" };
 
 const STATUS_META = {
   activo:  { label: "Activo",  color: "#059669", bg: "rgba(5,150,105,0.08)"  },
@@ -39,14 +27,54 @@ const STATUS_META = {
   vendido: { label: "Vendido", color: "#6b7a99", bg: "rgba(107,122,153,0.1)" },
 };
 
+const mapRowToPub = (row) => ({
+  id:        row.id,
+  slug:      row.slug || "",
+  titulo:    [row.brand?.name, row.model?.name, row.version].filter(Boolean).join(" "),
+  año:       row.year || 0,
+  km:        (row.mileage || 0).toLocaleString("en-US"),
+  precio:    `$${new Intl.NumberFormat("en-US").format(row.price || 0)}`,
+  status:    STATUS_LABEL[row.status] || "activo",
+  vistas:    row.views || 0,
+  consultas: 0,
+  favoritos: 0,
+  image:     row.images?.find((i) => i.isPrimary)?.url || row.images?.[0]?.url || null,
+});
+
+const relTime = (iso) => {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)   return "hace un momento";
+  if (m < 60)  return `hace ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "ayer";
+  if (d < 7)   return `hace ${d} días`;
+  return new Date(iso).toLocaleDateString("es-SV");
+};
+
+const mapLead = (l) => ({
+  id:        l.id,
+  nombre:    l.name || l.email || "—",
+  email:     l.email,
+  vehiculo:  l.vehicle?.title || "—",
+  vehiculoSlug: l.vehicle?.slug || null,
+  thumbnail: l.vehicle?.images?.[0]?.url ?? null,
+  msg:    l.message,
+  hora:   relTime(l.createdAt),
+  leido:  l.status !== "NEW",
+  status: l.status,
+});
+
 /* ── Sub-views ────────────────────────────────── */
-function ViewInicio({ stats, pubs, unread, onNavigate }) {
-  const activas = pubs.filter((p) => p.status === "activo").length;
+function ViewInicio({ stats, pubs, leads, unread, onNavigate }) {
+  const activas  = pubs.filter((p) => p.status === "activo").length;
   const pausadas = pubs.filter((p) => p.status === "pausado").length;
 
   return (
     <>
-      {/* Unread alert */}
       {unread > 0 && (
         <div className={styles.alertBanner}>
           <MessageCircle size={16} />
@@ -57,7 +85,6 @@ function ViewInicio({ stats, pubs, unread, onNavigate }) {
         </div>
       )}
 
-      {/* Stats */}
       <section className={styles.statsGrid}>
         <article className={`${styles.statCard} ${styles.statCardBlue}`}>
           <div className={`${styles.statIcon} ${styles.blue}`}><Car size={28} /></div>
@@ -85,7 +112,6 @@ function ViewInicio({ stats, pubs, unread, onNavigate }) {
         </article>
       </section>
 
-      {/* Recent publications */}
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <h2>Publicaciones recientes</h2>
@@ -100,7 +126,6 @@ function ViewInicio({ stats, pubs, unread, onNavigate }) {
         </div>
       </div>
 
-      {/* Recent consultas */}
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
           <h2>Últimas consultas</h2>
@@ -108,21 +133,27 @@ function ViewInicio({ stats, pubs, unread, onNavigate }) {
             Ver todas <ChevronRight size={14} />
           </button>
         </div>
-        {CONSULTAS.slice(0, 3).map((c) => (
-          <ConsultaRow key={c.id} c={c} />
-        ))}
+        {leads.length === 0 ? (
+          <p style={{ padding: "1rem 1.25rem", color: "#6b7280", fontSize: 14 }}>Sin consultas todavía.</p>
+        ) : (
+          leads.slice(0, 3).map((c) => <ConsultaRow key={c.id} c={c} />)
+        )}
       </div>
     </>
   );
 }
 
-function PubCard({ pub, compact }) {
-  const meta = STATUS_META[pub.status];
+function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
+  const meta = STATUS_META[pub.status] || STATUS_META.activo;
   return (
     <article className={`${styles.pubCard} ${compact ? styles.pubCardCompact : ""}`}>
-      <div className={styles.pubImgPlaceholder}>
-        <Car size={32} className={styles.pubImgIcon} />
-      </div>
+      {pub.image ? (
+        <img src={pub.image} alt={pub.titulo} className={styles.pubImg} />
+      ) : (
+        <div className={styles.pubImgPlaceholder}>
+          <Car size={32} className={styles.pubImgIcon} />
+        </div>
+      )}
       <div className={styles.pubInfo}>
         <div className={styles.pubTop}>
           <span className={styles.pubTitle}>{pub.titulo}</span>
@@ -139,21 +170,55 @@ function PubCard({ pub, compact }) {
       </div>
       {!compact && (
         <div className={styles.pubActions}>
-          <button className={styles.iconBtn} title="Editar"><Edit2 size={15} /></button>
-          <button className={styles.iconBtn} title={pub.status === "activo" ? "Pausar" : "Activar"}>
+          {pub.slug && (
+            <Link
+              to={`/vehiculo/${pub.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.iconBtn}
+              title="Ver publicación"
+            >
+              <Eye size={15} />
+            </Link>
+          )}
+          <button
+            className={styles.iconBtn}
+            title="Editar"
+            onClick={() => onEdit && onEdit(pub)}
+          >
+            <Edit2 size={15} />
+          </button>
+          <button
+            className={styles.iconBtn}
+            title={pub.status === "activo" ? "Pausar" : "Activar"}
+            onClick={() => onToggle && onToggle(pub)}
+          >
             {pub.status === "activo" ? <Pause size={15} /> : <Play size={15} />}
           </button>
-          <button className={`${styles.iconBtn} ${styles.iconBtnDanger}`} title="Eliminar"><Trash2 size={15} /></button>
+          <button
+            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+            title="Eliminar"
+            onClick={() => onDelete && onDelete(pub)}
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       )}
     </article>
   );
 }
 
+const LEAD_PLACEHOLDER = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=120&auto=format&fit=crop";
+
 function ConsultaRow({ c }) {
   return (
     <div className={`${styles.consultaItem} ${!c.leido ? styles.consultaUnread : ""}`}>
-      <div className={styles.consultaAvatar}>{c.nombre.charAt(0)}</div>
+      <img
+        src={c.thumbnail || LEAD_PLACEHOLDER}
+        alt={c.vehiculo}
+        className={styles.consultaThumb}
+        onError={(e) => { e.currentTarget.src = LEAD_PLACEHOLDER; }}
+      />
       <div className={styles.consultaBody}>
         <div className={styles.consultaTop}>
           <strong>{c.nombre}</strong>
@@ -167,7 +232,16 @@ function ConsultaRow({ c }) {
   );
 }
 
-function ViewPublicaciones({ pubs, loading }) {
+const FILTER_TABS = ["Todas", "Activas", "Pausadas", "Vendidas"];
+const FILTER_STATUS = { Todas: null, Activas: "activo", Pausadas: "pausado", Vendidas: "vendido" };
+
+function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit }) {
+  const [filter, setFilter] = useState("Todas");
+
+  const visible = FILTER_STATUS[filter]
+    ? pubs.filter((p) => p.status === FILTER_STATUS[filter])
+    : pubs;
+
   return (
     <div className={styles.panel}>
       <div className={styles.panelHeader}>
@@ -177,308 +251,675 @@ function ViewPublicaciones({ pubs, loading }) {
         </Link>
       </div>
       <div className={styles.filterRow}>
-        {["Todas", "Activas", "Pausadas", "Vendidas"].map((f) => (
-          <button key={f} className={`${styles.filterBtn} ${f === "Todas" ? styles.filterBtnActive : ""}`}>{f}</button>
+        {FILTER_TABS.map((f) => (
+          <button
+            key={f}
+            className={`${styles.filterBtn} ${f === filter ? styles.filterBtnActive : ""}`}
+            onClick={() => setFilter(f)}
+          >
+            {f}
+          </button>
         ))}
       </div>
       <div className={styles.pubsList}>
         {loading ? (
           <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>Cargando publicaciones…</p>
-        ) : pubs.length === 0 ? (
-          <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>Todavía no tenés publicaciones.</p>
+        ) : visible.length === 0 ? (
+          <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>No hay publicaciones en esta categoría.</p>
         ) : (
-          pubs.map((p) => <PubCard key={p.id} pub={p} />)
+          visible.map((p) => <PubCard key={p.id} pub={p} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)
         )}
       </div>
     </div>
   );
 }
 
-function ViewConsultas() {
+function ViewConsultas({ leads, loading }) {
+  const unread = leads.filter((c) => !c.leido).length;
   return (
     <div className={styles.panel}>
       <div className={styles.panelHeader}>
         <h2>Consultas recibidas</h2>
-        <span className={styles.badge2}>{CONSULTAS.filter((c) => !c.leido).length} sin leer</span>
+        {unread > 0 && <span className={styles.badge2}>{unread} sin leer</span>}
       </div>
       <div className={styles.consultasList}>
-        {CONSULTAS.map((c) => (
-          <ConsultaRow key={c.id} c={c} />
-        ))}
+        {loading ? (
+          <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>Cargando consultas…</p>
+        ) : leads.length === 0 ? (
+          <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>Sin consultas todavía.</p>
+        ) : (
+          leads.map((c) => <ConsultaRow key={c.id} c={c} />)
+        )}
       </div>
     </div>
   );
 }
 
-const CLOUD_NAME    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-const uploadDocToCloudinary = async (file) => {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("upload_preset", UPLOAD_PRESET);
-  fd.append("folder", "documentos");
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: "POST", body: fd }
-  );
-  if (!res.ok) throw new Error("Error al subir");
-  return (await res.json()).secure_url;
-};
-
+/* ── Constants ──────────────────────────────────── */
 const SV_DEPARTAMENTOS = [
   "Ahuachapán","Cabañas","Chalatenango","Cuscatlán","La Libertad",
   "La Paz","La Unión","Morazán","San Miguel","San Salvador",
   "San Vicente","Santa Ana","Sonsonate","Usulután",
 ];
 
-function ViewPerfil({ user }) {
+const formatDUI = (val) => {
+  const d = val.replace(/\D/g, "").slice(0, 9);
+  return d.length <= 8 ? d : `${d.slice(0, 8)}-${d.slice(8)}`;
+};
+
+/* ── ConfirmModal ────────────────────────────────── */
+function ConfirmModal({ type, userEmail, onConfirm, onClose, loading }) {
+  const [checked, setChecked] = useState(false);
+  const [step, setStep]       = useState(1);
+  const [typed, setTyped]     = useState("");
+
+  const emailMatch = typed.trim() === userEmail;
+
+  if (type === "pauseAll") {
+    return (
+      <div className={styles.modalOverlay} onClick={onClose}>
+        <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalIconWrap} style={{ background: "#fffbeb" }}>
+            <Pause size={26} style={{ color: "#d97706" }} />
+          </div>
+          <h3 className={styles.modalTitle}>Pausar todas las publicaciones</h3>
+          <p className={styles.modalDesc}>
+            Todos tus vehículos activos serán ocultados del marketplace.
+            Los compradores no podrán verlos hasta que los reactives manualmente desde <strong>Mis publicaciones</strong>.
+          </p>
+          <label className={styles.modalCheck}>
+            <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+            Entiendo que mis publicaciones dejarán de ser visibles
+          </label>
+          <div className={styles.modalActions}>
+            <button className={styles.modalCancelBtn} onClick={onClose} type="button">Cancelar</button>
+            <button
+              className={`${styles.modalConfirmBtn} ${styles.modalConfirmOrange}`}
+              onClick={onConfirm}
+              disabled={!checked || loading}
+              type="button"
+            >
+              {loading ? "Pausando…" : "Pausar todo"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "deleteAccount") {
+    return (
+      <div className={styles.modalOverlay} onClick={onClose}>
+        <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+          {step === 1 ? (
+            <>
+              <div className={styles.modalIconWrap} style={{ background: "#fef2f2" }}>
+                <ShieldAlert size={26} style={{ color: "#dc2626" }} />
+              </div>
+              <h3 className={styles.modalTitle}>¿Eliminar tu cuenta?</h3>
+              <p className={styles.modalDesc}>Esta acción es <strong>permanente e irreversible</strong>. Se eliminará:</p>
+              <ul className={styles.modalList}>
+                <li>Tu cuenta y datos personales</li>
+                <li>Todas tus publicaciones activas y pausadas</li>
+                <li>Tu historial de consultas y mensajes</li>
+                <li>Tus fotos e imágenes subidas</li>
+              </ul>
+              <div className={styles.modalActions}>
+                <button className={styles.modalCancelBtn} onClick={onClose} type="button">Cancelar</button>
+                <button
+                  className={`${styles.modalConfirmBtn} ${styles.modalConfirmRed}`}
+                  onClick={() => setStep(2)}
+                  type="button"
+                >
+                  Continuar →
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.modalIconWrap} style={{ background: "#fef2f2" }}>
+                <ShieldAlert size={26} style={{ color: "#dc2626" }} />
+              </div>
+              <h3 className={styles.modalTitle}>Confirmación final</h3>
+              <p className={styles.modalDesc}>
+                Escribí tu email <strong>{userEmail}</strong> para confirmar la eliminación permanente de tu cuenta.
+              </p>
+              <div className={styles.modalInputWrap}>
+                <input
+                  className={styles.modalInput}
+                  type="email"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  placeholder={userEmail}
+                  autoFocus
+                />
+                {typed && !emailMatch && (
+                  <span className={styles.modalInputError}>El email no coincide</span>
+                )}
+              </div>
+              <div className={styles.modalActions}>
+                <button className={styles.modalCancelBtn} onClick={() => setStep(1)} type="button">← Volver</button>
+                <button
+                  className={`${styles.modalConfirmBtn} ${styles.modalConfirmRed}`}
+                  onClick={onConfirm}
+                  disabled={!emailMatch || loading}
+                  type="button"
+                >
+                  {loading ? "Eliminando…" : "Eliminar definitivamente"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function ViewPerfil() {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const isMock   = !!user?.id?.startsWith("mock-");
+
+  // Personal data — extended
   const [form, setForm] = useState({
-    nombre:       user?.user_metadata?.full_name || "",
-    email:        user?.email || "",
-    telefono:     user?.user_metadata?.phone || "",
+    fullName:     user?.user_metadata?.full_name || "",
+    phone:        user?.user_metadata?.phone     || "",
+    birthDate:    "",
     dui:          "",
-    fechaNac:     "",
-    departamento: "San Salvador",
-    ciudad:       "",
+    gender:       "",
+    department:   "",
+    municipality: "",
+    address:      "",
   });
-  const [saved, setSaved] = useState(false);
+  const [email, setEmail]     = useState(user?.email || "");
+  const [loading, setLoading] = useState(!isMock);
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [formError, setFormError] = useState("");
 
-  // DUI photo state
-  const [duiFile, setDuiFile]       = useState(null);
-  const [duiPreview, setDuiPreview] = useState(null);
-  const [duiUploading, setDuiUploading] = useState(false);
-  const [duiUrl, setDuiUrl]         = useState(null);
+  // Avatar
+  const [avatar, setAvatar]               = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
-  // Selfie state
-  const [selfieFile, setSelfieFile]       = useState(null);
-  const [selfiePreview, setSelfiePreview] = useState(null);
-  const [selfieUploading, setSelfieUploading] = useState(false);
-  const [selfieUrl, setSelfieUrl]         = useState(null);
+  // Seller type
+  const [sellerType, setSellerType]   = useState("particular");
+  const [companyName, setCompanyName] = useState("");
+  const [companyDesc, setCompanyDesc] = useState("");
+  const [website, setWebsite]         = useState("");
 
-  const [docStatus] = useState("sin_subir"); // sin_subir | pendiente | verificado | rechazado
-  const [uploadError, setUploadError] = useState("");
+  // Plan
+  const [plan, setPlan] = useState(null);
 
-  const set = (k) => (e) => { setForm((p) => ({ ...p, [k]: e.target.value })); setSaved(false); };
+  // Password
+  const [pwForm, setPwForm]     = useState({ current: "", next: "", confirm: "" });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError]   = useState("");
+  const [pwSaved, setPwSaved]   = useState(false);
 
-  const handleDuiChange = async (e) => {
-    const file = e.target.files[0];
+  // Notifications — keys match backend: emailNewLead, emailWeeklyStats, emailPromotions, pushNewLead
+  const [notifs, setNotifs]           = useState({ emailNewLead: true, emailWeeklyStats: false, emailPromotions: false, pushNewLead: false });
+  const [notifSaving, setNotifSaving] = useState(false);
+
+  // Danger zone modal
+  const [dangerModal,  setDangerModal]  = useState(null); // null | "pauseAll" | "deleteAccount"
+  const [pausing,      setPausing]      = useState(false);
+  const [deleting,     setDeleting]     = useState(false);
+  const [pauseResult,  setPauseResult]  = useState("");
+
+  useEffect(() => {
+    if (isMock) return;
+    api.get("/profile")
+      .then((res) => {
+        const d = res.data;
+        setForm({
+          fullName:     d.fullName     || "",
+          phone:        d.phone        || "",
+          birthDate:    d.birthDate    || "",
+          dui:          d.dui          || "",
+          gender:       d.gender       || "",
+          department:   d.department   || "",
+          municipality: d.municipality || "",
+          address:      d.address      || "",
+        });
+        setEmail(d.email || "");
+        setAvatar(d.avatarUrl || null);
+        setSellerType(SELLER_TYPE_FROM_API(d.sellerType));
+        setCompanyName(d.companyName || "");
+        setCompanyDesc(d.companyDescription || "");
+        setWebsite(d.website || "");
+        setPlan(d.plan || null);
+        if (d.notifications) {
+          // Merge API response into state — keep defaults for any missing key
+          setNotifs((prev) => ({ ...prev, ...d.notifications }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [isMock]);
+
+  const setField = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-    setDuiFile(file);
-    setDuiPreview(URL.createObjectURL(file));
-    setDuiUploading(true);
-    setUploadError("");
+    setAvatarUploading(true);
     try {
-      const url = await uploadDocToCloudinary(file);
-      setDuiUrl(url);
-    } catch {
-      setUploadError("Error al subir el DUI. Intentá de nuevo.");
-    } finally {
-      setDuiUploading(false);
-    }
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
+      fd.append("folder", "avatars");
+      const res  = await fetch(
+        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: "POST", body: fd }
+      );
+      const data = await res.json();
+      setAvatar(data.secure_url);
+      if (!isMock) await api.patch("/profile", { avatarUrl: data.secure_url }).catch(() => {});
+    } catch { /* silently ignore */ }
+    finally { setAvatarUploading(false); }
   };
 
-  const handleSelfieChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setSelfieFile(file);
-    setSelfiePreview(URL.createObjectURL(file));
-    setSelfieUploading(true);
-    setUploadError("");
-    try {
-      const url = await uploadDocToCloudinary(file);
-      setSelfieUrl(url);
-    } catch {
-      setUploadError("Error al subir la selfie. Intentá de nuevo.");
-    } finally {
-      setSelfieUploading(false);
-    }
-  };
-
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (isMock) { setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
+    setSaving(true); setFormError("");
+    try {
+      await api.patch("/profile", {
+        ...form,
+        sellerType:         SELLER_TYPE_TO_API[sellerType] || "individual",
+        companyName:        sellerType !== "particular" ? companyName : undefined,
+        companyDescription: sellerType !== "particular" ? companyDesc  : undefined,
+        website:            sellerType !== "particular" ? website      : undefined,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch { setFormError("No se pudo guardar. Intentá de nuevo."); }
+    finally { setSaving(false); }
   };
 
-  const bothUploaded = duiUrl && selfieUrl;
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (pwForm.next !== pwForm.confirm) { setPwError("Las contraseñas no coinciden."); return; }
+    if (pwForm.next.length < 8)         { setPwError("Mínimo 8 caracteres."); return; }
+    if (isMock) { setPwSaved(true); setTimeout(() => setPwSaved(false), 2500); return; }
+    setPwSaving(true); setPwError("");
+    try {
+      await api.patch("/auth/password", { currentPassword: pwForm.current, newPassword: pwForm.next });
+      setPwSaved(true);
+      setPwForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => setPwSaved(false), 3000);
+    } catch (err) {
+      if (err?.status === 429) {
+        setPwError("Demasiados intentos fallidos. Esperá unos minutos antes de volver a intentarlo.");
+      } else if (err?.status === 400) {
+        setPwError("Contraseña actual incorrecta.");
+      } else {
+        setPwError(err?.message || "No se pudo cambiar la contraseña.");
+      }
+    }
+    finally { setPwSaving(false); }
+  };
 
-  return (
+  const handleNotifToggle = async (key) => {
+    const next = { ...notifs, [key]: !notifs[key] };
+    setNotifs(next);
+    if (!isMock) {
+      setNotifSaving(true);
+      // Backend requires all 4 fields — full replacement, not partial
+      await api.patch("/profile/notifications", {
+        emailNewLead:    next.emailNewLead,
+        emailWeeklyStats: next.emailWeeklyStats,
+        emailPromotions: next.emailPromotions,
+        pushNewLead:     next.pushNewLead,
+      }).catch(() => {});
+      setNotifSaving(false);
+    }
+  };
+
+  const handlePauseAllConfirm = async () => {
+    setPausing(true);
+    if (!isMock) {
+      const res = await api.patch("/profile/vehicles/pause-all").catch(() => null);
+      const n = res?.affected ?? 0;
+      setPauseResult(n === 0
+        ? "No había publicaciones activas."
+        : `${n} publicación${n !== 1 ? "es" : ""} pausada${n !== 1 ? "s" : ""}.`);
+    } else {
+      setPauseResult("Publicaciones pausadas (modo demo).");
+    }
+    setPausing(false);
+    setDangerModal(null);
+    setTimeout(() => setPauseResult(""), 5000);
+  };
+
+  const handleDeleteConfirm = async () => {
+    setDeleting(true);
+    try {
+      if (!isMock) await api.delete("/profile");
+      clearTokens(); // token is immediately invalid after DELETE /profile
+      await signOut();
+      navigate("/");
+    } catch { setDeleting(false); setDangerModal(null); }
+  };
+
+  const initials   = (form.fullName || email || "V").charAt(0).toUpperCase();
+  const PLAN_NAMES = { basic: "Básico", premium: "Premium", featured: "Destacado" };
+
+  if (loading) return (
     <div className={styles.panel}>
       <div className={styles.panelHeader}><h2>Mi perfil</h2></div>
+      <p style={{ padding: "2rem", color: "#94a3b8" }}>Cargando perfil…</p>
+    </div>
+  );
 
-      <div className={styles.avatarSection}>
-        <div className={styles.avatarCircle}>{form.nombre.charAt(0).toUpperCase()}</div>
-        <div>
-          <strong className={styles.avatarName}>{form.nombre}</strong>
-          <p className={styles.avatarSub}>Cuenta de vendedor</p>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Datos personales + tipo de cuenta ── */}
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}><h2>Mi perfil</h2></div>
+
+        <div className={styles.avatarSection}>
+          <label className={styles.avatarWrap} title="Cambiar foto de perfil">
+            {avatar
+              ? <img src={avatar} alt="avatar" className={styles.avatarImg} />
+              : <div className={styles.avatarCircle}>{initials}</div>
+            }
+            <div className={styles.avatarOverlay}>
+              {avatarUploading ? "…" : <Camera size={15} />}
+            </div>
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} disabled={avatarUploading} />
+          </label>
+          <div>
+            <strong className={styles.avatarName}>{form.fullName || email}</strong>
+            <p className={styles.avatarSub}>
+              {sellerType === "empresa" ? companyName || "Empresa"
+                : sellerType === "concesionario" ? "Concesionario"
+                : "Vendedor particular"}
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSave} className={styles.profileForm}>
+
+          {/* Datos personales */}
+          <div className={styles.profileSection}>
+            <h3 className={styles.profileSectionTitle}><User size={15} /> Datos personales</h3>
+            <div className={styles.profileGrid}>
+              <div className={styles.profileField}>
+                <label>Nombre completo *</label>
+                <input value={form.fullName} onChange={setField("fullName")} placeholder="Tu nombre completo" required />
+              </div>
+              <div className={styles.profileField}>
+                <label>Email</label>
+                <input value={email} disabled type="email" />
+              </div>
+              <div className={styles.profileField}>
+                <label>Teléfono / WhatsApp *</label>
+                <input value={form.phone} onChange={setField("phone")} placeholder="+503 7000-0000" required />
+              </div>
+              <div className={styles.profileField}>
+                <label>Fecha de nacimiento</label>
+                <input type="date" value={form.birthDate} onChange={setField("birthDate")} max={new Date().toISOString().split("T")[0]} />
+              </div>
+              <div className={styles.profileField}>
+                <label>DUI <span className={styles.fieldNote}>XXXXXXXX-X</span></label>
+                <input
+                  value={form.dui}
+                  onChange={(e) => setForm((p) => ({ ...p, dui: formatDUI(e.target.value) }))}
+                  placeholder="00000000-0"
+                  maxLength={10}
+                  inputMode="numeric"
+                />
+              </div>
+              <div className={styles.profileField}>
+                <label>Género</label>
+                <select value={form.gender} onChange={setField("gender")}>
+                  <option value="">Prefiero no decir</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Femenino">Femenino</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Dirección */}
+          <div className={styles.profileSection}>
+            <h3 className={styles.profileSectionTitle}><Building2 size={15} /> Dirección</h3>
+            <div className={styles.profileGrid}>
+              <div className={styles.profileField}>
+                <label>Departamento</label>
+                <select value={form.department} onChange={setField("department")}>
+                  <option value="">Seleccioná un departamento</option>
+                  {SV_DEPARTAMENTOS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className={styles.profileField}>
+                <label>Municipio</label>
+                <input value={form.municipality} onChange={setField("municipality")} placeholder="Tu municipio" />
+              </div>
+              <div className={`${styles.profileField} ${styles.colSpan2}`}>
+                <label>Dirección</label>
+                <input value={form.address} onChange={setField("address")} placeholder="Calle, colonia, número de casa…" />
+              </div>
+            </div>
+          </div>
+
+          {/* Tipo de cuenta */}
+          <div className={styles.profileSection}>
+            <h3 className={styles.profileSectionTitle}><Building2 size={15} /> Tipo de cuenta</h3>
+            <div className={styles.sellerTypePills}>
+              {[
+                { id: "particular",    label: "Particular"    },
+                { id: "concesionario", label: "Concesionario" },
+                { id: "empresa",       label: "Empresa"       },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`${styles.sellerPill} ${sellerType === t.id ? styles.sellerPillActive : ""}`}
+                  onClick={() => setSellerType(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {sellerType !== "particular" && (
+              <div className={styles.profileGrid} style={{ marginTop: 14 }}>
+                <div className={styles.profileField}>
+                  <label>Nombre comercial</label>
+                  <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nombre de tu empresa o concesionario" />
+                </div>
+                <div className={styles.profileField}>
+                  <label>Sitio web</label>
+                  <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://tusitio.com" type="url" />
+                </div>
+                {sellerType === "empresa" && (
+                  <div className={`${styles.profileField} ${styles.colSpan2}`}>
+                    <label>Descripción breve</label>
+                    <textarea
+                      className={styles.profileTextarea}
+                      value={companyDesc}
+                      onChange={(e) => setCompanyDesc(e.target.value)}
+                      placeholder="Contale a los compradores sobre tu empresa…"
+                      rows={3}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.profileFooter}>
+            {saved     && <span className={styles.savedMsg}><CheckCircle size={15} /> Cambios guardados</span>}
+            {formError && <span style={{ color: "#dc2626", fontSize: 13 }}>{formError}</span>}
+            <button type="submit" className={styles.saveBtn} disabled={saving}>
+              <Save size={16} /> {saving ? "Guardando…" : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ── Plan activo ── */}
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <h2>Plan activo</h2>
+          <Link to="/publicar/nuevo" className={styles.panelLink}>
+            <TrendingUp size={14} /> Nueva publicación
+          </Link>
+        </div>
+        <div className={styles.planSection}>
+          {plan ? (
+            <>
+              <div className={styles.planTop}>
+                <span className={styles.planBadge}>{PLAN_NAMES[plan.name] || plan.name}</span>
+                {plan.expiresAt && (
+                  <span className={styles.planExpiry}>
+                    Vence el {new Date(plan.expiresAt).toLocaleDateString("es-SV")}
+                  </span>
+                )}
+              </div>
+              <p className={styles.planMeta}>
+                {plan.vehiclesUsed ?? 0} de {plan.vehiclesLimit ?? "—"} publicaciones usadas
+              </p>
+              <div className={styles.planBar}>
+                <div
+                  className={styles.planBarFill}
+                  style={{
+                    width: plan.vehiclesLimit
+                      ? `${Math.min(100, Math.round((plan.vehiclesUsed / plan.vehiclesLimit) * 100))}%`
+                      : "0%",
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            <p style={{ color: "#94a3b8", fontSize: 13, margin: 0 }}>
+              Sin plan activo. Publicá un vehículo para elegir un plan.
+            </p>
+          )}
         </div>
       </div>
 
-      <form onSubmit={handleSave} className={styles.profileForm}>
-        {/* Datos personales */}
-        <div className={styles.profileSection}>
-          <h3 className={styles.profileSectionTitle}><User size={15} /> Datos personales</h3>
+      {/* ── Cambiar contraseña ── */}
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}><h2><Lock size={16} style={{ marginRight: 6 }} />Cambiar contraseña</h2></div>
+        <form onSubmit={handlePasswordChange} className={styles.profileForm}>
           <div className={styles.profileGrid}>
             <div className={styles.profileField}>
-              <label>Nombre completo</label>
-              <input value={form.nombre} onChange={set("nombre")} placeholder="Tu nombre completo" />
+              <label>Contraseña actual</label>
+              <input type="password" value={pwForm.current} onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))} placeholder="••••••••" required />
+            </div>
+            <div />
+            <div className={styles.profileField}>
+              <label>Nueva contraseña</label>
+              <input type="password" value={pwForm.next} onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))} placeholder="Mínimo 8 caracteres" required minLength={8} />
             </div>
             <div className={styles.profileField}>
-              <label>Email</label>
-              <input value={form.email} onChange={set("email")} placeholder="tu@email.com" type="email" />
-            </div>
-            <div className={styles.profileField}>
-              <label>Teléfono / WhatsApp <span className={styles.fieldNote}>— único por cuenta</span></label>
-              <input value={form.telefono} onChange={set("telefono")} placeholder="+503 7000-0000" />
-            </div>
-            <div className={styles.profileField}>
-              <label>DUI <span className={styles.fieldNote}>— único por cuenta</span></label>
-              <input value={form.dui} onChange={set("dui")} placeholder="00000000-0" maxLength={10} />
-            </div>
-            <div className={styles.profileField}>
-              <label>Fecha de nacimiento</label>
-              <input value={form.fechaNac} onChange={set("fechaNac")} placeholder="DD/MM/AAAA" />
+              <label>Confirmar contraseña</label>
+              <input type="password" value={pwForm.confirm} onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))} placeholder="Repetí la nueva contraseña" required />
             </div>
           </div>
-        </div>
+          <div className={styles.profileFooter}>
+            {pwSaved && <span className={styles.savedMsg}><CheckCircle size={15} /> Contraseña actualizada</span>}
+            {pwError && <span style={{ color: "#dc2626", fontSize: 13 }}>{pwError}</span>}
+            <button type="submit" className={styles.saveBtn} disabled={pwSaving}>
+              {pwSaving ? "Actualizando…" : "Cambiar contraseña"}
+            </button>
+          </div>
+        </form>
+      </div>
 
-        {/* Ubicación */}
-        <div className={styles.profileSection}>
-          <h3 className={styles.profileSectionTitle}><TrendingUp size={15} /> Ubicación</h3>
-          <div className={styles.profileGrid}>
-            <div className={styles.profileField}>
-              <label>Departamento</label>
-              <select value={form.departamento} onChange={set("departamento")}>
-                {SV_DEPARTAMENTOS.map((d) => <option key={d}>{d}</option>)}
-              </select>
+      {/* ── Notificaciones ── */}
+      <div className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <h2><Bell size={16} style={{ marginRight: 6 }} />Notificaciones por email</h2>
+          {notifSaving && <span style={{ fontSize: 12, color: "#94a3b8" }}>Guardando…</span>}
+        </div>
+        <div className={styles.notifList}>
+          {[
+            { key: "emailNewLead",     label: "Nueva consulta recibida",   desc: "Te avisamos cuando alguien envía un mensaje sobre tu vehículo."   },
+            { key: "emailWeeklyStats", label: "Estadísticas semanales",    desc: "Resumen semanal de visitas y consultas de tus publicaciones."      },
+            { key: "emailPromotions",  label: "Promociones y novedades",   desc: "Ofertas especiales, descuentos en planes y novedades del sitio."   },
+            { key: "pushNewLead",      label: "Push: nueva consulta",      desc: "Notificación push en el navegador cuando llegue una consulta."     },
+          ].map(({ key, label, desc }) => (
+            <label key={key} className={styles.notifRow}>
+              <div className={styles.notifText}>
+                <span className={styles.notifLabel}>{label}</span>
+                <span className={styles.notifDesc}>{desc}</span>
+              </div>
+              <input type="checkbox" className={styles.toggleInput} checked={notifs[key]} onChange={() => handleNotifToggle(key)} />
+              <span className={styles.toggleTrack} />
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Zona de peligro ── */}
+      <div className={`${styles.panel} ${styles.dangerPanel}`}>
+        <div className={styles.panelHeader}>
+          <h2><ShieldAlert size={16} style={{ marginRight: 6, color: "#dc2626" }} />Zona de peligro</h2>
+        </div>
+        <div className={styles.dangerBody}>
+          <div className={styles.dangerRow}>
+            <div>
+              <p className={styles.dangerTitle}>Pausar todas las publicaciones</p>
+              <p className={styles.dangerDesc}>Oculta temporalmente todos tus vehículos activos del marketplace.</p>
             </div>
-            <div className={styles.profileField}>
-              <label>Municipio / Ciudad</label>
-              <input value={form.ciudad} onChange={set("ciudad")} placeholder="Tu municipio" />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+              <button className={styles.dangerBtn} onClick={() => setDangerModal("pauseAll")} type="button">
+                Pausar todo
+              </button>
+              {pauseResult && (
+                <span style={{ fontSize: 12, color: "#059669", fontWeight: 700 }}>{pauseResult}</span>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Verificación de identidad */}
-        <div className={styles.profileSection}>
-          <h3 className={styles.profileSectionTitle}><ShieldCheck size={15} /> Verificación de identidad</h3>
-
-          <div className={styles.docVerifSection}>
-            {/* Status banner */}
-            {docStatus === "sin_subir" && (
-              <div className={`${styles.docBanner} ${styles.docBannerWarning}`}>
-                <AlertCircle size={16} />
-                <div>
-                  <strong>Identidad no verificada</strong>
-                  <p>Para publicar vehículos necesitás verificar tu identidad con tu DUI. La revisión es manual y tarda hasta 24 hs.</p>
-                </div>
-              </div>
-            )}
-            {docStatus === "pendiente" && (
-              <div className={`${styles.docBanner} ${styles.docBannerInfo}`}>
-                <ShieldCheck size={16} />
-                <div><strong>En revisión</strong><p>Tus documentos están siendo revisados. Te notificaremos por email.</p></div>
-              </div>
-            )}
-            {docStatus === "verificado" && (
-              <div className={`${styles.docBanner} ${styles.docBannerSuccess}`}>
-                <CheckCircle size={16} />
-                <div><strong>Identidad verificada ✓</strong><p>Tu DUI fue verificado correctamente.</p></div>
-              </div>
-            )}
-            {docStatus === "rechazado" && (
-              <div className={`${styles.docBanner} ${styles.docBannerDanger}`}>
-                <AlertCircle size={16} />
-                <div><strong>Documentos rechazados</strong><p>La imagen no era legible o no coincidía. Subí fotos nuevas.</p></div>
-              </div>
-            )}
-
-            {uploadError && (
-              <p className={styles.docUploadError}><AlertCircle size={13} /> {uploadError}</p>
-            )}
-
-            {docStatus !== "verificado" && (
-              <div className={styles.docUploadsGrid}>
-                {/* DUI photo */}
-                <div className={styles.docUploadItem}>
-                  <p className={styles.docUploadItemLabel}><CreditCard size={14} /> Foto frontal del DUI</p>
-                  <label className={`${styles.docUploadZone} ${duiUrl ? styles.docUploadDone : ""}`}>
-                    <input type="file" accept="image/*" onChange={handleDuiChange} hidden />
-                    {duiUploading ? (
-                      <><Loader2 size={22} className={styles.docSpin} /><span className={styles.docUploadLabel}>Subiendo…</span></>
-                    ) : duiPreview ? (
-                      <img src={duiPreview} alt="DUI" className={styles.docPreviewImg} />
-                    ) : (
-                      <><Upload size={20} color="#94a3b8" /><span className={styles.docUploadLabel}>Subir foto del DUI</span><span className={styles.docUploadSub}>JPG o PNG · máx. 5 MB</span></>
-                    )}
-                    {duiUrl && !duiUploading && (
-                      <span className={styles.docUploadCheck}><CheckCircle size={16} /></span>
-                    )}
-                  </label>
-                </div>
-
-                {/* Selfie */}
-                <div className={styles.docUploadItem}>
-                  <p className={styles.docUploadItemLabel}><Camera size={14} /> Selfie sosteniendo el DUI</p>
-                  <label className={`${styles.docUploadZone} ${selfieUrl ? styles.docUploadDone : ""}`}>
-                    <input type="file" accept="image/*" onChange={handleSelfieChange} hidden />
-                    {selfieUploading ? (
-                      <><Loader2 size={22} className={styles.docSpin} /><span className={styles.docUploadLabel}>Subiendo…</span></>
-                    ) : selfiePreview ? (
-                      <img src={selfiePreview} alt="Selfie" className={styles.docPreviewImg} />
-                    ) : (
-                      <><Camera size={20} color="#94a3b8" /><span className={styles.docUploadLabel}>Subir selfie con DUI</span><span className={styles.docUploadSub}>Sostenelo cerca de tu rostro</span></>
-                    )}
-                    {selfieUrl && !selfieUploading && (
-                      <span className={styles.docUploadCheck}><CheckCircle size={16} /></span>
-                    )}
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {bothUploaded && (
-              <p className={styles.docFileName}><CheckCircle size={13} /> Ambas fotos listas — se enviarán al guardar</p>
-            )}
+          <div className={`${styles.dangerRow} ${styles.dangerRowSep}`}>
+            <div>
+              <p className={styles.dangerTitle}>Eliminar mi cuenta</p>
+              <p className={styles.dangerDesc}>Borra permanentemente tu cuenta, publicaciones y datos. Esta acción no se puede deshacer.</p>
+            </div>
+            <button className={`${styles.dangerBtn} ${styles.dangerBtnRed}`} onClick={() => setDangerModal("deleteAccount")} type="button">
+              Eliminar cuenta
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Notificaciones */}
-        <div className={styles.profileSection}>
-          <h3 className={styles.profileSectionTitle}><Bell size={15} /> Notificaciones</h3>
-          <div className={styles.toggleList}>
-            {[
-              { label: "Nuevas consultas por email", defaultOn: true },
-              { label: "Actualizaciones de la plataforma", defaultOn: false },
-              { label: "Recordatorios de publicaciones vencidas", defaultOn: true },
-            ].map((n) => (
-              <label key={n.label} className={styles.toggleRow}>
-                <span>{n.label}</span>
-                <input type="checkbox" defaultChecked={n.defaultOn} className={styles.toggleInput} />
-                <span className={styles.toggleTrack} />
-              </label>
-            ))}
-          </div>
-        </div>
+      {/* ── Modales ── */}
+      {dangerModal === "pauseAll" && (
+        <ConfirmModal
+          type="pauseAll"
+          userEmail={email}
+          loading={pausing}
+          onConfirm={handlePauseAllConfirm}
+          onClose={() => setDangerModal(null)}
+        />
+      )}
+      {dangerModal === "deleteAccount" && (
+        <ConfirmModal
+          type="deleteAccount"
+          userEmail={email}
+          loading={deleting}
+          onConfirm={handleDeleteConfirm}
+          onClose={() => setDangerModal(null)}
+        />
+      )}
 
-        <div className={styles.profileFooter}>
-          {saved && <span className={styles.savedMsg}><CheckCircle size={15} /> Cambios guardados</span>}
-          <button type="submit" className={styles.saveBtn} disabled={duiUploading || selfieUploading}>
-            <Save size={16} /> Guardar cambios
-          </button>
-        </div>
-      </form>
     </div>
   );
 }
 
 /* ── Main component ───────────────────────────── */
 const NAV = [
-  { id: "inicio",         label: "Inicio",             icon: <Home size={20} /> },
-  { id: "publicaciones",  label: "Mis publicaciones",  icon: <Car size={20} /> },
-  { id: "consultas",      label: "Consultas",           icon: <MessageCircle size={20} /> },
-  { id: "perfil",         label: "Mi perfil",           icon: <User size={20} /> },
+  { id: "inicio",         label: "Inicio",            icon: <Home size={20} /> },
+  { id: "publicaciones",  label: "Mis publicaciones", icon: <Car size={20} /> },
+  { id: "consultas",      label: "Consultas",          icon: <MessageCircle size={20} /> },
+  { id: "perfil",         label: "Mi perfil",          icon: <User size={20} /> },
 ];
 
 const VALID_TABS = ["inicio", "publicaciones", "consultas", "perfil"];
@@ -486,10 +927,15 @@ const VALID_TABS = ["inicio", "publicaciones", "consultas", "perfil"];
 const VendedorDashboard = () => {
   const { user }   = useAuth();
   const location   = useLocation();
+  const navigate   = useNavigate();
   const tabParam   = new URLSearchParams(location.search).get("tab");
-  const [view, setView] = useState(VALID_TABS.includes(tabParam) ? tabParam : "inicio");
+  const successParam = new URLSearchParams(location.search).get("success");
+  const [view, setView]         = useState(VALID_TABS.includes(tabParam) ? tabParam : "inicio");
+  const [showSuccess, setShowSuccess] = useState(successParam === "1");
   const [pubs, setPubs]         = useState([]);
   const [loadingPubs, setLoadingPubs] = useState(true);
+  const [leads, setLeads]       = useState([]);
+  const [loadingLeads, setLoadingLeads] = useState(true);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get("tab");
@@ -498,37 +944,87 @@ const VendedorDashboard = () => {
 
   useEffect(() => {
     if (!user) return;
-    if (user.id.startsWith("mock-")) {
+    if (user.id?.startsWith("mock-")) {
       setLoadingPubs(false);
+      setLoadingLeads(false);
       return;
     }
     const fetchPubs = async () => {
       setLoadingPubs(true);
-      const { data, error } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("seller_id", user.id)
-        .order("created_at", { ascending: false });
-      if (!error && data) setPubs(data.map(mapRowToPub));
+      try {
+        const res = await api.get("/profile/vehicles");
+        setPubs((res.data || []).map(mapRowToPub));
+      } catch {
+        setPubs([]);
+      }
       setLoadingPubs(false);
     };
+    const fetchLeads = async () => {
+      setLoadingLeads(true);
+      try {
+        const res = await api.get("/leads/me");
+        setLeads((res.data || []).map(mapLead));
+      } catch {
+        setLeads([]);
+      }
+      setLoadingLeads(false);
+    };
     fetchPubs();
+    fetchLeads();
   }, [user]);
+
+  const handleToggle = useCallback(async (pub) => {
+    const newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
+    try {
+      await api.patch(`/vehicles/${pub.id}/status`, { status: newStatus });
+      setPubs((prev) =>
+        prev.map((p) =>
+          p.id === pub.id ? { ...p, status: STATUS_LABEL[newStatus] || "activo" } : p
+        )
+      );
+    } catch {
+      // silently fail — vehicle card stays as-is
+    }
+  }, []);
+
+  const handleEdit = useCallback((pub) => {
+    navigate(`/editar/vehiculo/${pub.slug || pub.id}`);
+  }, [navigate]);
+
+  const handleDelete = useCallback(async (pub) => {
+    if (!window.confirm(`¿Eliminar "${pub.titulo}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api.patch(`/vehicles/${pub.id}/status`, { status: "DELETED" });
+      setPubs((prev) => prev.filter((p) => p.id !== pub.id));
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  const unread = leads.filter((c) => !c.leido).length;
 
   const stats = useMemo(() => ({
     publicaciones: pubs.length,
-    consultas: CONSULTAS.length,
-    favoritos: pubs.reduce((a, p) => a + p.favoritos, 0),
-  }), [pubs]);
+    consultas: leads.length,
+    favoritos: 0,
+  }), [pubs, leads]);
 
-  const unread = CONSULTAS.filter((c) => !c.leido).length;
-  const userName = user?.user_metadata?.full_name?.split(" ")[0] || "Usuario";
+  const userName = user?.fullName?.split(" ")[0]
+    || user?.email?.split("@")[0]
+    || "Usuario";
 
   return (
     <div className={styles.page}>
       <Navbar />
 
-      {/* Dashboard header */}
+      {showSuccess && (
+        <div className={styles.successBanner}>
+          <CheckCircle size={18} />
+          <span>¡Tu publicación fue enviada con éxito!</span>
+          <button className={styles.successClose} onClick={() => setShowSuccess(false)}>✕</button>
+        </div>
+      )}
+
       <header className={styles.pageHeader}>
         <div className={styles.pageHeaderInner}>
           <div>
@@ -542,10 +1038,8 @@ const VendedorDashboard = () => {
       </header>
 
       <div className={styles.shell}>
-        {/* Sidebar */}
         <aside className={styles.sidebar}>
           <div>
-            {/* User section */}
             <div className={styles.sideUser}>
               <div className={styles.sideUserAvatar}>{userName.charAt(0).toUpperCase()}</div>
               <div className={styles.sideUserInfo}>
@@ -582,12 +1076,11 @@ const VendedorDashboard = () => {
           </div>
         </aside>
 
-        {/* Content */}
         <main className={styles.content}>
-          {view === "inicio"        && <ViewInicio stats={stats} pubs={pubs} unread={unread} onNavigate={setView} />}
-          {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs} />}
-          {view === "consultas"     && <ViewConsultas />}
-          {view === "perfil"        && <ViewPerfil user={user} />}
+          {view === "inicio"        && <ViewInicio stats={stats} pubs={pubs} leads={leads} unread={unread} onNavigate={setView} />}
+          {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEdit} />}
+          {view === "consultas"     && <ViewConsultas leads={leads} loading={loadingLeads} />}
+          {view === "perfil"        && <ViewPerfil />}
         </main>
       </div>
     </div>

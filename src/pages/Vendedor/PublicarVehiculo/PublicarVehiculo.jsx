@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
-import { supabase } from "../../../lib/supabase";
+import { api } from "../../../lib/api";
+import { redirectToWompiCheckout } from "../../../lib/wompi";
 import {
   AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle,
   ChevronRight, Save, Trash2,
@@ -12,19 +13,17 @@ import PublicarSidebar from "./components/PublicarSidebar";
 import DatosVehiculoStep from "./steps/DatosVehiculo/DatosVehiculoStep";
 import CaracteristicasCompletasStep from "./steps/CaracteristicasCompletas/CaracteristicasCompletasStep";
 import PrecioContactoStep from "./steps/PrecioContacto/PrecioContactoStep";
-import PlanPublicacionStep from "./steps/PlanPublicacion/PlanPublicacionStep";
 import styles from "./PublicarVehiculo.module.css";
 
 const CATEGORIAS = [
-  { id: "autos",        label: "Autos y Camionetas" },
+  { id: "autos",        label: "Autos" },
+  { id: "camionetas",   label: "Camionetas y Pickups" },
   { id: "motos",        label: "Motos" },
-  { id: "camiones",     label: "Camiones y Pickups" },
-  { id: "maquinaria",   label: "Maquinaria Agrícola" },
+  { id: "camiones",     label: "Camiones" },
   { id: "nautica",      label: "Náutica" },
   { id: "chocados",     label: "Autos Chocados y Averiados" },
   { id: "coleccion",    label: "Autos de Colección" },
   { id: "colectivos",   label: "Colectivos y Buses" },
-  { id: "vial",         label: "Maquinaria Vial" },
   { id: "otros",        label: "Otros Vehículos" },
 ];
 
@@ -55,20 +54,22 @@ const steps = [
 const initialForm = {
   categoria: "",
   tipoVehiculo: "",
-  marca: "", modelo: "", anio: "", version: "",
-  kilometraje: "", condicion: "Nuevo",
+  // marca/modelo con id numérico para la API + nombre para mostrar
+  marcaId: "", marca: "", modeloId: "", modelo: "", anio: "", version: "",
+  kilometraje: "", condicion: "Usado",
 
   precio: "", moneda: "USD",
   aceptaPermuta: "Si", precioNegociable: "Si", financiacion: "Si", infoFinanciacion: "",
 
-  combustible: "Gasolina", transmision: "Manual",
-  motor: "", color: "", puertas: "4", carroceria: "SUV", traccion: "Delantera 4x2",
+  combustible: "", transmision: "",
+  motor: "", color: "", puertas: "4", carroceria: "", traccion: "Delantera 4x2",
 
   papelesAlDia: "Sí", vtv: "Al día", deudas: "Sin deudas",
   titularidad: "Titular", estadoGeneral: "Excelente", observaciones: "",
   descripcion: "",
 
-  provincia: "", ciudad: "",
+  // ubicación con id numérico para la API + nombre para mostrar
+  provinceId: "", provincia: "", cityId: "", ciudad: "",
   nombreContacto: "", whatsapp: "", email: "", horarioContacto: "", mostrarWhatsapp: "Si",
 
   fotos: [], plan: "",
@@ -98,24 +99,23 @@ const getInitialStep = () => {
 
 const validators = {
   1: {
-    marca: "Seleccioná la marca.",
-    modelo: "Ingresá el modelo.",
-    anio: "Seleccioná el año.",
+    marcaId:     "Seleccioná la marca.",
+    modeloId:    "Seleccioná el modelo.",
+    anio:        "Seleccioná el año.",
     kilometraje: "Ingresá el kilometraje.",
+    condicion:   "Seleccioná la condición.",
   },
   2: {
-    condicion: "Seleccioná la condición.",
     combustible: "Seleccioná el combustible.",
-    color: "Seleccioná el color.",
+    color:       "Seleccioná el color.",
     transmision: "Seleccioná la transmisión.",
   },
   3: {
-    precio: "Ingresá el precio.",
-    provincia: "Seleccioná el departamento.",
-    ciudad: "Seleccioná el municipio.",
+    precio:         "Ingresá el precio.",
+    cityId:         "Seleccioná el municipio.",
     nombreContacto: "Ingresá tu nombre de contacto.",
-    whatsapp: "Ingresá tu número de WhatsApp.",
-    plan: "Seleccioná un plan para publicar.",
+    whatsapp:       "Ingresá tu número de WhatsApp.",
+    plan:           "Seleccioná un plan para publicar.",
   },
 };
 
@@ -151,13 +151,24 @@ const PublicarVehiculo = () => {
     });
 
     if (stepId === 1) {
+      // Custom brand/model text validation
+      const isCustomBrand = formData.marcaId === "OTRA" || String(formData.marcaId).startsWith("__static__");
+      if (isCustomBrand) {
+        delete stepErrors.marcaId;
+        if (formData.marcaId === "OTRA" && !formData.marca?.trim()) stepErrors.marca = "Escribí el nombre de la marca.";
+      }
+      if (formData.modeloId === "OTRO" || isCustomBrand) {
+        delete stepErrors.modeloId;
+        if (!formData.modelo?.trim()) stepErrors.modelo = "Escribí el nombre del modelo.";
+      }
+
       const year = Number(formData.anio);
       if (formData.anio && (year < 1960 || year > new Date().getFullYear() + 2)) {
         stepErrors.anio = "Ingresá un año válido.";
       }
-      const km = Number(String(formData.kilometraje).replace(/\D/g, ""));
-      if (formData.condicion === "Nuevo" && km > 0) {
-        stepErrors.kilometraje = "Un vehículo nuevo debería tener 0 km.";
+      // Nuevo → km field is hidden, remove required validation
+      if (formData.condicion === "Nuevo") {
+        delete stepErrors.kilometraje;
       }
       if (!(formData.fotos || []).length) {
         stepErrors.fotos = "Subí al menos 1 foto para continuar.";
@@ -218,64 +229,116 @@ const PublicarVehiculo = () => {
     setErrors({}); setCurrentStep(id);
   };
 
+  // Map UI category label → API category enum
+  const CATEGORY_MAP = {
+    "Autos":                     "AUTO",
+    "Camionetas y Pickups":      "CAMIONETA",
+    "Motos":                     "MOTO",
+    "Camiones":                  "CAMION",
+    "Náutica":                   "ACUATICO",
+    "Autos Chocados y Averiados":"AUTO",
+    "Autos de Colección":        "AUTO",
+    "Colectivos y Buses":        "CAMION",
+    "Maquinaria Agrícola":       "OTRO",
+    "Maquinaria Vial":           "OTRO",
+    "Otros Vehículos":           "OTRO",
+  };
+
   const handlePublish = async () => {
     if (!validateStep(3)) return;
     setErrors({}); setPublishError(""); setPublishing(true);
 
+    // Mock users — gratuito: simulate success; paid: redirect to Wompi sandbox with fake ID
     if (user?.id?.startsWith("mock-")) {
-      await new Promise((r) => setTimeout(r, 800));
+      if (formData.plan !== "gratuito") {
+        const fakeId = `mock-${Date.now()}`;
+        localStorage.removeItem(DRAFT_KEY);
+        setPublishing(false);
+        redirectToWompiCheckout({ plan: formData.plan, itemId: fakeId, itemType: "vehicle" });
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 1200));
       localStorage.removeItem(DRAFT_KEY);
       setPublishing(false);
       navigate("/vendedor?tab=publicaciones&success=1");
       return;
     }
 
-    const payload = {
-      seller_id:           user.id,
-      tipo_publicacion:    "vehiculo",
-      tipo_vehiculo:       formData.tipoVehiculo || formData.categoria,
-      marca:               formData.marca,
-      modelo:              formData.modelo,
-      anio:                parseInt(formData.anio, 10) || null,
-      version:             formData.version,
-      kilometraje:         parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || null,
-      condicion:           formData.condicion,
-      precio:              parseFloat(String(formData.precio).replace(/[^\d.]/g, "")) || null,
-      moneda:              "USD",
-      acepta_permuta:      formData.aceptaPermuta,
-      precio_negociable:   formData.precioNegociable,
-      financiacion:        formData.financiacion,
-      info_financiacion:   formData.infoFinanciacion,
-      combustible:         formData.combustible,
-      transmision:         formData.transmision,
-      motor:               formData.motor,
-      color:               formData.color,
-      puertas:             formData.puertas,
-      carroceria:          formData.carroceria,
-      traccion:            formData.traccion,
-      papeles_al_dia:      formData.papelesAlDia,
-      tarjeta_circulacion: formData.vtv,
-      deudas:              formData.deudas,
-      titularidad:         formData.titularidad,
-      estado_general:      formData.estadoGeneral,
-      observaciones:       formData.observaciones,
-      descripcion:         formData.descripcion,
-      fotos:               (formData.fotos || []).filter((p) => p.url).map((p) => p.url),
-      departamento:        formData.provincia,
-      municipio:           formData.ciudad,
-      nombre_contacto:     formData.nombreContacto,
-      whatsapp:            formData.whatsapp,
-      email_contacto:      formData.email,
-      horario_contacto:    formData.horarioContacto,
-      mostrar_whatsapp:    formData.mostrarWhatsapp,
-      plan:                formData.plan,
-    };
+    try {
+      // Resolve attribute definition IDs from the catalog
+      let combustibleDefId = 1;
+      let transmisionDefId = 2;
+      try {
+        const defsRes = await api.get("/catalog/attribute-definitions");
+        const defs = defsRes.data || [];
+        const combustibleDef = defs.find((d) => d.name?.toLowerCase().includes("combustible"));
+        const transmisionDef = defs.find((d) => d.name?.toLowerCase().includes("transm"));
+        if (combustibleDef) combustibleDefId = combustibleDef.id;
+        if (transmisionDef) transmisionDefId = transmisionDef.id;
+      } catch {}
 
-    const { error } = await supabase.from("listings").insert(payload);
-    setPublishing(false);
-    if (error) { setPublishError("Error al publicar. Intentá de nuevo."); return; }
-    localStorage.removeItem(DRAFT_KEY);
-    navigate("/vendedor?tab=publicaciones&success=1");
+      // 1. Create vehicle in DRAFT
+      const vehicleRes = await api.post("/vehicles", {
+        category:           CATEGORY_MAP[formData.categoria] || "AUTO",
+        ...(formData.marcaId === "OTRA" || String(formData.marcaId).startsWith("__static__")
+          ? { brandName: formData.marca }
+          : { brandId: Number(formData.marcaId) }),
+        ...(formData.modeloId === "OTRO" || formData.marcaId === "OTRA" || String(formData.marcaId).startsWith("__static__")
+          ? { modelName: formData.modelo }
+          : { modelId: Number(formData.modeloId) }),
+        year:               parseInt(formData.anio, 10) || undefined,
+        version:            formData.version   || undefined,
+        condition:          formData.condicion === "Nuevo" ? "NEW" : "USED",
+        mileage:            parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || 0,
+        price:              parseFloat(String(formData.precio).replace(/[^\d.]/g, "")) || 0,
+        currency:           "USD",
+        acceptsExchange:    formData.aceptaPermuta   === "Si",
+        financingAvailable: formData.financiacion    === "Si",
+        negotiablePrice:    formData.precioNegociable=== "Si",
+        description:        formData.descripcion     || undefined,
+        cityId:             Number(formData.cityId),
+        contactPhone:       formData.whatsapp
+          ? (formData.whatsapp.trim().startsWith("+") ? formData.whatsapp.trim() : `+503${formData.whatsapp.trim()}`)
+          : undefined,
+        showWhatsapp:       formData.mostrarWhatsapp === "Si",
+        contactHours:       formData.horarioContacto || undefined,
+        attributes: [
+          { definitionId: combustibleDefId, value: formData.combustible },
+          { definitionId: transmisionDefId, value: formData.transmision },
+        ].filter((a) => a.value),
+      });
+
+      const vehicleId = vehicleRes.data.id;
+
+      // 2. Upload photos via backend (backend uploads to Cloudinary)
+      //    Auto-assign required categories to first 4 photos, rest as OTRA
+      const PHOTO_CATS = ["FRENTE", "LATERAL", "TRASERA", "INTERIOR"];
+      const photos = (formData.fotos || []).filter((p) => p.file);
+      if (photos.length) {
+        const fd = new FormData();
+        photos.forEach((photo, idx) => {
+          fd.append(PHOTO_CATS[idx] || "OTRA", photo.file);
+        });
+        await api.upload(`/vehicles/${vehicleId}/images`, fd);
+      }
+
+      localStorage.removeItem(DRAFT_KEY);
+
+      // 3. Plans de pago → redirigir a WOMPI; gratuito → publicar directo
+      if (formData.plan !== "gratuito") {
+        redirectToWompiCheckout({ plan: formData.plan, itemId: vehicleId, itemType: "vehicle" });
+        return; // la redirección abandona esta página
+      }
+
+      await api.post(`/vehicles/${vehicleId}/publish`);
+      navigate("/vendedor?tab=publicaciones&success=1");
+    } catch (err) {
+      console.error("[publish]", err);
+      const msg = err?.message || err?.data?.message || "Error al publicar. Intentá de nuevo.";
+      setPublishError(msg);
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const publishLabel = publishing ? "Publicando…"
@@ -287,6 +350,7 @@ const PublicarVehiculo = () => {
   const renderStep = () => {
     if (currentStep === 1) return <DatosVehiculoStep formData={formData} onChange={handleChange} />;
     if (currentStep === 2) return <CaracteristicasCompletasStep formData={formData} onChange={handleChange} />;
+    if (currentStep === 3) return <PrecioContactoStep formData={formData} onChange={handleChange} />;
     return null;
   };
 
@@ -376,28 +440,22 @@ const PublicarVehiculo = () => {
               </div>
             )}
 
-            {/* Step 3: price/contact card + plan card */}
+            {/* Step 3: price/contact + plan (merged into one component) */}
             {isFinalStep && (
-              <>
-                <div className={styles.formCard}>
-                  {currentErrors.length > 0 && (
-                    <div className={styles.errorWrap}>
-                      <div className={styles.errorSummary}>
-                        <div className={styles.errorSummaryIcon}><AlertCircle size={22} /></div>
-                        <div>
-                          <strong>Revisá estos campos antes de continuar</strong>
-                          <ul>{currentErrors.map((e) => <li key={e}>{e}</li>)}</ul>
-                        </div>
+              <div className={styles.formCard}>
+                {currentErrors.length > 0 && (
+                  <div className={styles.errorWrap}>
+                    <div className={styles.errorSummary}>
+                      <div className={styles.errorSummaryIcon}><AlertCircle size={22} /></div>
+                      <div>
+                        <strong>Revisá estos campos antes de continuar</strong>
+                        <ul>{currentErrors.map((e) => <li key={e}>{e}</li>)}</ul>
                       </div>
                     </div>
-                  )}
-                  <PrecioContactoStep formData={formData} onChange={handleChange} />
-                </div>
-
-                <div className={styles.formCard} style={{ marginTop: 20 }}>
-                  <PlanPublicacionStep formData={formData} onChange={handleChange} />
-                </div>
-              </>
+                  </div>
+                )}
+                <PrecioContactoStep formData={formData} onChange={handleChange} />
+              </div>
             )}
 
             {/* Navigation */}

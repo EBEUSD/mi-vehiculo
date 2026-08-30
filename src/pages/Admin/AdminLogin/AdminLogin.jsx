@@ -1,30 +1,33 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
 import styles from "./AdminLogin.module.css";
 
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "12345678";
-
 const AdminLogin = () => {
-  const navigate = useNavigate();
-  const [form, setForm]   = useState({ user: "", pass: "" });
-  const [error, setError] = useState("");
+  const navigate    = useNavigate();
+  const { signIn }  = useAuth();
+  const [form, setForm]     = useState({ email: "", pass: "" });
+  const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
   const handle = (k) => (e) => { setForm((p) => ({ ...p, [k]: e.target.value })); setError(""); };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      if (form.user === ADMIN_USER && form.pass === ADMIN_PASS) {
-        sessionStorage.setItem("adminAuth", "true");
-        navigate("/admin", { replace: true });
-      } else {
-        setError("Usuario o contraseña incorrectos.");
+    try {
+      const { data, error: err } = await signIn(form.email, form.pass);
+      if (err) throw err;
+      if (data?.user?.role !== "ADMIN") {
+        setError("No tenés permisos de administrador.");
+        return;
       }
+      navigate("/admin", { replace: true });
+    } catch {
+      setError("Credenciales incorrectas.");
+    } finally {
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -39,12 +42,12 @@ const AdminLogin = () => {
 
         <form className={styles.form} onSubmit={submit}>
           <div className={styles.field}>
-            <label>Usuario</label>
+            <label>Email</label>
             <input
               type="text"
-              value={form.user}
-              onChange={handle("user")}
-              placeholder="admin"
+              value={form.email}
+              onChange={handle("email")}
+              placeholder="admin@mivehiculo.com.sv"
               autoComplete="username"
               required
             />

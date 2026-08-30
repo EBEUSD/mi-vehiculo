@@ -61,9 +61,9 @@ const Contacto = () => {
     if (!form.mensaje.trim()) errs.mensaje = "Escribí tu mensaje.";
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setLoading(false);
+    const subject = encodeURIComponent(`[${form.asunto}] - ${form.nombre}`);
+    const body    = encodeURIComponent(`Nombre: ${form.nombre}\nEmail: ${form.email}\n\nMensaje:\n${form.mensaje}`);
+    window.open(`mailto:soporte@mivehiculo.com.sv?subject=${subject}&body=${body}`, "_blank");
     setSubmitted(true);
   };
 

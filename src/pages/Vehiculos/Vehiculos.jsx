@@ -6,28 +6,32 @@ import VehicleFiltersSidebar from "../../components/VehicleFiltersSidebar/Vehicl
 import VehicleResultsToolbar from "../../components/VehicleResultsToolbar/VehicleResultsToolbar";
 import VehicleGrid from "../../components/VehicleGrid/VehicleGrid";
 import Pagination from "../../components/Pagination/Pagination";
-import { supabase } from "../../lib/supabase";
+import { api } from "../../lib/api";
 import styles from "./Vehiculos.module.css";
 
 const PLACEHOLDER_IMG =
   "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&auto=format&fit=crop";
 
+const CATEGORY_LABEL = { AUTO: "Autos", MOTO: "Motos", CAMION: "Camiones", CAMIONETA: "Camionetas", ACUATICO: "Náutica", OTRO: "Otros" };
+
 const mapRow = (row) => ({
   id: row.id,
-  title: [row.marca, row.modelo, row.version].filter(Boolean).join(" "),
-  brand: row.marca || "",
-  model: row.modelo || "",
-  year: row.anio || 0,
-  km: row.kilometraje || 0,
-  price: row.precio || 0,
-  type: row.tipo_vehiculo || "Autos",
-  fuel: row.combustible || "Gasolina",
-  transmission: row.transmision || "Manual",
-  condition: row.condicion === "Nuevo" ? "new" : "used",
-  location: [row.municipio, row.departamento].filter(Boolean).join(", "),
-  image: row.fotos?.[0] || PLACEHOLDER_IMG,
-  tag: row.plan === "premium" ? "DESTACADO" : row.condicion === "Nuevo" ? "NUEVO" : "USADO",
-  sellerType: "Particular",
+  slug: row.slug,
+  title: [row.brand?.name, row.model?.name, row.version].filter(Boolean).join(" "),
+  brand: row.brand?.name || "",
+  model: row.model?.name || "",
+  year: row.year || 0,
+  km: row.mileage || 0,
+  price: row.price || 0,
+  type: CATEGORY_LABEL[row.category] || "Autos",
+  fuel: row.attributes?.find((a) => a.definition?.name === "Combustible")?.value || "Gasolina",
+  transmission: row.attributes?.find((a) => a.definition?.name === "Transmisión")?.value || "Manual",
+  condition: row.condition === "NEW" ? "new" : "used",
+  location: [row.city?.name, row.city?.province?.name].filter(Boolean).join(", "),
+  image: row.images?.[0]?.url || PLACEHOLDER_IMG,
+  tag: row.plan === "premium" ? "DESTACADO" : row.condition === "NEW" ? "NUEVO" : "USADO",
+  sellerType: row.dealership ? "Concesionaria" : "Particular",
+  dealershipName: row.dealership?.name || null,
 });
 
 const ITEMS_PER_PAGE = 9;
@@ -42,11 +46,12 @@ const Vehiculos = () => {
   useEffect(() => {
     const fetchListings = async () => {
       setLoadingListings(true);
-      const { data, error } = await supabase
-        .from("listings")
-        .select("*")
-        .eq("status", "activo");
-      if (!error && data) setAllListings(data.map(mapRow));
+      try {
+        const res = await api.get("/vehicles?status=ACTIVE");
+        setAllListings((res.data || []).map(mapRow));
+      } catch {
+        setAllListings([]);
+      }
       setLoadingListings(false);
     };
     fetchListings();
@@ -61,7 +66,7 @@ const Vehiculos = () => {
     brand: searchParams.get("brand") || "",
     model: searchParams.get("model") || "",
     yearMin: Number(searchParams.get("yearMin") || 2018),
-    yearMax: Number(searchParams.get("yearMax") || 2024),
+    yearMax: Number(searchParams.get("yearMax") || new Date().getFullYear()),
     priceMin: Number(searchParams.get("priceMin") || 0),
     priceMax: Number(searchParams.get("priceMax") || 40000),
     kmMin: Number(searchParams.get("kmMin") || 0),
@@ -232,7 +237,7 @@ const Vehiculos = () => {
     filters.condition === "used" && { key: "condition", label: "Usados" },
     filters.brand && { key: "brand", label: filters.brand },
     filters.model && { key: "model", label: filters.model },
-    (filters.yearMin !== 2018 || filters.yearMax !== 2024) && {
+    (filters.yearMin !== 2018 || filters.yearMax !== new Date().getFullYear()) && {
       key: "year",
       label: `Año: ${filters.yearMin} - ${filters.yearMax}`,
     },
@@ -260,7 +265,7 @@ const Vehiculos = () => {
         updateParams({ model: "" });
         break;
       case "year":
-        updateParams({ yearMin: 2018, yearMax: 2024 });
+        updateParams({ yearMin: 2018, yearMax: new Date().getFullYear() });
         break;
       case "priceMax":
         updateParams({ priceMax: 40000 });
@@ -282,7 +287,7 @@ const Vehiculos = () => {
           <div className={styles.breadcrumbs}>
             <span>Inicio</span>
             <span>›</span>
-            <span>Autos</span>
+            <span>{filters.type || "Vehículos"}</span>
             <span>›</span>
             <span>Resultados</span>
           </div>
@@ -290,7 +295,11 @@ const Vehiculos = () => {
           <div className={styles.headingRow}>
             <div>
               <h1>
-                Resultados para <span>autos usados</span>
+                Resultados para{" "}
+                <span>
+                  {(filters.type || "vehículos").toLowerCase()}
+                  {filters.condition === "used" ? " usados" : filters.condition === "new" ? " nuevos" : ""}
+                </span>
               </h1>
               <p>{totalResults.toLocaleString("en-US")} resultados encontrados</p>
             </div>
@@ -304,7 +313,9 @@ const Vehiculos = () => {
                 <span>Filtrar</span>
               </button>
 
-              <button className={styles.saveSearchBtn}>Guardar búsqueda</button>
+              <button className={styles.saveSearchBtn} disabled title="Próximamente">
+                Guardar búsqueda
+              </button>
             </div>
           </div>
 
@@ -337,6 +348,22 @@ const Vehiculos = () => {
                 <p style={{ padding: "2rem", color: "#6b7280", textAlign: "center" }}>
                   Cargando vehículos…
                 </p>
+              ) : paginatedVehicles.length === 0 ? (
+                <div style={{ padding: "3rem 1rem", textAlign: "center" }}>
+                  <p style={{ fontSize: "1.05rem", fontWeight: 700, color: "#111827", marginBottom: "0.4rem" }}>
+                    Sin resultados
+                  </p>
+                  <p style={{ fontSize: "0.95rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+                    Probá modificando los filtros para encontrar más vehículos.
+                  </p>
+                  <button
+                    onClick={handleResetFilters}
+                    style={{ padding: "0.6rem 1.4rem", borderRadius: "10px", background: "#1570ff",
+                      border: "none", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.95rem" }}
+                  >
+                    Limpiar filtros
+                  </button>
+                </div>
               ) : (
                 <VehicleGrid
                   vehicles={paginatedVehicles}

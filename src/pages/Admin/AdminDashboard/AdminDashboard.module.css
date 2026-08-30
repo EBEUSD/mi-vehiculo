@@ -881,3 +881,92 @@
 .drawerCancelBtn:hover {
   background: #f1f5f9;
 }
+
+/* =========================
+   FACTURACIÓN — PRESETS
+========================= */
+.presetBtns {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  border-radius: 9px;
+  padding: 3px;
+}
+
+.presetBtn {
+  padding: 5px 13px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.14s, color 0.14s;
+  white-space: nowrap;
+}
+
+.presetBtn:hover {
+  background: rgba(255, 255, 255, 0.65);
+  color: #0f172a;
+}
+
+.presetBtnActive {
+  background: #fff !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+}
+
+.customDateRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =========================
+   FACTURACIÓN — CHART
+========================= */
+.chartWrap {
+  padding: 20px 20px 12px;
+  overflow-x: auto;
+}
+
+.chartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+  min-width: 100%;
+  width: max-content;
+}
+
+.chartBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 8px;
+  position: relative;
+}
+
+.chartBarCol:hover .chartBar {
+  opacity: 0.75;
+}
+
+.chartBar {
+  width: 100%;
+  min-width: 6px;
+  background: linear-gradient(to top, #1570ff, #60a5fa);
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.15s;
+}
+
+.chartXLabel {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-top: 4px;
+}

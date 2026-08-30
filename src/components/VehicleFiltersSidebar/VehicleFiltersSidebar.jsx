@@ -1,3 +1,4 @@
+import SearchableSelect from "../SearchableSelect/SearchableSelect";
 import styles from "./VehicleFiltersSidebar.module.css";
 
 const VehicleFiltersSidebar = ({
@@ -61,32 +62,30 @@ const VehicleFiltersSidebar = ({
 
       <div className={styles.group}>
         <label>Marca</label>
-        <select
+        <SearchableSelect
+          compact
+          options={[
+            { value: "", label: "Todas las marcas" },
+            ...brands.map((b) => ({ value: b, label: b })),
+          ]}
           value={filters.brand}
-          onChange={(e) => onFilterChange("brand", e.target.value)}
-        >
-          <option value="">Todas las marcas</option>
-          {brands.map((brand) => (
-            <option key={brand} value={brand}>
-              {brand}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onFilterChange("brand", v)}
+          placeholder="Todas las marcas"
+        />
       </div>
 
       <div className={styles.group}>
         <label>Modelo</label>
-        <select
+        <SearchableSelect
+          compact
+          options={[
+            { value: "", label: "Todos los modelos" },
+            ...models.map((m) => ({ value: m, label: m })),
+          ]}
           value={filters.model}
-          onChange={(e) => onFilterChange("model", e.target.value)}
-        >
-          <option value="">Todos los modelos</option>
-          {models.map((model) => (
-            <option key={model} value={model}>
-              {model}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => onFilterChange("model", v)}
+          placeholder="Todos los modelos"
+        />
       </div>
 
       <div className={styles.group}>
@@ -189,7 +188,7 @@ const VehicleFiltersSidebar = ({
       <div className={styles.group}>
         <label>Tipo de vendedor</label>
         <div className={styles.checks}>
-          {["Particular", "Concesionario"].map((sellerType) => (
+          {["Particular", "Concesionaria"].map((sellerType) => (
             <label key={sellerType}>
               <input
                 type="checkbox"

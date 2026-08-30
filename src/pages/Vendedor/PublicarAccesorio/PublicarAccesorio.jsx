@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle, Pencil } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
-import { supabase } from "../../../lib/supabase";
+import { api } from "../../../lib/api";
+import { redirectToWompiCheckout } from "../../../lib/wompi";
 import PublicarTopbar from "../PublicarVehiculo/components/PublicarTopbar";
 import PublicarStepper from "../PublicarVehiculo/components/PublicarStepper";
 import PublicarSidebar from "../PublicarVehiculo/components/PublicarSidebar";
@@ -30,7 +31,8 @@ const initialForm = {
   descripcionItem: "", cantidad: "1",
   precio: "", moneda: "USD", precioNegociable: "Si", aceptaPermuta: "No",
   fotos: [],
-  provincia: "", ciudad: "", nombreContacto: "", whatsapp: "",
+  provinceId: "", provincia: "", cityId: "", ciudad: "",
+  nombreContacto: "", whatsapp: "",
   email: "", horarioContacto: "", mostrarWhatsapp: "Si",
   plan: "",
 };
@@ -46,7 +48,7 @@ const getInitialDraft = () => {
 const validators = {
   1: { nombreAccesorio: "Ingresá el nombre del accesorio.", categoriaAccesorio: "Seleccioná la categoría.", condicion: "Seleccioná la condición.", descripcionItem: "Escribí una descripción." },
   2: { precio: "Ingresá el precio." },
-  4: { provincia: "Seleccioná el departamento.", ciudad: "Seleccioná el municipio.", nombreContacto: "Ingresá tu nombre.", whatsapp: "Ingresá tu WhatsApp." },
+  4: { cityId: "Seleccioná el municipio.", nombreContacto: "Ingresá tu nombre.", whatsapp: "Ingresá tu WhatsApp." },
   6: { plan: "Seleccioná un plan para publicar." },
 };
 
@@ -103,42 +105,45 @@ const PublicarAccesorio = () => {
     if (!validateStep(6)) return;
     setErrors({}); setPublishError(""); setPublishing(true);
 
-    if (user?.id?.startsWith("mock-")) {
-      await new Promise((r) => setTimeout(r, 800));
+    try {
+      // 1. Create product (DRAFT)
+      const productRes = await api.post("/products", {
+        title:        formData.nombreAccesorio,
+        description:  formData.descripcionItem,
+        price:        parseFloat(String(formData.precio).replace(/,/g, "")) || 0,
+        currency:     "USD",
+        stock:        parseInt(formData.cantidad, 10) || 1,
+        condition:    formData.condicion === "Nuevo" ? "NEW" : "USED",
+        category:     formData.categoriaAccesorio,
+        cityId:       formData.cityId || undefined,
+        contactPhone: `+503 ${formData.whatsapp}`,
+        negotiable:   formData.precioNegociable === "Si",
+        acceptsTrade: formData.aceptaPermuta    === "Si",
+      });
+      const productId = productRes.data.id;
+
+      // 2. Upload images
+      const photos = (formData.fotos || []).filter((p) => p.file);
+      if (photos.length > 0) {
+        const fd = new FormData();
+        photos.forEach((photo, idx) => fd.append(`image_${idx}`, photo.file));
+        await api.upload(`/products/${productId}/images`, fd);
+      }
+
       localStorage.removeItem(DRAFT_KEY);
-      setPublishing(false);
+
+      // 3. Plans de pago → redirigir a WOMPI; gratuito → publicar directo
+      if (formData.plan !== "gratuito") {
+        redirectToWompiCheckout({ plan: formData.plan, itemId: productId, itemType: "accesorio" });
+        return;
+      }
+
+      await api.post(`/products/${productId}/publish`);
       navigate("/vendedor?tab=publicaciones&success=1");
-      return;
+    } catch {
+      setPublishError("Error al publicar. Intentá de nuevo.");
     }
-
-    const payload = {
-      seller_id:        user.id,
-      tipo_publicacion: "accesorio",
-      nombre_item:      formData.nombreAccesorio,
-      categoria_item:   formData.categoriaAccesorio,
-      condicion:        formData.condicion,
-      descripcion_item: formData.descripcionItem,
-      cantidad:         parseInt(formData.cantidad, 10) || 1,
-      precio:           parseFloat(String(formData.precio).replace(/,/g, "")) || null,
-      moneda:           "USD",
-      acepta_permuta:   formData.aceptaPermuta,
-      precio_negociable: formData.precioNegociable,
-      fotos:            (formData.fotos || []).filter((p) => p.url).map((p) => p.url),
-      departamento:     formData.provincia,
-      municipio:        formData.ciudad,
-      nombre_contacto:  formData.nombreContacto,
-      whatsapp:         formData.whatsapp,
-      email_contacto:   formData.email,
-      horario_contacto: formData.horarioContacto,
-      mostrar_whatsapp: formData.mostrarWhatsapp,
-      plan:             formData.plan,
-    };
-
-    const { error } = await supabase.from("listings").insert(payload);
     setPublishing(false);
-    if (error) { setPublishError("Error al publicar. Intentá de nuevo."); return; }
-    localStorage.removeItem(DRAFT_KEY);
-    navigate("/vendedor?tab=publicaciones&success=1");
   };
 
   const renderStep = () => {

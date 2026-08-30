@@ -44,3 +44,4 @@ a {
   min-height: 100vh;
   overflow-x: clip;
 }
+@keyframes spin { to { transform: rotate(360deg); } }

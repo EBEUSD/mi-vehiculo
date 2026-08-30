@@ -2,25 +2,9 @@ import { useRef, useState } from "react";
 import { AlertCircle, Check, CloudUpload, Info, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
 import styles from "./FotosStep.module.css";
 
-const MAX_PHOTOS    = 20;
-const MAX_SIZE_MB   = 10;
-const VALID_TYPES   = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const CLOUD_NAME    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-const uploadToCloudinary = async (file) => {
-  const fd = new FormData();
-  fd.append("file", file);
-  fd.append("upload_preset", UPLOAD_PRESET);
-  fd.append("folder", "vehiculos");
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: "POST", body: fd }
-  );
-  if (!res.ok) throw new Error("Error al subir la imagen");
-  const data = await res.json();
-  return data.secure_url;
-};
+const MAX_PHOTOS  = 20;
+const MAX_SIZE_MB = 10;
+const VALID_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const FotosStep = ({ formData, onChange }) => {
   const fileInputRef    = useRef(null);
@@ -72,36 +56,23 @@ const FotosStep = ({ formData, onChange }) => {
 
     if (!valid.length) return;
 
-    const placeholders = valid.map((file) => ({
-      id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
-      preview: URL.createObjectURL(file),
-      url: null,
-      name: file.name,
-      isMain: false,
-      uploading: true,
-      error: null,
+    const newPhotos = valid.map((file) => ({
+      id:       `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      file,                           // kept for backend upload at publish time
+      preview:  URL.createObjectURL(file),
+      name:     file.name,
+      isMain:   false,
+      uploading: false,
+      error:    null,
     }));
 
-    const next = [...photos, ...placeholders].map((p, i) => ({
+    const next = [...photos, ...newPhotos].map((p, i) => ({
       ...p,
       isMain: photos.length === 0 && i === 0 ? true : p.isMain,
     }));
 
     updatePhotos(next);
     if (!selectedPhoto) setSelectedPhoto(next[0].id);
-
-    // Upload to Cloudinary — patchPhoto uses ref so it reads latest state
-    await Promise.all(
-      valid.map(async (file, idx) => {
-        const id = placeholders[idx].id;
-        try {
-          const url = await uploadToCloudinary(file);
-          patchPhoto(id, { url, preview: url, uploading: false });
-        } catch {
-          patchPhoto(id, { uploading: false, error: "Error al subir" });
-        }
-      })
-    );
   };
 
   const handleAddFiles = async (e) => { await addPhotos(e.target.files); e.target.value = ""; };
@@ -113,32 +84,22 @@ const FotosStep = ({ formData, onChange }) => {
     await addPhotos(e.dataTransfer.files);
   };
 
-  const handleReplaceFile = async (e) => {
+  const handleReplaceFile = (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
     if (!replacePhotoId || !files.length) return;
-
     const { valid, err } = validateFiles([files[0]]);
     if (err) { setLocalError(err); return; }
-
     const file = valid[0];
     patchPhoto(replacePhotoId, {
+      file,
       preview: URL.createObjectURL(file),
-      url: null,
       name: file.name,
-      uploading: true,
+      uploading: false,
       error: null,
     });
     setLocalError("");
-    const capturedId = replacePhotoId;
     setReplacePhotoId(null);
-
-    try {
-      const url = await uploadToCloudinary(file);
-      patchPhoto(capturedId, { url, preview: url, uploading: false });
-    } catch {
-      patchPhoto(capturedId, { uploading: false, error: "Error al subir" });
-    }
   };
 
   const handleChooseMain = () => {
@@ -164,7 +125,7 @@ const FotosStep = ({ formData, onChange }) => {
   };
 
   const uploading = photos.some((p) => p.uploading);
-  const ready     = photos.filter((p) => p.url).length;
+  const ready     = photos.length;
   const mainPhoto = photos.find((p) => p.isMain);
 
   return (
@@ -195,19 +156,12 @@ const FotosStep = ({ formData, onChange }) => {
 
       {localError && <p className={styles.photoError}>{localError}</p>}
 
-      {uploading && (
-        <div className={styles.uploadingBanner}>
-          <Loader2 size={16} className={styles.spin} />
-          <span>Subiendo fotos a Cloudinary…</span>
-        </div>
-      )}
-
-      <div className={`${styles.photoRequirement} ${ready >= 4 ? styles.photoRequirementDone : ""}`}>
+      <div className={`${styles.photoRequirement} ${ready >= 1 ? styles.photoRequirementDone : ""}`}>
         <Check size={16} />
         <span>
-          {ready >= 4
-            ? "Ya tenés las fotos mínimas para publicar"
-            : `Subí al menos 4 fotos · ${ready}/4 listas`}
+          {ready >= 1
+            ? `${ready} foto${ready > 1 ? "s" : ""} lista${ready > 1 ? "s" : ""} · se suben al publicar`
+            : "Subí al menos 1 foto para continuar"}
         </span>
       </div>
 
@@ -279,7 +233,7 @@ const FotosStep = ({ formData, onChange }) => {
       <div className={styles.infoNotice}>
         <Info size={16} />
         <p>
-          Las fotos se suben a Cloudinary y se guardan de forma segura.
+          Las fotos se suben al publicar el aviso.
           {mainPhoto && " La foto principal será la primera imagen del aviso."}
         </p>
       </div>

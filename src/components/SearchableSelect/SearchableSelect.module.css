@@ -1,0 +1,219 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* ── Trigger button ── */
+.trigger {
+  width: 100%;
+  height: 54px;
+  border-radius: 12px;
+  border: 1.5px solid #cbd6e5;
+  background: #fff;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #18264d;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
+  outline: none;
+}
+
+.trigger:not(.triggerDisabled):hover {
+  border-color: #9ab0cb;
+  background: #fafcff;
+}
+
+.triggerOpen {
+  border-color: #1a6eff !important;
+  box-shadow: 0 0 0 4px rgba(26, 110, 255, 0.10);
+  background: #fff !important;
+}
+
+.triggerDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.triggerLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: #a0aec0;
+  font-weight: 500;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: #9aadbe;
+  transition: transform 0.2s ease, color 0.16s;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  color: #1a6eff;
+}
+
+/* ── Dropdown (rendered via portal, positioned fixed) ── */
+.dropdown {
+  background: #fff;
+  border: 1.5px solid #e2eaf5;
+  border-radius: 16px;
+  box-shadow:
+    0 4px 6px rgba(15, 23, 42, 0.04),
+    0 12px 40px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  min-width: 180px;
+  animation: dropIn 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dropUp {
+  animation: dropInUp 0.16s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+@keyframes dropInUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Search row ── */
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2f8;
+  background: #f8fafd;
+}
+
+.searchIcon {
+  color: #9aadbe;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #18264d;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+}
+
+.searchInput::placeholder {
+  color: #b4c3d3;
+}
+
+.clearSearch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: #e2eaf5;
+  color: #6b7a99;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s;
+  padding: 0;
+}
+
+.clearSearch:hover {
+  background: #d0dae8;
+}
+
+/* ── Options list ── */
+.list {
+  max-height: 256px;
+  overflow-y: auto;
+  padding: 4px 0;
+  overscroll-behavior: contain;
+}
+
+.list::-webkit-scrollbar       { width: 4px; }
+.list::-webkit-scrollbar-track { background: transparent; }
+.list::-webkit-scrollbar-thumb { background: #d0dae8; border-radius: 99px; }
+
+.option {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: #18264d;
+  cursor: pointer;
+  transition: background 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.option:hover {
+  background: #f0f5fc;
+}
+
+.optionSelected {
+  background: #eef4ff;
+  color: #1a6eff;
+  font-weight: 700;
+}
+
+.optionSelected:hover {
+  background: #e4edff;
+}
+
+.checkmark {
+  font-size: 12px;
+  color: #1a6eff;
+  flex-shrink: 0;
+}
+
+.noResults {
+  padding: 18px 16px;
+  font-size: 13px;
+  color: #9aadbe;
+  text-align: center;
+}
+
+/* ── Footer count ── */
+.footer {
+  padding: 6px 14px;
+  font-size: 11.5px;
+  color: #b4c3d3;
+  border-top: 1px solid #eef2f8;
+  background: #f8fafd;
+  text-align: right;
+  letter-spacing: 0.01em;
+}
+
+/* ── Compact variant (sidebar filters) ── */
+.compact .trigger {
+  height: 42px;
+  border-radius: 9px;
+  font-size: 13.5px;
+}

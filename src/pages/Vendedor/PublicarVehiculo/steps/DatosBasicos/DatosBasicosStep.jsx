@@ -1,87 +1,170 @@
-﻿import { Gauge, Info, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Gauge, Info, Sparkles, Loader } from "lucide-react";
+import { catalogCache } from "../../../../../lib/catalogCache";
+import { getBrandsForCategory } from "../../../../../lib/vehicleBrands";
+import SearchableSelect from "../../../../../components/SearchableSelect/SearchableSelect";
 import styles from "./DatosBasicosStep.module.css";
 
-const BRANDS = [
-  "Toyota", "Nissan", "Honda", "Hyundai", "Kia", "Suzuki", "Mitsubishi",
-  "Mazda", "Chevrolet", "Ford", "Volkswagen", "Jeep", "Dodge",
-  "Mercedes-Benz", "BMW", "Audi", "Subaru", "Isuzu",
-  "Fiat", "Renault", "Peugeot", "Otra",
-];
-
-const BRAND_MODELS = {
-  Toyota:    ["Corolla", "Hilux", "RAV4", "Land Cruiser", "Prado", "Yaris", "Camry", "Fortuner", "Hiace", "Tacoma", "4Runner", "Prius", "C-HR", "Tundra", "Sienna"],
-  Nissan:    ["Frontier", "X-Trail", "Kicks", "March", "Sentra", "Pathfinder", "Navara", "Versa", "Murano", "Qashqai", "Titan", "Armada"],
-  Honda:     ["CR-V", "Civic", "HR-V", "Pilot", "Fit", "Accord", "Odyssey", "Passport", "Ridgeline"],
-  Hyundai:   ["Tucson", "Santa Fe", "Accent", "Elantra", "Creta", "H-100", "Sonata", "Ioniq", "Kona", "Staria"],
-  Kia:       ["Sportage", "Sorento", "Rio", "Picanto", "Seltos", "Telluride", "Soul", "Stinger", "Carnival"],
-  Suzuki:    ["Grand Vitara", "Jimny", "Swift", "Vitara", "Carry", "Ertiga", "S-Cross", "Baleno"],
-  Mitsubishi:["Montero Sport", "L200", "Outlander", "ASX", "Eclipse Cross", "Galant", "Lancer", "Xpander"],
-  Mazda:     ["CX-5", "3", "CX-30", "CX-9", "6", "BT-50", "2", "MX-5", "CX-50"],
-  Chevrolet: ["Tracker", "D-MAX", "Silverado", "Colorado", "Tahoe", "Aveo", "Cruze", "Trax", "Equinox", "Suburban", "Express"],
-  Ford:      ["Ranger", "Explorer", "EcoSport", "F-150", "Escape", "Mustang", "Expedition", "Bronco", "Transit"],
-  Volkswagen:["Golf", "Jetta", "Tiguan", "Passat", "Polo", "T-Cross", "Amarok"],
-  Jeep:      ["Wrangler", "Grand Cherokee", "Compass", "Cherokee", "Gladiator", "Renegade"],
-  Dodge:     ["Ram 1500", "Durango", "Challenger", "Charger", "Journey"],
-  "Mercedes-Benz": ["Clase C", "Clase E", "Clase A", "GLC", "GLE", "GLA", "Sprinter", "Vito"],
-  BMW:       ["Serie 1", "Serie 3", "Serie 5", "Serie 7", "X1", "X3", "X5"],
-  Audi:      ["A3", "A4", "A6", "Q2", "Q3", "Q5", "Q7"],
-  Subaru:    ["Forester", "Outback", "Impreza", "Crosstrek", "Legacy", "Ascent"],
-  Isuzu:     ["D-Max", "MU-X", "Trooper", "Rodeo"],
-  Fiat:      ["Argo", "Cronos", "Toro", "Mobi", "Strada"],
-  Renault:   ["Duster", "Sandero", "Logan", "Kwid", "Oroch", "Koleos", "Stepway"],
-  Peugeot:   ["208", "2008", "3008", "308", "408", "5008"],
-};
-
 const DatosBasicosStep = ({ formData, onChange }) => {
-  const setValue = (name, value) => onChange({ target: { name, value } });
+  const [apiBrands, setApiBrands]       = useState([]);
+  const [models, setModels]             = useState([]);
+  const [loadingBrands, setLoadingBrands] = useState(true);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [slowWarning, setSlowWarning]     = useState(false);
 
-  const handleMarcaChange = (e) => {
-    onChange(e);
-    setValue("modelo", "");
+  const set = (name, value) => onChange({ target: { name, value } });
+
+  useEffect(() => {
+    setLoadingBrands(true);
+    const timer = setTimeout(() => setSlowWarning(true), 5000);
+    catalogCache.get("/catalog/brands")
+      .then((data) => setApiBrands(data || []))
+      .catch(() => {})
+      .finally(() => { setLoadingBrands(false); setSlowWarning(false); clearTimeout(timer); });
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Merged options: static list + API brands, deduped by name
+  const brandOptions = useMemo(() => {
+    const staticNames = getBrandsForCategory(formData.categoria);
+    const apiByName = {};
+    apiBrands.forEach((b) => { apiByName[b.name.toLowerCase()] = b; });
+
+    const merged = staticNames.map((name) => {
+      const api = apiByName[name.toLowerCase()];
+      return api
+        ? { value: String(api.id), label: api.name }
+        : { value: `__static__${name}`, label: name };
+    });
+
+    // Add API brands not in static list
+    apiBrands.forEach((b) => {
+      const alreadyIn = merged.some((o) => o.value === String(b.id));
+      if (!alreadyIn) merged.push({ value: String(b.id), label: b.name });
+    });
+
+    merged.sort((a, b) => a.label.localeCompare(b.label));
+    merged.push({ value: "OTRA", label: "✏️ Otra marca…" });
+    return merged;
+  }, [apiBrands, formData.categoria]);
+
+  // Model options
+  const modelOptions = useMemo(() => {
+    const opts = models.map((m) => ({ value: String(m.id), label: m.name }));
+    if (opts.length > 0) opts.push({ value: "OTRO", label: "✏️ Otro modelo…" });
+    return opts;
+  }, [models]);
+
+  const isCustomBrand = formData.marcaId === "OTRA" || String(formData.marcaId || "").startsWith("__static__");
+  const isCustomModel = formData.modeloId === "OTRO";
+
+  useEffect(() => {
+    const id = formData.marcaId;
+    if (!id || isCustomBrand) { setModels([]); return; }
+    setLoadingModels(true);
+    catalogCache.get(`/catalog/brands/${id}/models`)
+      .then((data) => setModels(data || []))
+      .catch(() => setModels([]))
+      .finally(() => setLoadingModels(false));
+  }, [formData.marcaId]);
+
+  const handleBrandChange = (val) => {
+    if (val === "OTRA") {
+      set("marcaId", "OTRA");
+      set("marca", "");
+    } else if (val.startsWith("__static__")) {
+      const name = val.replace("__static__", "");
+      set("marcaId", val);
+      set("marca", name);
+    } else {
+      const brand = apiBrands.find((b) => String(b.id) === val);
+      set("marcaId", val);
+      set("marca", brand?.name || "");
+    }
+    set("modeloId", "");
+    set("modelo", "");
   };
 
-  const modelSuggestions = BRAND_MODELS[formData.marca] || [];
+  const handleModelChange = (val) => {
+    if (val === "OTRO") {
+      set("modeloId", "OTRO");
+      set("modelo", "");
+      return;
+    }
+    const model = models.find((m) => String(m.id) === val);
+    set("modeloId", val);
+    set("modelo", model?.name || "");
+  };
 
   return (
     <>
       <div className={styles.formGrid}>
         <div className={styles.field}>
-          <label>Tipo de vehículo <span>*</span></label>
-          <select name="tipoVehiculo" value={formData.tipoVehiculo} onChange={onChange}>
-            <option value="">Seleccioná el tipo</option>
-            <option value="Auto">Auto</option>
-            <option value="Moto">Moto</option>
-            <option value="Camioneta">Camioneta</option>
-            <option value="Pickup">Pickup</option>
-            <option value="Camión">Camión</option>
-            <option value="Van / Minivan">Van / Minivan</option>
-          </select>
-        </div>
-
-        <div className={styles.field}>
           <label>Marca <span>*</span></label>
-          <select name="marca" value={formData.marca} onChange={handleMarcaChange}>
-            <option value="">Seleccioná la marca</option>
-            {BRANDS.map((b) => <option key={b} value={b}>{b}</option>)}
-          </select>
+          {loadingBrands ? (
+            <div style={{ height: 54, display: "flex", alignItems: "center", gap: 8, color: "#9aadbe", fontSize: 14 }}>
+              <Loader size={14} style={{ animation: "spin 1s linear infinite" }} />
+              Cargando marcas…
+            </div>
+          ) : (
+            <SearchableSelect
+              options={brandOptions}
+              value={formData.marcaId || ""}
+              onChange={handleBrandChange}
+              placeholder="Seleccioná la marca"
+            />
+          )}
+          {slowWarning && (
+            <p style={{ marginTop: 6, fontSize: 12, color: "#d97706", display: "flex", alignItems: "center", gap: 5 }}>
+              <Loader size={12} style={{ animation: "spin 1s linear infinite" }} />
+              El servidor está iniciando, puede tardar hasta 1 minuto la primera vez…
+            </p>
+          )}
+          {formData.marcaId === "OTRA" && (
+            <input
+              type="text"
+              style={{ marginTop: 8 }}
+              placeholder="Escribí el nombre de la marca"
+              value={formData.marca || ""}
+              onChange={(e) => set("marca", e.target.value)}
+            />
+          )}
         </div>
 
         <div className={styles.field}>
           <label>Modelo <span>*</span></label>
-          <input
-            type="text"
-            name="modelo"
-            value={formData.modelo}
-            onChange={onChange}
-            placeholder={formData.marca ? "Seleccioná o escribí el modelo" : "Primero elegí la marca"}
-            disabled={!formData.marca}
-            list="modelo-suggestions"
-            autoComplete="off"
-          />
-          {modelSuggestions.length > 0 && (
-            <datalist id="modelo-suggestions">
-              {modelSuggestions.map((m) => <option key={m} value={m} />)}
-            </datalist>
+          {isCustomBrand ? (
+            <input
+              type="text"
+              placeholder="Escribí el modelo"
+              value={formData.modelo || ""}
+              onChange={(e) => set("modelo", e.target.value)}
+            />
+          ) : (
+            <>
+              <SearchableSelect
+                options={modelOptions}
+                value={formData.modeloId || ""}
+                onChange={handleModelChange}
+                placeholder={
+                  !formData.marcaId
+                    ? "Primero elegí la marca"
+                    : loadingModels
+                      ? "Cargando modelos…"
+                      : "Seleccioná el modelo"
+                }
+                disabled={!formData.marcaId || loadingModels}
+              />
+              {isCustomModel && (
+                <input
+                  type="text"
+                  style={{ marginTop: 8 }}
+                  placeholder="Escribí el nombre del modelo"
+                  value={formData.modelo || ""}
+                  onChange={(e) => set("modelo", e.target.value)}
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -127,7 +210,7 @@ const DatosBasicosStep = ({ formData, onChange }) => {
             <button
               type="button"
               className={`${styles.conditionCard} ${formData.condicion === "Nuevo" ? styles.conditionActive : ""}`}
-              onClick={() => setValue("condicion", "Nuevo")}
+              onClick={() => set("condicion", "Nuevo")}
             >
               <span className={styles.conditionIcon}><Sparkles size={18} /></span>
               <span className={styles.conditionContent}>
@@ -138,7 +221,7 @@ const DatosBasicosStep = ({ formData, onChange }) => {
             <button
               type="button"
               className={`${styles.conditionCard} ${formData.condicion === "Usado" ? styles.conditionActive : ""}`}
-              onClick={() => setValue("condicion", "Usado")}
+              onClick={() => set("condicion", "Usado")}
             >
               <span className={styles.conditionIcon}><Gauge size={18} /></span>
               <span className={styles.conditionContent}>
@@ -159,7 +242,7 @@ const DatosBasicosStep = ({ formData, onChange }) => {
             value={formData.descripcion || ""}
             onChange={onChange}
             maxLength={800}
-            placeholder="Ej.: Único dueño, todos los service al día en concesionario oficial. Muy buen estado general, sin golpes ni rayones. Listo para transferir."
+            placeholder="Ej.: Único dueño, todos los service al día. Muy buen estado general, sin golpes ni rayones. Listo para transferir."
           />
           <p className={styles.charCount}>{(formData.descripcion || "").length}/800</p>
         </div>

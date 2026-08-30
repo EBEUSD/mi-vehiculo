@@ -196,10 +196,10 @@ const Login = () => {
         <Link to="/" className={styles.navLogo}>
           <img src={logoVehiculo} alt="Mi Vehículo" className={styles.navLogoImg} />
         </Link>
-        <a href="#" className={styles.helpLink}>
+        <Link to="/contacto" className={styles.helpLink}>
           <HelpCircle size={17} />
           ¿Necesitás ayuda?
-        </a>
+        </Link>
       </header>
 
       {/* ── Card ── */}
@@ -423,9 +423,9 @@ const Login = () => {
                       label={
                         <span>
                           Acepto los{" "}
-                          <a href="#" className={styles.termsLink}>términos y condiciones</a>
+                          <Link to="/terminos" className={styles.termsLink}>términos y condiciones</Link>
                           {" "}y la{" "}
-                          <a href="#" className={styles.termsLink}>política de privacidad</a>.
+                          <Link to="/privacidad" className={styles.termsLink}>política de privacidad</Link>.
                         </span>
                       }
                     />
@@ -467,9 +467,9 @@ const Login = () => {
       <footer className={styles.footer}>
         <span>© 2026 Mi Vehículo. Todos los derechos reservados.</span>
         <div className={styles.footerLinks}>
-          <a href="#">Términos y condiciones</a>
+          <Link to="/terminos">Términos y condiciones</Link>
           <span>·</span>
-          <a href="#">Política de privacidad</a>
+          <Link to="/privacidad">Política de privacidad</Link>
         </div>
       </footer>
 
@@ -583,11 +583,13 @@ function GoogleIcon() {
 }
 
 function translateError(msg) {
-  if (msg.includes("Invalid login credentials")) return "Email o contraseña incorrectos.";
-  if (msg.includes("Email not confirmed")) return "Confirmá tu email antes de iniciar sesión.";
-  if (msg.includes("User already registered")) return "Ya existe una cuenta con ese email.";
-  if (msg.includes("Password should be at least")) return "La contraseña debe tener al menos 8 caracteres.";
-  if (msg.includes("Unable to validate email address")) return "El email ingresado no es válido.";
+  const m = msg || "";
+  if (m.includes("Invalid login credentials") || m.includes("invalid_credentials")) return "Email o contraseña incorrectos.";
+  if (m.includes("Email not confirmed")) return "Confirmá tu email antes de iniciar sesión.";
+  if (m.includes("User already registered")) return "Ya existe una cuenta con ese email.";
+  if (m.includes("Password should be at least")) return "La contraseña debe tener al menos 8 caracteres.";
+  if (m.includes("Unable to validate email address")) return "El email ingresado no es válido.";
+  if (m.includes("422") || m.includes("Unprocessable")) return "Email o contraseña incorrectos.";
   return "Ocurrió un error. Intentá nuevamente.";
 }
 
