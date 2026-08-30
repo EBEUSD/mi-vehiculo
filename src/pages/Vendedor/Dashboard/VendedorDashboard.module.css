@@ -833,6 +833,19 @@
     align-items: flex-start;
     padding: 20px;
   }
+
+  .profileGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .profileFooter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .saveBtn {
+    justify-content: center;
+  }
 }
 
 /* =========================

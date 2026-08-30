@@ -139,6 +139,34 @@
   display: block;
 }
 
+@media (max-width: 640px) {
+  .main { padding: 1.25rem 0 3rem; }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .searchWrap { width: 100%; }
+  .searchInput { width: 100%; }
+
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 1px;
+    flex-wrap: nowrap;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab { white-space: nowrap; flex-shrink: 0; }
+}
+
+@media (max-width: 400px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .page          { --bg: #0f172a; }
   :root:not([data-theme="light"]) .container     { --card-bg: #1e293b; }

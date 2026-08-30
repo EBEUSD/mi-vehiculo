@@ -73,6 +73,20 @@
   .layout { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 520px) {
+  .main { padding: 1.25rem 0 3rem; }
+  .container { padding: 0 1rem; }
+
+  .productTitle { font-size: 1.1rem; }
+  .price { font-size: 1.5rem; }
+
+  .card { padding: 1rem; }
+  .priceCard { padding: 1.125rem; }
+  .sellerCard { padding: 1rem 1.125rem; }
+
+  .thumb { width: 60px; height: 44px; }
+}
+
 /* Gallery */
 .galleryCol { display: flex; flex-direction: column; gap: 1.25rem; }
 
