@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle, Pencil } from "lucide-react";
+import {
+  AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle, ChevronRight,
+} from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../lib/api";
 import { redirectToWompiCheckout } from "../../../lib/wompi";
@@ -11,23 +13,47 @@ import DatosAccesorioStep from "./steps/DatosAccesorio/DatosAccesorioStep";
 import PrecioSimpleStep from "../PublicarRepuesto/steps/PrecioSimple/PrecioSimpleStep";
 import FotosStep from "../PublicarVehiculo/steps/Fotos/FotosStep";
 import ContactoUbicacionStep from "../PublicarVehiculo/steps/ContactoUbicacion/ContactoUbicacionStep";
-import VistaPreviaSimpleStep from "../shared/VistaPreviaSimpleStep/VistaPreviaSimpleStep";
 import PlanPublicacionStep from "../PublicarVehiculo/steps/PlanPublicacion/PlanPublicacionStep";
+import EmailVerificationGate from "../../../components/EmailVerificationGate/EmailVerificationGate";
 import styles from "../PublicarVehiculo/PublicarVehiculo.module.css";
 
 const DRAFT_KEY = "miVehiculo_publicarAccesorioDraft";
 
+const CATEGORIAS_ACCESORIO_FALLBACK = [
+  "Audio y multimedia", "Rines y llantas", "Iluminación",
+  "Exterior", "Interior", "Seguridad", "Cuidado y limpieza",
+  "Tapicería", "Mecánica de rendimiento", "Otro",
+].map((label, i) => ({ id: i + 100, name: label }));
+
 const steps = [
-  { id: 1, label: "Datos",        title: "Datos del accesorio",  formTitle: "Datos del accesorio",  description: "Completá la información principal del accesorio.",             sideText: "Un título claro y buenas fotos son clave para vender más rápido.", helpTitle: "En este paso", helpItems: ["Nombre del accesorio","Categoría","Condición","Descripción","Cantidad"] },
-  { id: 2, label: "Precio",       title: "Precio",                formTitle: "Precio",                description: "Definí el precio y condiciones de venta.",                     sideText: "Podés indicar si el precio es negociable.", helpTitle: "En este paso", helpItems: ["Precio en USD","Negociable","Acepta permuta"] },
-  { id: 3, label: "Fotos",        title: "Fotos",                 formTitle: "Fotos del accesorio",   description: "Subí fotos del accesorio desde varios ángulos.",               sideText: "Las fotos de calidad generan más consultas.",   helpTitle: "En este paso", helpItems: ["Mínimo 1 foto","Máximo 20 fotos","Foto principal"] },
-  { id: 4, label: "Contacto",     title: "Contacto",              formTitle: "Contacto y ubicación",  description: "Cómo te contactarán los interesados.",                          sideText: "Podés elegir si mostrar tu WhatsApp.",         helpTitle: "En este paso", helpItems: ["Nombre","WhatsApp","Departamento","Municipio"] },
-  { id: 5, label: "Vista previa", title: "Vista previa",          formTitle: "Vista previa",          description: "Revisá tu publicación antes de confirmar.",                    sideText: "Así verán tu anuncio los compradores.",        helpTitle: "Revisá", helpItems: ["Foto principal","Precio","Descripción","Contacto"] },
-  { id: 6, label: "Plan",         title: "Plan de publicación",   formTitle: "Elegí tu plan",         description: "Seleccioná cómo querés destacar tu publicación.",              sideText: "El plan premium te da más visibilidad.",       helpTitle: "Incluye", helpItems: ["Duración","Cantidad de fotos","Posicionamiento"] },
+  {
+    id: 1, label: "Datos",
+    title: "Datos del accesorio", formTitle: "Datos del accesorio",
+    description: "Nombre, condición y descripción del accesorio.",
+    sideText: "Un título claro y descripción precisa atrae a los compradores correctos.",
+    helpTitle: "Consejos",
+    helpItems: ["Nombre claro y reconocible", "Sé honesto con la condición", "Descripción con marca y medidas", "Foto instalada genera más confianza"],
+  },
+  {
+    id: 2, label: "Fotos y precio",
+    title: "Fotos y precio", formTitle: "Fotos y precio",
+    description: "Subí fotos del accesorio y definí el precio de venta.",
+    sideText: "Fotos en buena luz y precio competitivo generan más consultas.",
+    helpTitle: "Consejos",
+    helpItems: ["Foto en fondo claro sin sombras", "Mostrá el accesorio instalado si podés", "Precio competitivo genera más interés"],
+  },
+  {
+    id: 3, label: "Publicar",
+    title: "Contacto y publicación", formTitle: "Contacto y publicación",
+    description: "Cómo te van a contactar y cómo querés publicar.",
+    sideText: "Elegí el plan que mejor se adapte a tu necesidad.",
+    helpTitle: "Planes",
+    helpItems: ["Gratuito: visible por 30 días", "Básico $5: más fotos + posicionamiento", "Premium $12: máxima visibilidad"],
+  },
 ];
 
 const initialForm = {
-  nombreAccesorio: "", categoriaAccesorio: "", condicion: "Nuevo",
+  nombreAccesorio: "", categoriaAccesorio: "", categoryId: null, condicion: "Nuevo",
   descripcionItem: "", cantidad: "1",
   precio: "", moneda: "USD", precioNegociable: "Si", aceptaPermuta: "No",
   fotos: [],
@@ -45,26 +71,55 @@ const getInitialDraft = () => {
   } catch { return initialForm; }
 };
 
+const getInitialStep = () => {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    const d = raw && JSON.parse(raw).formData;
+    if (d?.categoriaAccesorio && d?.categoryId) return 1;
+  } catch {}
+  return 0;
+};
+
 const validators = {
-  1: { nombreAccesorio: "Ingresá el nombre del accesorio.", categoriaAccesorio: "Seleccioná la categoría.", condicion: "Seleccioná la condición.", descripcionItem: "Escribí una descripción." },
+  1: {
+    nombreAccesorio: "Ingresá el nombre del accesorio.",
+    condicion:       "Seleccioná la condición.",
+    descripcionItem: "Escribí una descripción.",
+  },
   2: { precio: "Ingresá el precio." },
-  4: { cityId: "Seleccioná el municipio.", nombreContacto: "Ingresá tu nombre.", whatsapp: "Ingresá tu WhatsApp." },
-  6: { plan: "Seleccioná un plan para publicar." },
+  3: {
+    cityId:         "Seleccioná el municipio.",
+    nombreContacto: "Ingresá tu nombre.",
+    whatsapp:       "Ingresá tu WhatsApp.",
+    plan:           "Seleccioná un plan para publicar.",
+  },
 };
 
 const PublicarAccesorio = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData]     = useState(getInitialDraft);
-  const [errors, setErrors]         = useState({});
+  const [currentStep, setCurrentStep] = useState(getInitialStep);
+  const [formData, setFormData]       = useState(getInitialDraft);
+  const [errors, setErrors]           = useState({});
   const [draftMessage, setDraftMessage] = useState("");
-  const [publishing, setPublishing] = useState(false);
+  const [publishing, setPublishing]   = useState(false);
   const [publishError, setPublishError] = useState("");
+  const [categories, setCategories]   = useState(CATEGORIAS_ACCESORIO_FALLBACK);
 
-  const currentStepData = useMemo(() => steps.find((s) => s.id === currentStep) || steps[0], [currentStep]);
-  const isPreviewStep = currentStep === 5;
-  const isPlanStep    = currentStep === 6;
+  useEffect(() => {
+    api.get("/products?limit=100").then((r) => {
+      const seen = {};
+      (r.data || []).forEach((p) => { if (p.category) seen[p.category.id] = p.category; });
+      const cats = Object.values(seen);
+      if (cats.length) setCategories(cats);
+    }).catch(() => {});
+  }, []);
+
+  const currentStepData = useMemo(
+    () => steps.find((s) => s.id === currentStep) || steps[0],
+    [currentStep],
+  );
+  const isFinalStep   = currentStep === 3;
   const currentErrors = Object.values(errors);
 
   const handleChange = (e) => {
@@ -79,11 +134,16 @@ const PublicarAccesorio = () => {
       const v = formData[field];
       if (v === undefined || v === null || String(v).trim() === "") stepErrors[field] = msg;
     });
-    if (stepId === 3 && !(formData.fotos || []).length) {
+    if (stepId === 2 && !(formData.fotos || []).length) {
       stepErrors.fotos = "Subí al menos 1 foto para continuar.";
     }
     if (Object.keys(stepErrors).length) { setErrors(stepErrors); return false; }
     return true;
+  };
+
+  const handleSelectCategoria = (cat) => {
+    setFormData((p) => ({ ...p, categoriaAccesorio: cat.name, categoryId: cat.id }));
+    setCurrentStep(1);
   };
 
   const saveDraft = () => {
@@ -93,8 +153,18 @@ const PublicarAccesorio = () => {
     setTimeout(() => setDraftMessage(""), 2500);
   };
 
-  const goPrev = () => { setErrors({}); setCurrentStep((p) => Math.max(p - 1, 1)); };
-  const goNext = () => { if (!validateStep()) return; setErrors({}); setCurrentStep((p) => Math.min(p + 1, steps.length)); };
+  const goPrev = () => {
+    setErrors({});
+    if (currentStep <= 1) { setCurrentStep(0); return; }
+    setCurrentStep((p) => p - 1);
+  };
+
+  const goNext = () => {
+    if (!validateStep()) return;
+    setErrors({});
+    setCurrentStep((p) => Math.min(p + 1, steps.length));
+  };
+
   const goToStep = (id) => {
     if (id <= currentStep) { setErrors({}); setCurrentStep(id); return; }
     if (!validateStep()) return;
@@ -102,27 +172,23 @@ const PublicarAccesorio = () => {
   };
 
   const handlePublish = async () => {
-    if (!validateStep(6)) return;
+    if (!validateStep(3)) return;
     setErrors({}); setPublishError(""); setPublishing(true);
 
     try {
-      // 1. Create product (DRAFT)
-      const productRes = await api.post("/products", {
-        title:        formData.nombreAccesorio,
-        description:  formData.descripcionItem,
-        price:        parseFloat(String(formData.precio).replace(/,/g, "")) || 0,
-        currency:     "USD",
-        stock:        parseInt(formData.cantidad, 10) || 1,
-        condition:    formData.condicion === "Nuevo" ? "NEW" : "USED",
-        category:     formData.categoriaAccesorio,
-        cityId:       formData.cityId || undefined,
-        contactPhone: `+503 ${formData.whatsapp}`,
-        negotiable:   formData.precioNegociable === "Si",
-        acceptsTrade: formData.aceptaPermuta    === "Si",
-      });
+      const payload = {
+        title:       formData.nombreAccesorio,
+        description: formData.descripcionItem,
+        price:       parseFloat(String(formData.precio).replace(/,/g, "")) || 0,
+        currency:    "USD",
+        stock:       parseInt(formData.cantidad, 10) || 1,
+        condition:   formData.condicion === "Nuevo" ? "NEW" : "USED",
+        categoryId:  formData.categoryId,
+      };
+      console.log("[PublicarAccesorio] payload →", payload);
+      const productRes = await api.post("/products", payload);
       const productId = productRes.data.id;
 
-      // 2. Upload images
       const photos = (formData.fotos || []).filter((p) => p.file);
       if (photos.length > 0) {
         const fd = new FormData();
@@ -132,29 +198,93 @@ const PublicarAccesorio = () => {
 
       localStorage.removeItem(DRAFT_KEY);
 
-      // 3. Plans de pago → redirigir a WOMPI; gratuito → publicar directo
       if (formData.plan !== "gratuito") {
         redirectToWompiCheckout({ plan: formData.plan, itemId: productId, itemType: "accesorio" });
         return;
       }
 
-      await api.post(`/products/${productId}/publish`);
       navigate("/vendedor?tab=publicaciones&success=1");
-    } catch {
-      setPublishError("Error al publicar. Intentá de nuevo.");
+    } catch (err) {
+      console.error("[PublicarAccesorio] error →", err?.message, err?.body);
+      setPublishError(err?.message || "Error al publicar. Intentá de nuevo.");
     }
     setPublishing(false);
   };
 
   const renderStep = () => {
-    if (currentStep === 1) return <DatosAccesorioStep formData={formData} onChange={handleChange} />;
-    if (currentStep === 2) return <PrecioSimpleStep formData={formData} onChange={handleChange} />;
-    if (currentStep === 3) return <FotosStep formData={formData} onChange={handleChange} />;
-    if (currentStep === 4) return <ContactoUbicacionStep formData={formData} onChange={handleChange} />;
-    if (currentStep === 5) return <VistaPreviaSimpleStep formData={formData} tipo="accesorio" />;
-    return <PlanPublicacionStep formData={formData} onChange={handleChange} />;
+    if (currentStep === 1) return (
+      <DatosAccesorioStep formData={formData} onChange={handleChange} hideCategory />
+    );
+    if (currentStep === 2) return (
+      <>
+        <FotosStep formData={formData} onChange={handleChange} />
+        {(formData.fotos || []).length > 0 && (
+          <div className={styles.revealBlock}>
+            <div className={styles.sectionDivider} />
+            <h3 className={styles.sectionTitle}>Precio</h3>
+            <p className={styles.sectionSub}>Definí el precio y condiciones de venta.</p>
+            <PrecioSimpleStep formData={formData} onChange={handleChange} />
+          </div>
+        )}
+      </>
+    );
+    if (currentStep === 3) return (
+      <>
+        <ContactoUbicacionStep formData={formData} onChange={handleChange} />
+        {formData.nombreContacto?.trim() && formData.whatsapp?.trim() && (
+          <div className={styles.revealBlock}>
+            <div className={styles.sectionDivider} />
+            <h3 className={styles.sectionTitle}>Plan de publicación</h3>
+            <p className={styles.sectionSub}>Seleccioná cómo querés destacar tu publicación.</p>
+            <PlanPublicacionStep formData={formData} onChange={handleChange} />
+          </div>
+        )}
+      </>
+    );
+    return null;
   };
 
+  if (!user?.emailConfirmed) return <EmailVerificationGate>{null}</EmailVerificationGate>;
+
+  /* ── Paso 0: selección de categoría ── */
+  if (currentStep === 0) {
+    return (
+      <div className={styles.page}>
+        <PublicarTopbar onSaveDraft={null} draftSaved={false} />
+        <main className={styles.wrapper}>
+          <div className={styles.categoryScreen}>
+            <div className={styles.categoryHeader}>
+              <p className={styles.categoryStep}>Nuevo accesorio</p>
+              <h1 className={styles.categoryTitle}>¿Qué tipo de accesorio es?</h1>
+              <p className={styles.categorySub}>Elegí la categoría que mejor lo describe</p>
+            </div>
+            <div className={styles.categoryCard}>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={styles.categoryRow}
+                  onClick={() => handleSelectCategoria(cat)}
+                >
+                  <span className={styles.categoryLabel}>{cat.name}</span>
+                  <ChevronRight size={20} className={styles.categoryChevron} />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className={styles.categoryBack}
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft size={16} /> Volver
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* ── Pasos 1–3 ── */
   return (
     <div className={styles.page}>
       <PublicarTopbar
@@ -165,34 +295,40 @@ const PublicarAccesorio = () => {
 
       <main className={styles.wrapper}>
         <section className={styles.contentLayout}>
-          <PublicarSidebar currentStep={currentStep} totalSteps={steps.length} stepData={currentStepData} />
+          <PublicarSidebar
+            currentStep={currentStep}
+            totalSteps={steps.length}
+            stepData={currentStepData}
+          />
 
           <div className={styles.mainColumn}>
             <div className={styles.formCard}>
-              {!isPlanStep && !isPreviewStep && (
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardHeaderIcon}><Check size={22} /></div>
-                  <div>
-                    <h2>{currentStepData.formTitle}</h2>
-                    <p>{currentStepData.description}</p>
-                  </div>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardHeaderIcon}><Check size={22} /></div>
+                <div>
+                  <h2>{currentStepData.formTitle}</h2>
+                  <p>{currentStepData.description}</p>
                 </div>
-              )}
+              </div>
 
               {currentErrors.length > 0 && (
-                <div className={styles.errorSummary}>
-                  <div className={styles.errorSummaryIcon}><AlertCircle size={22} /></div>
-                  <div>
-                    <strong>Revisá estos campos antes de continuar</strong>
-                    <ul>{currentErrors.map((e) => <li key={e}>{e}</li>)}</ul>
+                <div className={styles.errorWrap}>
+                  <div className={styles.errorSummary}>
+                    <div className={styles.errorSummaryIcon}><AlertCircle size={22} /></div>
+                    <div>
+                      <strong>Revisá estos campos antes de continuar</strong>
+                      <ul>{currentErrors.map((e) => <li key={e}>{e}</li>)}</ul>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {renderStep()}
+              <div className={styles.formBody}>
+                {renderStep()}
+              </div>
             </div>
 
-            {isPlanStep ? (
+            {isFinalStep ? (
               <div className={styles.planActions}>
                 <button type="button" className={styles.secondaryBtn} onClick={goPrev} disabled={publishing}>
                   <ArrowLeft size={18} /> Anterior
@@ -204,7 +340,10 @@ const PublicarAccesorio = () => {
                   disabled={!formData.plan || publishing}
                 >
                   <CheckCircle size={18} />
-                  {publishing ? "Publicando…" : formData.plan === "gratuito" ? "Publicar gratis" : formData.plan === "basico" ? "Pagar y publicar — $5" : "Pagar y publicar — $12"}
+                  {publishing          ? "Publicando…"
+                    : formData.plan === "gratuito" ? "Publicar gratis"
+                    : formData.plan === "basico"   ? "Pagar y publicar — $5"
+                    :                                "Pagar y publicar — $12"}
                 </button>
                 {publishError && (
                   <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>
@@ -216,19 +355,11 @@ const PublicarAccesorio = () => {
                   Al confirmar, aceptás nuestras <span>Condiciones de uso</span> y <span>Política de privacidad</span>.
                 </p>
               </div>
-            ) : isPreviewStep ? (
-              <div className={styles.finalActions}>
-                <button type="button" className={styles.secondaryBtn} onClick={goPrev}><ArrowLeft size={18} /> Anterior</button>
-                <button type="button" className={styles.editBtn} onClick={() => setCurrentStep(1)}><Pencil size={18} /> Volver a editar</button>
-                <button type="button" className={styles.primaryBtn} onClick={goNext}>
-                  Confirmar y elegir plan <ArrowRight size={18} />
-                </button>
-              </div>
             ) : (
               <div className={styles.navActions}>
-                {currentStep > 1 && (
-                  <button type="button" className={styles.secondaryBtn} onClick={goPrev}><ArrowLeft size={18} /> Anterior</button>
-                )}
+                <button type="button" className={styles.secondaryBtn} onClick={goPrev}>
+                  <ArrowLeft size={18} /> Anterior
+                </button>
                 <button type="button" className={styles.primaryBtn} onClick={goNext}>
                   Siguiente <ArrowRight size={18} />
                 </button>

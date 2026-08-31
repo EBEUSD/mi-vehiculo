@@ -6,7 +6,7 @@
 }
 
 .bottomBar {
-  background: linear-gradient(135deg, #06162f, #081d3f);
+  background: linear-gradient(135deg, #0e3aaa 0%, #1a50c8 100%);
   color: #fff;
   padding-top: 1.35rem;
 }
@@ -26,10 +26,11 @@
 }
 
 .brandImg {
-  height: 28px;
+  height: 26px;
   width: auto;
   object-fit: contain;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 .links {
@@ -84,7 +85,7 @@
   .container { width: min(100% - 1rem, 1180px); }
   .bottomBar { padding-top: 0.9rem; }
   .bottomBar .container { gap: 0.85rem; padding-bottom: 0.9rem; }
-  .brandImg { height: 22px; }
+  .brandImg { height: 20px; }
   .links { gap: 0.55rem 0.85rem; justify-content: center; }
   .links a { font-size: 0.82rem; }
   .socials { gap: 0.55rem; }

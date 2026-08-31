@@ -21,7 +21,7 @@
 }
 
 .sideCardHead {
-  background: linear-gradient(135deg, #07153f 0%, #0f2660 55%, #1a3a7a 100%);
+  background: linear-gradient(135deg, #1148c0 0%, #2060d8 55%, #154cbf 100%);
   padding: 18px 20px 16px;
 }
 
@@ -66,7 +66,7 @@
 /* Progress bar */
 .progressWrap {
   padding: 14px 20px 0;
-  background: linear-gradient(135deg, #07153f 0%, #0f2660 55%, #1a3a7a 100%);
+  background: linear-gradient(135deg, #1148c0 0%, #2060d8 55%, #154cbf 100%);
 }
 
 .progressTrack {

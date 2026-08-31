@@ -294,93 +294,96 @@
 
 @media (max-width: 640px) {
   .wrapper {
-    padding: 1.1rem 1rem 1rem;
+    padding: 1.1rem 1rem 1.1rem;
     border-radius: 18px;
-    /* Sutil gradiente de fondo para distinguir la sección */
-    background: linear-gradient(160deg, #f8fbff 0%, #fff 60%);
-    border-color: #dce8f8;
   }
 
-  /* Header: título + toggle en columna */
+  /* ── Header: título arriba, toggle abajo ── */
   .header {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.7rem;
+    align-items: stretch;
+    gap: 0.6rem;
     margin-bottom: 0.85rem;
   }
 
-  .header h2 { font-size: 1.2rem; }
+  .headerLeft { gap: 0.45rem; }
+  .header h2  { font-size: 1.1rem; }
+  .headerIcon { font-size: 1.15rem; }
 
-  /* Toggle Usado/Nuevo/Todos más grande y táctil */
+  /* Toggle full-width debajo del título */
   .condRow {
     width: 100%;
-    border-radius: 12px;
-    padding: 4px;
+    padding: 3px;
+    border-radius: 10px;
   }
 
   .condBtn {
     flex: 1;
-    height: 36px;
-    font-size: 0.85rem;
-    border-radius: 9px;
+    height: 32px;
+    font-size: 0.83rem;
+    border-radius: 8px;
     text-align: center;
   }
 
-  /* Pills más cómodas */
+  /* ── Pills: fila horizontal con scroll, sin wrap ── */
   .typePills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin: 0 -1rem 0.85rem;
+    padding: 0.1rem 1rem;
     gap: 0.4rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.9rem;
   }
+  .typePills::-webkit-scrollbar { display: none; }
 
   .typePill {
-    height: 36px;
+    flex-shrink: 0;
+    height: 34px;
     font-size: 0.85rem;
-    padding: 0 1rem;
-    flex: 1;
-    text-align: center;
-    min-width: calc(50% - 0.2rem);
+    padding: 0 1.05rem;
+    min-width: unset;
   }
 
-  /* Grid de campos 2 columnas */
+  /* ── Grid de campos: 2 columnas limpias ── */
   .filtersRow {
     grid-template-columns: 1fr 1fr;
-    gap: 0.65rem;
-  }
-
-  /* Inputs y selects más altos = mejor toque */
-  .field input,
-  .field select {
-    height: 48px;
-    font-size: 0.95rem;
-    border-radius: 12px;
+    gap: 0.6rem 0.65rem;
   }
 
   .field label {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 800;
-    color: #475467;
+    color: #64748b;
+    letter-spacing: 0.02em;
   }
 
-  /* Año: apilar los dos selects verticalmente */
+  .field input,
+  .field select {
+    height: 46px;
+    font-size: 0.9rem;
+    border-radius: 11px;
+  }
+
+  /* ── Año: side-by-side pero táctil ── */
   .yearRange {
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    gap: 0.3rem;
   }
 
-  .yearRange select { width: 100%; }
+  .yearRange select { height: 46px; flex: 1; }
+  .yearDash { display: block; font-size: 0.75rem; line-height: 46px; }
 
-  .yearDash { display: none; }
+  /* ── Precio ── */
+  .inputPrefix { border-radius: 11px; }
+  .inputPrefix input { height: 46px; font-size: 0.9rem; }
 
-  /* Precio prefix */
-  .inputPrefix { border-radius: 12px; }
-  .inputPrefix input { height: 48px; font-size: 0.95rem; }
-
-  /* Botones al fondo, full width */
+  /* ── Botón full-width al fondo ── */
   .actions {
     grid-column: 1 / -1;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.45rem;
+    margin-top: 0.1rem;
   }
 
   .searchBtn {
@@ -388,23 +391,23 @@
     height: 50px;
     justify-content: center;
     font-size: 1rem;
-    border-radius: 14px;
-    box-shadow: 0 8px 22px rgba(21, 112, 255, 0.3);
+    border-radius: 13px;
+    letter-spacing: 0.01em;
   }
 
   .clearBtn {
     width: 100%;
-    height: 44px;
+    height: 42px;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: 11px;
   }
 }
 
-@media (max-width: 420px) {
-  /* A 420px los campos van a 1 columna */
-  .filtersRow {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 380px) {
+  .header { flex-wrap: wrap; }
+  .header h2 { white-space: normal; }
 
-  .typePill { min-width: 0; }
+  .filtersRow { grid-template-columns: 1fr; }
+
+  .yearRange { flex-direction: row; }
 }

@@ -27,7 +27,7 @@ const Footer = () => (
       </div>
 
       <div className={styles.copy}>
-        © 2026 Damian Ebeus. Casi todos los derechos reservados.
+        © 2026 Go technology . Todos los derechos reservados.
       </div>
     </section>
   </footer>

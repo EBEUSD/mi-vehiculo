@@ -6,17 +6,22 @@
 }
 
 .topBar {
-  background:
-    linear-gradient(90deg, rgba(2, 22, 65, 0.98), rgba(4, 36, 97, 0.98)),
-    #032860;
-  box-shadow: 0 10px 30px rgba(2, 18, 52, 0.18);
+  background: linear-gradient(135deg, #1148c0 0%, #2060d8 55%, #154cbf 100%);
+  box-shadow: 0 4px 20px rgba(8, 30, 100, 0.4);
+}
+
+/* Línea de acento dorado */
+.topBar::after {
+  content: "";
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #f5c842 20%, #f0b800 50%, #f5c842 80%, transparent 100%);
+  opacity: 0.65;
 }
 
 .subBar {
-  background:
-    linear-gradient(90deg, rgba(4, 31, 80, 0.98), rgba(3, 38, 95, 0.98)),
-    #052c6f;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #0e3aaa 0%, #1a50c8 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .container {
@@ -40,13 +45,18 @@
   color: #fff;
   text-decoration: none;
   min-width: 0;
+  transition: opacity 0.18s;
 }
 
+.logo:hover { opacity: 0.85; }
+
 .logoImg {
-  height: 36px;
+  height: 34px;
   width: auto;
   object-fit: contain;
   display: block;
+  /* Logo blanco — estándar sobre fondos de color */
+  filter: brightness(0) invert(1);
 }
 
 .search {
@@ -55,11 +65,13 @@
   align-items: center;
   width: 100%;
   min-width: 0;
-  background: #fff;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 13px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 24px rgba(3, 17, 47, 0.16);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 0 0 1px rgba(26, 110, 255, 0.12),
+    0 8px 28px rgba(2, 12, 40, 0.28);
 }
 
 .search input {
@@ -68,47 +80,71 @@
   border: none;
   outline: none;
   padding: 0 1rem;
-  font-size: 0.95rem;
-  color: #111827;
+  font-size: 0.93rem;
+  color: #0f1f45;
+  background: transparent;
 }
 
 .search input::placeholder {
-  color: #9ca3af;
+  color: #a8b4c8;
+  font-weight: 400;
 }
 
 .search button {
   height: 46px;
   border: none;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: linear-gradient(135deg, #1a6eff 0%, #0049d9 100%);
   color: #fff;
   font-weight: 800;
-  padding: 0 1.2rem;
+  font-size: 0.9rem;
+  padding: 0 1.35rem;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: filter 0.18s;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .search button:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.08);
 }
 
 .topNav {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 0.25rem;
   min-width: 0;
 }
 
 .topNav a {
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
 }
 
 .topNav a:hover {
-  color: #dbeafe;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* CTA "Ofrecé tu vehículo" como botón destacado */
+.topNav a[href="/vendedor"] {
+  background: linear-gradient(135deg, #1a6eff, #0049d9);
+  color: #fff !important;
+  font-weight: 700;
+  padding: 0.45rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(26, 110, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.topNav a[href="/vendedor"]:hover {
+  background: linear-gradient(135deg, #2575ff, #0055ee);
+  box-shadow: 0 6px 18px rgba(26, 110, 255, 0.45);
 }
 
 .cartBtn {
@@ -118,7 +154,15 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  transition: background 0.15s, color 0.15s;
+}
+
+.cartBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
 }
 
 .mobileMenuBtn {
@@ -157,15 +201,19 @@
   align-items: center;
   gap: 0.45rem;
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.91rem;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.88rem;
   font-weight: 500;
   white-space: nowrap;
+  padding: 0.35rem 0.65rem;
+  border-radius: 7px;
+  transition: background 0.15s, color 0.15s;
 }
 
 .subNav a:hover,
 .subNavRight a:hover {
-  color: #dbeafe;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .mobilePanel {
@@ -202,9 +250,7 @@
     align-self: center;
   }
 
-  .logoImg {
-    height: 34px;
-  }
+  .logoImg { height: 30px; }
 
   .mobileMenuBtn {
     grid-area: menu;

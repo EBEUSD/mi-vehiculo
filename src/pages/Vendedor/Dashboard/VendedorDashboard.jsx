@@ -39,6 +39,23 @@ const mapRowToPub = (row) => ({
   consultas: 0,
   favoritos: 0,
   image:     row.images?.find((i) => i.isPrimary)?.url || row.images?.[0]?.url || null,
+  type:      "vehicle",
+});
+
+const mapProductToPub = (row) => ({
+  id:        row.id,
+  slug:      row.slug || "",
+  titulo:    row.title || "—",
+  tipo:      row.category || "Producto",
+  año:       "",
+  km:        "",
+  precio:    `$${new Intl.NumberFormat("en-US").format(row.price || 0)}`,
+  status:    STATUS_LABEL[row.status] || "activo",
+  vistas:    row.views || 0,
+  consultas: 0,
+  favoritos: 0,
+  image:     row.images?.find((i) => i.isPrimary)?.url || row.images?.[0]?.url || null,
+  type:      "product",
 });
 
 const relTime = (iso) => {
@@ -161,7 +178,12 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
             {meta.label}
           </span>
         </div>
-        <span className={styles.pubMeta}>{pub.año} · {pub.km} km · {pub.precio}</span>
+        <span className={styles.pubMeta}>
+          {pub.type === "product"
+            ? `${pub.tipo || "Producto"} · ${pub.precio}`
+            : `${pub.año} · ${pub.km} km · ${pub.precio}`
+          }
+        </span>
         <div className={styles.pubStats}>
           <span><Eye size={13} /> {pub.vistas}</span>
           <span><MessageCircle size={13} /> {pub.consultas}</span>
@@ -172,7 +194,7 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
         <div className={styles.pubActions}>
           {pub.slug && (
             <Link
-              to={`/vehiculo/${pub.slug}`}
+              to={pub.type === "product" ? `/producto/${pub.slug}` : `/vehiculo/${pub.slug}`}
               target="_blank"
               rel="noreferrer"
               className={styles.iconBtn}
@@ -952,8 +974,17 @@ const VendedorDashboard = () => {
     const fetchPubs = async () => {
       setLoadingPubs(true);
       try {
-        const res = await api.get("/profile/vehicles");
-        setPubs((res.data || []).map(mapRowToPub));
+        const [vehiclesRes, productsRes] = await Promise.allSettled([
+          api.get("/profile/vehicles"),
+          api.get("/profile/products"),
+        ]);
+        const vehicles = vehiclesRes.status === "fulfilled"
+          ? (vehiclesRes.value.data || []).map(mapRowToPub)
+          : [];
+        const products = productsRes.status === "fulfilled"
+          ? (productsRes.value.data || []).map(mapProductToPub)
+          : [];
+        setPubs([...vehicles, ...products]);
       } catch {
         setPubs([]);
       }
@@ -975,26 +1006,36 @@ const VendedorDashboard = () => {
 
   const handleToggle = useCallback(async (pub) => {
     const newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
+    const endpoint  = pub.type === "product"
+      ? `/products/${pub.id}/status`
+      : `/vehicles/${pub.id}/status`;
     try {
-      await api.patch(`/vehicles/${pub.id}/status`, { status: newStatus });
+      await api.patch(endpoint, { status: newStatus });
       setPubs((prev) =>
         prev.map((p) =>
           p.id === pub.id ? { ...p, status: STATUS_LABEL[newStatus] || "activo" } : p
         )
       );
     } catch {
-      // silently fail — vehicle card stays as-is
+      // silently fail
     }
   }, []);
 
   const handleEdit = useCallback((pub) => {
-    navigate(`/editar/vehiculo/${pub.slug || pub.id}`);
+    if (pub.type === "product") {
+      navigate(`/editar/producto/${pub.id}`);
+    } else {
+      navigate(`/editar/vehiculo/${pub.slug || pub.id}`);
+    }
   }, [navigate]);
 
   const handleDelete = useCallback(async (pub) => {
     if (!window.confirm(`¿Eliminar "${pub.titulo}"? Esta acción no se puede deshacer.`)) return;
+    const endpoint = pub.type === "product"
+      ? `/products/${pub.id}/status`
+      : `/vehicles/${pub.id}/status`;
     try {
-      await api.patch(`/vehicles/${pub.id}/status`, { status: "DELETED" });
+      await api.patch(endpoint, { status: "DELETED" });
       setPubs((prev) => prev.filter((p) => p.id !== pub.id));
     } catch {
       // silently fail

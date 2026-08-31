@@ -8,11 +8,14 @@ import { useAuth } from "../../context/AuthContext";
 import styles from "./PagoResultado.module.css";
 
 const STATUS = {
-  loading:  { icon: Loader2,       color: "#2563eb", spin: true,  title: "Verificando pago…",               sub: "Estamos confirmando tu transacción con WOMPI." },
-  success:  { icon: CheckCircle,   color: "#059669", spin: false, title: "¡Pago exitoso!",                   sub: "Tu publicación quedó activa. Te redirigimos al panel en unos segundos." },
-  declined: { icon: XCircle,       color: "#dc2626", spin: false, title: "Pago rechazado",                   sub: "La transacción no fue aprobada. Podés intentar de nuevo." },
-  error:    { icon: AlertTriangle,  color: "#d97706", spin: false, title: "Algo salió mal",                  sub: "No pudimos verificar el pago. Contactate con nosotros si el monto fue debitado." },
-  noref:    { icon: AlertTriangle,  color: "#d97706", spin: false, title: "Referencia inválida",             sub: "No encontramos información de pago. Si ya pagaste, contactate con soporte." },
+  loading:    { icon: Loader2,       color: "#2563eb", spin: true,  title: "Verificando pago…",               sub: "Estamos confirmando tu transacción con WOMPI." },
+  success:    { icon: CheckCircle,   color: "#059669", spin: false, title: "¡Pago exitoso!",                   sub: "Tu publicación quedó activa. Te redirigimos al panel en unos segundos." },
+  declined:   { icon: XCircle,       color: "#dc2626", spin: false, title: "Pago rechazado",                   sub: "La transacción no fue aprobada. Podés intentar de nuevo." },
+  notapproved:{ icon: XCircle,       color: "#dc2626", spin: false, title: "Pago no confirmado",               sub: "El pago fue procesado pero no pudo confirmarse con Wompi. Si se debitó el monto, contactate con soporte." },
+  wrongitem:  { icon: XCircle,       color: "#dc2626", spin: false, title: "Referencia incorrecta",            sub: "El pago corresponde a otra publicación y no puede usarse para esta. Contactate con soporte." },
+  planinvalid:{ icon: AlertTriangle,  color: "#d97706", spin: false, title: "Plan inválido",                   sub: "Hubo un problema con el plan seleccionado. Volvé atrás e intentá de nuevo." },
+  error:      { icon: AlertTriangle,  color: "#d97706", spin: false, title: "Algo salió mal",                  sub: "No pudimos verificar el pago. Contactate con nosotros si el monto fue debitado." },
+  noref:      { icon: AlertTriangle,  color: "#d97706", spin: false, title: "Referencia inválida",             sub: "No encontramos información de pago. Si ya pagaste, contactate con soporte." },
 };
 
 const PagoResultado = () => {
@@ -62,7 +65,20 @@ const PagoResultado = () => {
           try {
             await api.post(endpoint, publishBody);
           } catch (pubErr) {
-            if (pubErr?.status !== 409) throw pubErr;
+            if (pubErr?.status === 409) {
+              // Webhook ya publicó primero — tratar como éxito
+            } else if (pubErr?.status === 402) {
+              setStatus("notapproved");
+              return;
+            } else if (pubErr?.status === 403) {
+              setStatus("wrongitem");
+              return;
+            } else if (pubErr?.status === 422) {
+              setStatus("planinvalid");
+              return;
+            } else {
+              throw pubErr;
+            }
           }
         }
 
@@ -100,7 +116,7 @@ const PagoResultado = () => {
             </div>
           )}
 
-          {(status === "declined" || status === "error" || status === "noref") && (
+          {(status === "declined" || status === "error" || status === "noref" || status === "notapproved" || status === "wrongitem" || status === "planinvalid") && (
             <div className={styles.actions}>
               <button
                 className={styles.retryBtn}

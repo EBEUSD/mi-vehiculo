@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
-  Eye, EyeOff, ArrowRight, Mail, Lock, Phone, User,
+  Eye, EyeOff, ArrowRight, Mail, Lock, Phone, User, CreditCard,
   Shield, FileText, MessageSquare, BarChart2, Users, HelpCircle, X, CheckCircle2,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 import styles from "./Login.module.css";
 import logoVehiculo from "../../assets/logo-vehiculo.png";
 
@@ -60,6 +62,7 @@ const Login = () => {
   /* ── Register state ── */
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
+  const [dui, setDui] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -73,6 +76,9 @@ const Login = () => {
   const [generalError, setGeneralError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");  // email awaiting confirmation
+  const [resending, setResending] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
 
   /* ── Forgot password modal ── */
   const [showForgot, setShowForgot] = useState(false);
@@ -87,8 +93,13 @@ const Login = () => {
   /* ── Auto-redirect if already logged in ── */
   useEffect(() => {
     if (!authLoading && user) {
-      const dest = user.id === "mock-admin-001" ? "/admin" : "/vendedor";
-      navigate(dest, { replace: true });
+      if (sessionStorage.getItem("mv_just_registered")) {
+        sessionStorage.removeItem("mv_just_registered");
+        navigate("/", { replace: true });
+      } else {
+        const dest = user.id === "mock-admin-001" ? "/admin" : "/vendedor";
+        navigate(dest, { replace: true });
+      }
     }
   }, [authLoading, user, navigate]);
 
@@ -118,12 +129,13 @@ const Login = () => {
     if (Object.keys(errs).length) { setFieldErrors(errs); return; }
 
     setLoading(true);
+    const justRegistered = !!sessionStorage.getItem("mv_just_registered");
     try {
       const { error: err } = await signIn(email, password);
       if (err) throw err;
       /* redirect handled by useEffect */
     } catch (err) {
-      setGeneralError(translateError(err.message));
+      setGeneralError(translateError(err.message, justRegistered));
     } finally {
       setLoading(false);
     }
@@ -136,6 +148,8 @@ const Login = () => {
     const errs = {};
     if (!nombre.trim()) errs.nombre = "Ingresá tu nombre.";
     if (!apellido.trim()) errs.apellido = "Ingresá tu apellido.";
+    if (!dui.trim()) errs.dui = "Ingresá tu DUI.";
+    else if (!/^\d{8}-\d$/.test(dui.trim())) errs.dui = "Formato inválido. Ejemplo: 01234567-8";
     if (!regEmail) errs.regEmail = "Ingresá tu email.";
     if (!regPassword) errs.regPassword = "Ingresá una contraseña.";
     else if (regPassword.length < 8) errs.regPassword = "Mínimo 8 caracteres.";
@@ -146,14 +160,24 @@ const Login = () => {
 
     setLoading(true);
     try {
-      const { error: err } = await signUp(regEmail, regPassword, {
+      const { data, error: err } = await signUp(regEmail, regPassword, {
         full_name: `${nombre.trim()} ${apellido.trim()}`,
         phone: telefono.trim(),
+        dui:   dui.trim(),
       });
       if (err) throw err;
-      setInfo("¡Cuenta creada! Revisá tu email para confirmar el registro.");
-      switchView("login");
-      setEmail(regEmail);
+
+      sessionStorage.setItem("mv_just_registered", "1");
+
+      // Supabase with email confirmation enabled: data.session is null
+      // The user must confirm their email before they can log in
+      if (!data?.session) {
+        setPendingEmail(regEmail);
+        return;
+      }
+
+      // Email confirmation disabled: Supabase returned a session → auto-login via onAuthStateChange
+      setInfo("¡Cuenta creada! Iniciando sesión…");
     } catch (err) {
       setGeneralError(translateError(err.message));
     } finally {
@@ -188,6 +212,129 @@ const Login = () => {
   const isLogin = view === "login";
   const brand = BRAND[view];
   const strength = getStrength(regPassword);
+
+  const handleResend = async () => {
+    if (resending || resendSent) return;
+    setResending(true);
+    try {
+      await supabase.auth.resend({ type: "signup", email: pendingEmail });
+      setResendSent(true);
+    } catch {}
+    setResending(false);
+  };
+
+  /* ── Email confirmation pending screen ── */
+  if (pendingEmail) {
+    return (
+      <div className={styles.page}>
+        <header className={styles.topNav}>
+          <Link to="/" className={styles.navLogo}>
+            <img src={logoVehiculo} alt="Mi Vehículo" className={styles.navLogoImg} />
+          </Link>
+        </header>
+
+        <div className={styles.cardWrap}>
+          <div className={`${styles.card} ${styles.confirmCard}`}>
+            <main className={styles.confirmPanel}>
+              <div className={styles.confirmInner}>
+
+                {/* Icon */}
+                <div className={styles.confirmIconWrap}>
+                  <Mail size={36} strokeWidth={1.6} />
+                </div>
+
+                {/* Heading */}
+                <h2 className={styles.confirmTitle}>Revisá tu email</h2>
+                <p className={styles.confirmSub}>
+                  Te enviamos un enlace de activación a:
+                </p>
+
+                {/* Email badge */}
+                <div className={styles.confirmEmailBadge}>
+                  <Mail size={14} />
+                  {pendingEmail}
+                </div>
+
+                {/* Steps */}
+                <div className={styles.confirmSteps}>
+                  {[
+                    { n: "1", title: "Abrí tu bandeja de entrada", sub: "Buscá un email de Mi Vehículo" },
+                    { n: "2", title: "Hacé clic en el enlace", sub: "Confirmá tu cuenta con un solo clic" },
+                    { n: "3", title: "Iniciá sesión", sub: "Listo, ya podés publicar tu vehículo" },
+                  ].map((s) => (
+                    <div key={s.n} className={styles.confirmStep}>
+                      <div className={styles.confirmStepNum}>{s.n}</div>
+                      <div>
+                        <strong>{s.title}</strong>
+                        <p>{s.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Primary CTA */}
+                <button
+                  type="button"
+                  className={styles.submitBtn}
+                  style={{ width: "100%" }}
+                  onClick={() => {
+                    setPendingEmail("");
+                    setResendSent(false);
+                    switchView("login");
+                    setEmail(pendingEmail);
+                  }}
+                >
+                  Ya confirmé, iniciar sesión <ArrowRight size={18} />
+                </button>
+
+                {/* Secondary actions */}
+                <div className={styles.confirmActions}>
+                  {resendSent ? (
+                    <span className={styles.resendSentMsg}>
+                      <CheckCircle size={14} />
+                      Email reenviado. Revisá tu bandeja.
+                    </span>
+                  ) : (
+                    <p className={styles.resendRow}>
+                      ¿No llegó el email?{" "}
+                      <button
+                        type="button"
+                        className={styles.resendBtn}
+                        onClick={handleResend}
+                        disabled={resending}
+                      >
+                        {resending ? "Enviando…" : "Reenviar"}
+                      </button>
+                    </p>
+                  )}
+                  <p className={styles.resendRow}>
+                    <button
+                      type="button"
+                      className={styles.resendBtn}
+                      style={{ color: "#8a96b0" }}
+                      onClick={() => { setPendingEmail(""); setResendSent(false); switchView("register"); }}
+                    >
+                      Usar otro email
+                    </button>
+                  </p>
+                </div>
+
+              </div>
+            </main>
+          </div>
+        </div>
+
+        <footer className={styles.footer}>
+          <span>© 2026 Mi Vehículo. Todos los derechos reservados.</span>
+          <div className={styles.footerLinks}>
+            <Link to="/terminos">Términos y condiciones</Link>
+            <span>·</span>
+            <Link to="/privacidad">Política de privacidad</Link>
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -342,6 +489,27 @@ const Login = () => {
                     </Field>
                   </div>
 
+                  <Field label="DUI" error={fieldErrors.dui}>
+                    <div className={styles.inputWrap}>
+                      <CreditCard size={16} className={styles.inputIcon} />
+                      <input
+                        type="text"
+                        className={`${styles.input} ${fieldErrors.dui ? styles.inputError : ""}`}
+                        value={dui}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9-]/g, "");
+                          if (v.length === 8 && !v.includes("-")) v = v + "-";
+                          if (v.length > 10) v = v.slice(0, 10);
+                          setDui(v);
+                          clearField("dui");
+                        }}
+                        placeholder="01234567-8"
+                        autoComplete="off"
+                        maxLength={10}
+                      />
+                    </div>
+                  </Field>
+
                   <Field label="Email" error={fieldErrors.regEmail}>
                     <div className={styles.inputWrap}>
                       <Mail size={16} className={styles.inputIcon} />
@@ -435,13 +603,6 @@ const Login = () => {
                   <SubmitBtn loading={loading}>Crear cuenta</SubmitBtn>
                 </form>
               )}
-
-              <div className={styles.divider}><span>o continuá con</span></div>
-
-              <button className={styles.googleBtn} type="button">
-                <GoogleIcon />
-                Continuar con Google
-              </button>
 
               <p className={styles.switchRow}>
                 {isLogin ? (
@@ -571,26 +732,24 @@ function SubmitBtn({ loading, children }) {
   );
 }
 
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-    </svg>
-  );
-}
-
-function translateError(msg) {
+function translateError(msg, justRegistered = false) {
   const m = msg || "";
-  if (m.includes("Invalid login credentials") || m.includes("invalid_credentials")) return "Email o contraseña incorrectos.";
-  if (m.includes("Email not confirmed")) return "Confirmá tu email antes de iniciar sesión.";
-  if (m.includes("User already registered")) return "Ya existe una cuenta con ese email.";
-  if (m.includes("Password should be at least")) return "La contraseña debe tener al menos 8 caracteres.";
-  if (m.includes("Unable to validate email address")) return "El email ingresado no es válido.";
+  if (m.includes("Email not confirmed")) return "Confirmá tu email antes de iniciar sesión. Revisá tu bandeja de entrada.";
+  // Supabase (newer versions) returns "Invalid login credentials" for unconfirmed emails too
+  if (m.includes("Invalid login credentials") || m.includes("invalid_credentials")) {
+    return justRegistered
+      ? "Necesitás confirmar tu email antes de iniciar sesión. Revisá tu bandeja de entrada (y la carpeta spam)."
+      : "Email o contraseña incorrectos.";
+  }
+  if (m.includes("User already registered") || m.includes("already exists") || m.includes("already registered") || m.includes("email_exists") || m.includes("duplicate")) return "Ya existe una cuenta con ese email.";
+  if (m.includes("Password should be at least") || m.includes("weak_password") || (m.includes("password") && m.includes("6"))) return "La contraseña debe tener al menos 6 caracteres.";
+  if (m.includes("Unable to validate email address") || m.includes("invalid email") || (m.includes("email") && m.includes("valid"))) return "El email ingresado no es válido.";
+  if (m.includes("signup_disabled")) return "El registro está deshabilitado temporalmente.";
+  if (m.includes("email_address_not_authorized")) return "Este email no está autorizado para registrarse.";
+  if (m.includes("over_email_send_rate_limit")) return "Demasiados intentos. Esperá unos minutos.";
   if (m.includes("422") || m.includes("Unprocessable")) return "Email o contraseña incorrectos.";
-  return "Ocurrió un error. Intentá nuevamente.";
+  if (m && m !== "HTTP 400" && m !== "Bad Request" && m.length < 300) return m;
+  return "Ocurrió un error al procesar tu solicitud. Intentá nuevamente.";
 }
 
 export default Login;

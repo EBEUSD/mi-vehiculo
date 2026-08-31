@@ -17,6 +17,7 @@ import PublicarVehiculo from "./pages/Vendedor/PublicarVehiculo/PublicarVehiculo
 import PublicarRepuesto from "./pages/Vendedor/PublicarRepuesto/PublicarRepuesto";
 import PublicarAccesorio from "./pages/Vendedor/PublicarAccesorio/PublicarAccesorio";
 import EditarVehiculo from "./pages/Vendedor/EditarVehiculo/EditarVehiculo";
+import EditarProducto from "./pages/Vendedor/EditarProducto/EditarProducto";
 import Login from "./pages/Login/Login";
 import ComoFunciona from "./pages/ComoFunciona/ComoFunciona";
 import Contacto from "./pages/Contacto/Contacto";
@@ -106,6 +107,14 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <EditarVehiculo />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/editar/producto/:id"
+          element={
+            <PrivateRoute>
+              <EditarProducto />
             </PrivateRoute>
           }
         />

@@ -79,6 +79,43 @@
   padding: 20px 36px 0;
 }
 
+/* ── Form body (pads step content inside the card) ── */
+.formBody {
+  padding: 24px 36px 32px;
+}
+
+/* ── Progressive reveal animation ───────────── */
+@keyframes revealSlide {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.revealBlock {
+  animation: revealSlide 0.3s ease forwards;
+}
+
+/* ── Section dividers inside combined steps ──── */
+.sectionDivider {
+  height: 1px;
+  background: #e8eef6;
+  margin: 32px 0 28px;
+}
+
+.sectionTitle {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+}
+
+.sectionSub {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 400;
+}
+
 /* ── Error summary ────────────────────────── */
 .errorSummary {
   margin-bottom: 24px;
@@ -147,6 +184,20 @@
   grid-template-columns: auto auto auto 1fr;
   gap: 12px;
   align-items: center;
+}
+
+/* ── Nav actions (Anterior / Siguiente) ──────── */
+.navActions {
+  margin-top: 20px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f4;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(7, 21, 63, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 /* ── Plan actions ─────────────────────────── */

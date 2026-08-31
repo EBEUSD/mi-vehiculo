@@ -1,10 +1,17 @@
 .topbar {
-  background: linear-gradient(90deg, #041640 0%, #071f54 55%, #041640 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px rgba(4, 22, 58, 0.28);
+  background: linear-gradient(135deg, #1148c0 0%, #2060d8 55%, #154cbf 100%);
+  box-shadow: 0 4px 20px rgba(8, 30, 100, 0.4);
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.topbar::after {
+  content: "";
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #f5c842 20%, #f0b800 50%, #f5c842 80%, transparent 100%);
+  opacity: 0.65;
 }
 
 .inner {
@@ -29,6 +36,7 @@
   width: auto;
   object-fit: contain;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 .divider {

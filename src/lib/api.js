@@ -25,7 +25,8 @@ const authHeaders = () => {
 const handle = async (res) => {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg = json.message || json.error || json.msg || json.detail || `HTTP ${res.status}`;
+    const raw = json.message || json.error || json.msg || json.detail || `HTTP ${res.status}`;
+    const msg = Array.isArray(raw) ? raw.join(" / ") : raw;
     const err = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
     err.status = res.status;
     err.body   = json;

@@ -727,6 +727,186 @@
 }
 
 /* =========================================
+   EMAIL CONFIRMATION SCREEN
+========================================= */
+.confirmCard {
+  grid-template-columns: 1fr !important;
+  max-width: 480px !important;
+}
+
+.confirmPanel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 52px 48px 44px;
+}
+
+.confirmInner {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Animated icon */
+@keyframes mailPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(21, 112, 255, 0.22); }
+  50%       { box-shadow: 0 0 0 14px rgba(21, 112, 255, 0); }
+}
+
+.confirmIconWrap {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1570ff 0%, #3b8fff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 28px;
+  flex-shrink: 0;
+  animation: mailPulse 2.8s ease-in-out infinite;
+}
+
+.confirmTitle {
+  font-size: 26px;
+  font-weight: 700;
+  color: #07153f;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.confirmSub {
+  font-size: 14.5px;
+  color: #6b7a99;
+  margin: 0 0 22px;
+  line-height: 1.6;
+}
+
+/* Email badge */
+.confirmEmailBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f5ff;
+  border: 1.5px solid #d0e0ff;
+  border-radius: 99px;
+  padding: 8px 18px 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1148c0;
+  margin-bottom: 32px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confirmEmailBadge svg {
+  flex-shrink: 0;
+  color: #4da3ff;
+}
+
+/* Steps */
+.confirmSteps {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 32px;
+  background: #f8faff;
+  border: 1px solid #e8edf7;
+  border-radius: 16px;
+  padding: 6px 4px;
+  text-align: left;
+}
+
+.confirmStep {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.confirmStepNum {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e8edf7;
+  color: #5a6a8a;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirmStep strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #07153f;
+  margin-bottom: 1px;
+}
+
+.confirmStep p {
+  font-size: 12.5px;
+  color: #8a96b0;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Resend / secondary actions */
+.confirmActions {
+  width: 100%;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.resendRow {
+  font-size: 13px;
+  color: #6b7a99;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.resendBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1570ff;
+  padding: 0;
+  transition: opacity 0.15s;
+  font-family: inherit;
+}
+
+.resendBtn:hover { opacity: 0.7; }
+.resendBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.resendSentMsg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #16a34a;
+  font-weight: 500;
+}
+
+/* =========================================
    FOOTER
 ========================================= */
 .footer {

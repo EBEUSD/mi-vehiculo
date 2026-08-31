@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../lib/api";
@@ -13,6 +13,7 @@ import PublicarSidebar from "./components/PublicarSidebar";
 import DatosVehiculoStep from "./steps/DatosVehiculo/DatosVehiculoStep";
 import CaracteristicasCompletasStep from "./steps/CaracteristicasCompletas/CaracteristicasCompletasStep";
 import PrecioContactoStep from "./steps/PrecioContacto/PrecioContactoStep";
+import EmailVerificationGate from "../../../components/EmailVerificationGate/EmailVerificationGate";
 import styles from "./PublicarVehiculo.module.css";
 
 const CATEGORIAS = [
@@ -129,6 +130,7 @@ const PublicarVehiculo = () => {
   const [draftMessage, setDraftMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
+  const errorRef = useRef(null);
 
   const currentStepData = useMemo(
     () => steps.find((s) => s.id === currentStep) || steps[0],
@@ -218,7 +220,10 @@ const PublicarVehiculo = () => {
   };
 
   const goNext = () => {
-    if (!validateStep(currentStep)) return;
+    if (!validateStep(currentStep)) {
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      return;
+    }
     setErrors({});
     setCurrentStep((p) => Math.min(p + 1, steps.length));
   };
@@ -245,7 +250,10 @@ const PublicarVehiculo = () => {
   };
 
   const handlePublish = async () => {
-    if (!validateStep(3)) return;
+    if (!validateStep(3)) {
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+      return;
+    }
     setErrors({}); setPublishError(""); setPublishing(true);
 
     // Mock users — gratuito: simulate success; paid: redirect to Wompi sandbox with fake ID
@@ -354,6 +362,8 @@ const PublicarVehiculo = () => {
     return null;
   };
 
+  if (!user?.emailConfirmed) return <EmailVerificationGate>{null}</EmailVerificationGate>;
+
   /* ── Category selection screen (step 0) ── */
   if (currentStep === 0) {
     return (
@@ -425,7 +435,7 @@ const PublicarVehiculo = () => {
                 </div>
 
                 {currentErrors.length > 0 && (
-                  <div className={styles.errorWrap}>
+                  <div className={styles.errorWrap} ref={errorRef}>
                     <div className={styles.errorSummary}>
                       <div className={styles.errorSummaryIcon}><AlertCircle size={22} /></div>
                       <div>
@@ -444,11 +454,11 @@ const PublicarVehiculo = () => {
             {isFinalStep && (
               <div className={styles.formCard}>
                 {currentErrors.length > 0 && (
-                  <div className={styles.errorWrap}>
+                  <div className={styles.errorWrap} ref={errorRef}>
                     <div className={styles.errorSummary}>
                       <div className={styles.errorSummaryIcon}><AlertCircle size={22} /></div>
                       <div>
-                        <strong>Revisá estos campos antes de continuar</strong>
+                        <strong>Completá estos campos para poder publicar</strong>
                         <ul>{currentErrors.map((e) => <li key={e}>{e}</li>)}</ul>
                       </div>
                     </div>
