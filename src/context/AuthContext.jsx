@@ -23,21 +23,21 @@ const normalizeSupabase = (u) => ({
   },
 });
 
-// Mock users for offline/demo — never hit the backend
-const MOCKS = {
+// Mock users — solo disponibles en desarrollo, excluidos del bundle de producción
+const MOCKS = import.meta.env.PROD ? {} : {
   admin: {
     cred: { password: "12345678" },
-    user: { id: "mock-admin-001", email: "admin", role: "ADMIN",
+    user: { id: "mock-admin-001", email: "admin", role: "ADMIN", emailConfirmed: true,
             user_metadata: { full_name: "Admin Demo", phone: "+503 7100-1234" } },
   },
   vendedor: {
     cred: { password: "123456" },
-    user: { id: "mock-vendedor-001", email: "vendedor@test.com", role: "SELLER",
+    user: { id: "mock-vendedor-001", email: "vendedor@test.com", role: "SELLER", emailConfirmed: true,
             user_metadata: { full_name: "Carlos Mendoza", phone: "+503 7200-8891" } },
   },
   usuario: {
     cred: { password: "123456" },
-    user: { id: "mock-usuario-001", email: "usuario@test.com", role: "USER",
+    user: { id: "mock-usuario-001", email: "usuario@test.com", role: "USER", emailConfirmed: true,
             user_metadata: { full_name: "Laura Gómez", phone: "+503 7300-5432" } },
   },
 };
@@ -58,9 +58,27 @@ export function AuthProvider({ children }) {
     const stored = localStorage.getItem("mv_user");
 
     if (token && stored) {
-      // Existing backend/mock session — restore and skip Supabase check
-      try { setUser(JSON.parse(stored)); } catch {}
-      setLoading(false);
+      (async () => {
+        try {
+          const u = JSON.parse(stored);
+          if (u?.id?.startsWith("mock-")) {
+            setUser(u);
+          } else {
+            // Validate the Supabase session — catches expired tokens
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              setTokens(session.access_token, session.refresh_token);
+              persistUser(normalizeSupabase(session.user));
+            } else {
+              clearTokens();
+              localStorage.removeItem("mv_user");
+            }
+          }
+        } catch {
+          try { setUser(JSON.parse(stored)); } catch {}
+        }
+        setLoading(false);
+      })();
       return;
     }
 
@@ -99,15 +117,20 @@ export function AuthProvider({ children }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      // Verificar si la cuenta está bloqueada
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("blocked")
-        .eq("id", data.user.id)
-        .single();
-      if (profile?.blocked) {
-        await supabase.auth.signOut();
-        throw new Error("Tu cuenta fue suspendida. Contactá al soporte para más información.");
+      // Verificar si la cuenta está bloqueada — en try separado para no confundir
+      // un error de red/RLS con una contraseña incorrecta
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("blocked")
+          .eq("id", data.user.id)
+          .single();
+        if (profile?.blocked) {
+          await supabase.auth.signOut();
+          return { data: null, error: { message: "Tu cuenta fue suspendida. Contactá al soporte para más información." } };
+        }
+      } catch {
+        // Profile check failed (RLS / red) — no bloquear el login
       }
 
       setTokens(data.session.access_token, data.session.refresh_token);
@@ -123,7 +146,7 @@ export function AuthProvider({ children }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/vendedor`,
+        redirectTo: `${window.location.origin}/oauth-landing`,
       },
     });
     return { error };
@@ -160,7 +183,7 @@ export function AuthProvider({ children }) {
       persistUser(null);
       return { error: null };
     }
-    try { await api.post("/auth/logout"); } catch {}
+    try { await api.post("/auth/logout"); } catch (err) { console.warn("[logout]", err?.message); }
     await supabase.auth.signOut().catch(() => {});
     clearTokens();
     persistUser(null);
@@ -172,7 +195,16 @@ export function AuthProvider({ children }) {
     if (u) persistUser(normalizeSupabase(u));
   };
 
-  const resetPassword = async (_email) => ({ error: null });
+  const resetPassword = async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error };
+    } catch (err) {
+      return { error: err };
+    }
+  };
 
   const refreshSession = async () => {
     const refresh = localStorage.getItem("mv_refresh");

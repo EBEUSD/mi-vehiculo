@@ -135,6 +135,7 @@ const Login = () => {
       if (err) throw err;
       /* redirect handled by useEffect */
     } catch (err) {
+      sessionStorage.removeItem("mv_just_registered");
       setGeneralError(translateError(err.message, justRegistered));
     } finally {
       setLoading(false);

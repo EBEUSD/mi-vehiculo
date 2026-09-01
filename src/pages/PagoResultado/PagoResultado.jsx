@@ -15,6 +15,7 @@ const STATUS = {
   wrongitem:  { icon: XCircle,       color: "#dc2626", spin: false, title: "Referencia incorrecta",            sub: "El pago corresponde a otra publicación y no puede usarse para esta. Contactate con soporte." },
   planinvalid:{ icon: AlertTriangle,  color: "#d97706", spin: false, title: "Plan inválido",                   sub: "Hubo un problema con el plan seleccionado. Volvé atrás e intentá de nuevo." },
   error:      { icon: AlertTriangle,  color: "#d97706", spin: false, title: "Algo salió mal",                  sub: "No pudimos verificar el pago. Contactate con nosotros si el monto fue debitado." },
+  networkerror: { icon: AlertTriangle, color: "#d97706", spin: false, title: "Sin conexión",                   sub: "No pudimos comunicarnos con el servidor. Revisá tu conexión e intentá recargar. Si ya se debitó el monto, contactate con soporte." },
   noref:      { icon: AlertTriangle,  color: "#d97706", spin: false, title: "Referencia inválida",             sub: "No encontramos información de pago. Si ya pagaste, contactate con soporte." },
 };
 
@@ -86,8 +87,9 @@ const PagoResultado = () => {
 
         setStatus("success");
         setTimeout(() => navigate("/vendedor?tab=publicaciones&success=1"), 2500);
-      } catch {
-        setStatus("error");
+      } catch (err) {
+        const isNetwork = err instanceof TypeError || !err?.status;
+        setStatus(isNetwork ? "networkerror" : "error");
       }
     };
 
@@ -116,7 +118,7 @@ const PagoResultado = () => {
             </div>
           )}
 
-          {(status === "declined" || status === "error" || status === "noref" || status === "notapproved" || status === "wrongitem" || status === "planinvalid") && (
+          {(status === "declined" || status === "error" || status === "networkerror" || status === "noref" || status === "notapproved" || status === "wrongitem" || status === "planinvalid") && (
             <div className={styles.actions}>
               <button
                 className={styles.retryBtn}

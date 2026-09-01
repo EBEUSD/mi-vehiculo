@@ -46,7 +46,7 @@ const mapProductToPub = (row) => ({
   id:        row.id,
   slug:      row.slug || "",
   titulo:    row.title || "—",
-  tipo:      row.category || "Producto",
+  tipo:      row.category?.name || "Producto",
   año:       "",
   km:        "",
   precio:    `$${new Intl.NumberFormat("en-US").format(row.price || 0)}`,
@@ -518,7 +518,9 @@ function ViewPerfil() {
           setNotifs((prev) => ({ ...prev, ...d.notifications }));
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        setFormError(err?.message || "No se pudo cargar tu perfil. Actualizá la página antes de guardar cambios.");
+      })
       .finally(() => setLoading(false));
   }, [isMock]);
 
@@ -529,18 +531,15 @@ function ViewPerfil() {
     if (!file) return;
     setAvatarUploading(true);
     try {
+      if (isMock) {
+        setAvatar(URL.createObjectURL(file));
+        return;
+      }
       const fd = new FormData();
-      fd.append("file", file);
-      fd.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET);
-      fd.append("folder", "avatars");
-      const res  = await fetch(
-        `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: "POST", body: fd }
-      );
-      const data = await res.json();
-      setAvatar(data.secure_url);
-      if (!isMock) await api.patch("/profile", { avatarUrl: data.secure_url }).catch(() => {});
-    } catch { /* silently ignore */ }
+      fd.append("avatar", file);
+      const res = await api.upload("/profile/avatar", fd);
+      setAvatar(res.data?.avatarUrl || res.avatarUrl || avatar);
+    } catch { /* silently ignore upload errors */ }
     finally { setAvatarUploading(false); }
   };
 
@@ -624,7 +623,11 @@ function ViewPerfil() {
       clearTokens(); // token is immediately invalid after DELETE /profile
       await signOut();
       navigate("/");
-    } catch { setDeleting(false); setDangerModal(null); }
+    } catch (err) {
+      setDeleting(false);
+      setDangerModal(null);
+      showActionError(err?.message || "No se pudo eliminar la cuenta. Contactá soporte si el problema persiste.");
+    }
   };
 
   const initials   = (form.fullName || email || "V").charAt(0).toUpperCase();
@@ -956,6 +959,8 @@ const VendedorDashboard = () => {
   const [showSuccess, setShowSuccess] = useState(successParam === "1");
   const [pubs, setPubs]         = useState([]);
   const [loadingPubs, setLoadingPubs] = useState(true);
+  const [pubsError, setPubsError]   = useState("");
+  const [actionError, setActionError] = useState("");
   const [leads, setLeads]       = useState([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
 
@@ -973,6 +978,7 @@ const VendedorDashboard = () => {
     }
     const fetchPubs = async () => {
       setLoadingPubs(true);
+      setPubsError("");
       try {
         const [vehiclesRes, productsRes] = await Promise.allSettled([
           api.get("/profile/vehicles"),
@@ -984,8 +990,12 @@ const VendedorDashboard = () => {
         const products = productsRes.status === "fulfilled"
           ? (productsRes.value.data || []).map(mapProductToPub)
           : [];
+        if (vehiclesRes.status !== "fulfilled" && productsRes.status !== "fulfilled") {
+          setPubsError("No se pudieron cargar las publicaciones. Revisá tu conexión.");
+        }
         setPubs([...vehicles, ...products]);
       } catch {
+        setPubsError("Error al cargar las publicaciones. Intentá recargar la página.");
         setPubs([]);
       }
       setLoadingPubs(false);
@@ -1004,6 +1014,11 @@ const VendedorDashboard = () => {
     fetchLeads();
   }, [user]);
 
+  const showActionError = useCallback((msg) => {
+    setActionError(msg);
+    setTimeout(() => setActionError(""), 4000);
+  }, []);
+
   const handleToggle = useCallback(async (pub) => {
     const newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
     const endpoint  = pub.type === "product"
@@ -1016,8 +1031,8 @@ const VendedorDashboard = () => {
           p.id === pub.id ? { ...p, status: STATUS_LABEL[newStatus] || "activo" } : p
         )
       );
-    } catch {
-      // silently fail
+    } catch (err) {
+      showActionError(err?.message || "No se pudo cambiar el estado. Intentá de nuevo.");
     }
   }, []);
 
@@ -1037,8 +1052,8 @@ const VendedorDashboard = () => {
     try {
       await api.patch(endpoint, { status: "DELETED" });
       setPubs((prev) => prev.filter((p) => p.id !== pub.id));
-    } catch {
-      // silently fail
+    } catch (err) {
+      showActionError(err?.message || "No se pudo eliminar la publicación. Intentá de nuevo.");
     }
   }, []);
 
@@ -1050,7 +1065,7 @@ const VendedorDashboard = () => {
     favoritos: 0,
   }), [pubs, leads]);
 
-  const userName = user?.fullName?.split(" ")[0]
+  const userName = user?.user_metadata?.full_name?.split(" ")[0]
     || user?.email?.split("@")[0]
     || "Usuario";
 
@@ -1118,6 +1133,16 @@ const VendedorDashboard = () => {
         </aside>
 
         <main className={styles.content}>
+          {(actionError || pubsError) && (
+            <div style={{
+              background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.3)",
+              color: "#ef4444", borderRadius: 8, padding: "10px 14px",
+              fontSize: 13, marginBottom: 16, display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <span>⚠</span>
+              <span>{actionError || pubsError}</span>
+            </div>
+          )}
           {view === "inicio"        && <ViewInicio stats={stats} pubs={pubs} leads={leads} unread={unread} onNavigate={setView} />}
           {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEdit} />}
           {view === "consultas"     && <ViewConsultas leads={leads} loading={loadingLeads} />}

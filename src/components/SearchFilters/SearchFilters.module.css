@@ -290,6 +290,11 @@
     align-items: flex-start;
     gap: 0.65rem;
   }
+
+  /* Toggle completo en 640-900px para evitar corte */
+  .condRow {
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -409,5 +414,9 @@
 
   .filtersRow { grid-template-columns: 1fr; }
 
-  .yearRange { flex-direction: row; }
+  .yearRange { flex-direction: row; gap: 0.1rem; }
+
+  /* Ocultar guión y comprimir selects en pantallas muy pequeñas */
+  .yearDash { display: none; }
+  .yearRange select { font-size: 0.78rem; padding-left: 4px; padding-right: 2px; }
 }

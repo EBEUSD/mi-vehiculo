@@ -14,7 +14,7 @@ const TYPE_OPTIONS = [
 ];
 
 const CY = new Date().getFullYear();
-const YEARS = Array.from({ length: CY - 1979 }, (_, i) => CY - i);
+const YEARS = Array.from({ length: CY - 1959 }, (_, i) => CY - i);
 
 const INIT = {
   type:     "Autos",

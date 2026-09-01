@@ -274,8 +274,8 @@ const PublicarVehiculo = () => {
 
     try {
       // Resolve attribute definition IDs from the catalog
-      let combustibleDefId = 1;
-      let transmisionDefId = 2;
+      let combustibleDefId = null;
+      let transmisionDefId = null;
       try {
         const defsRes = await api.get("/catalog/attribute-definitions");
         const defs = defsRes.data || [];
@@ -284,6 +284,12 @@ const PublicarVehiculo = () => {
         if (combustibleDef) combustibleDefId = combustibleDef.id;
         if (transmisionDef) transmisionDefId = transmisionDef.id;
       } catch {}
+
+      if (!combustibleDefId || !transmisionDefId) {
+        setPublishError("No se pudieron cargar los atributos del vehículo (combustible/transmisión). Actualizá la página e intentá de nuevo.");
+        setPublishing(false);
+        return;
+      }
 
       // 1. Create vehicle in DRAFT
       const vehicleRes = await api.post("/vehicles", {
@@ -297,7 +303,7 @@ const PublicarVehiculo = () => {
         year:               parseInt(formData.anio, 10) || undefined,
         version:            formData.version   || undefined,
         condition:          formData.condicion === "Nuevo" ? "NEW" : "USED",
-        mileage:            parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || 0,
+        mileage:            formData.condicion === "Nuevo" ? undefined : parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || 0,
         price:              parseFloat(String(formData.precio).replace(/[^\d.]/g, "")) || 0,
         currency:           "USD",
         acceptsExchange:    formData.aceptaPermuta   === "Si",
@@ -306,7 +312,7 @@ const PublicarVehiculo = () => {
         description:        formData.descripcion     || undefined,
         cityId:             Number(formData.cityId),
         contactPhone:       formData.whatsapp
-          ? (formData.whatsapp.trim().startsWith("+") ? formData.whatsapp.trim() : `+503${formData.whatsapp.trim()}`)
+          ? `+503${formData.whatsapp.trim().replace(/^\+503/, "").replace(/\D/g, "")}`
           : undefined,
         showWhatsapp:       formData.mostrarWhatsapp === "Si",
         contactHours:       formData.horarioContacto || undefined,
@@ -325,20 +331,19 @@ const PublicarVehiculo = () => {
       if (photos.length) {
         const fd = new FormData();
         photos.forEach((photo, idx) => {
-          fd.append(PHOTO_CATS[idx] || "OTRA", photo.file);
+          fd.append(PHOTO_CATS[idx] || `EXTRA_${idx}`, photo.file);
         });
         await api.upload(`/vehicles/${vehicleId}/images`, fd);
       }
 
-      localStorage.removeItem(DRAFT_KEY);
-
       // 3. Plans de pago → redirigir a WOMPI; gratuito → publicar directo
       if (formData.plan !== "gratuito") {
         redirectToWompiCheckout({ plan: formData.plan, itemId: vehicleId, itemType: "vehicle" });
-        return; // la redirección abandona esta página
+        return; // borrador se conserva por si el usuario vuelve de Wompi
       }
 
       await api.post(`/vehicles/${vehicleId}/publish`);
+      localStorage.removeItem(DRAFT_KEY);
       navigate("/vendedor?tab=publicaciones&success=1");
     } catch (err) {
       console.error("[publish]", err);

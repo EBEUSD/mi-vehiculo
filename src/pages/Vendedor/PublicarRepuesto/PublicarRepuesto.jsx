@@ -106,14 +106,13 @@ const PublicarRepuesto = () => {
   const [draftMessage, setDraftMessage] = useState("");
   const [publishing, setPublishing]   = useState(false);
   const [publishError, setPublishError] = useState("");
-  const [categories, setCategories]   = useState(CATEGORIAS_REPUESTO_FALLBACK);
+  const [categories, setCategories]           = useState(CATEGORIAS_REPUESTO_FALLBACK);
+  const [usingFallbackCategories, setUsingFallback] = useState(true);
 
   useEffect(() => {
-    api.get("/products?limit=100").then((r) => {
-      const seen = {};
-      (r.data || []).forEach((p) => { if (p.category) seen[p.category.id] = p.category; });
-      const cats = Object.values(seen);
-      if (cats.length) setCategories(cats);
+    api.get("/products/categories").then((r) => {
+      const cats = r.data || [];
+      if (cats.length) { setCategories(cats); setUsingFallback(false); }
     }).catch(() => {});
   }, []);
 
@@ -175,6 +174,10 @@ const PublicarRepuesto = () => {
 
   const handlePublish = async () => {
     if (!validateStep(3)) return;
+    if (usingFallbackCategories) {
+      setPublishError("No se pudo verificar la categoría con el servidor. Actualizá la página e intentá de nuevo.");
+      return;
+    }
     setErrors({}); setPublishError(""); setPublishing(true);
 
     try {
@@ -186,8 +189,10 @@ const PublicarRepuesto = () => {
         stock:       parseInt(formData.cantidad, 10) || 1,
         condition:   formData.condicion === "Nuevo" ? "NEW" : "USED",
         categoryId:  formData.categoryId,
+        contactName: formData.nombreContacto,
+        whatsapp:    formData.whatsapp,
+        cityId:      formData.cityId ? Number(formData.cityId) : undefined,
       };
-      console.log("[PublicarRepuesto] payload →", payload);
       const productRes = await api.post("/products", payload);
       const productId = productRes.data.id;
 
@@ -198,16 +203,17 @@ const PublicarRepuesto = () => {
         await api.upload(`/products/${productId}/images`, fd);
       }
 
-      localStorage.removeItem(DRAFT_KEY);
-
       if (formData.plan !== "gratuito") {
+        localStorage.removeItem(DRAFT_KEY);
+        setPublishing(false);
         redirectToWompiCheckout({ plan: formData.plan, itemId: productId, itemType: "repuesto" });
         return;
       }
 
+      await api.post(`/products/${productId}/publish`, { plan: "gratuito" });
+      localStorage.removeItem(DRAFT_KEY);
       navigate("/vendedor?tab=publicaciones&success=1");
     } catch (err) {
-      console.error("[PublicarRepuesto] error →", err?.message, err?.body);
       setPublishError(err?.message || "Error al publicar. Intentá de nuevo.");
     }
     setPublishing(false);

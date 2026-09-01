@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { warmupCatalog } from "./lib/catalogCache";
 
@@ -29,8 +30,23 @@ import AdminLogin from "./pages/Admin/AdminLogin/AdminLogin";
 import AdminDashboard from "./pages/Admin/AdminDashboard/AdminDashboard";
 import PagoResultado from "./pages/PagoResultado/PagoResultado";
 
+function OAuthLanding() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (loading) return;
+    if (user) {
+      navigate(user.role === "ADMIN" ? "/admin" : "/vendedor", { replace: true });
+    } else {
+      navigate("/login", { replace: true });
+    }
+  }, [user, loading, navigate]);
+  return null;
+}
+
 function PrivateRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return null;
   return user ? children : <Navigate to="/login" replace />;
 }
 
@@ -40,7 +56,7 @@ function AdminRoute({ children }) {
   return user?.role === "ADMIN" ? children : <Navigate to="/admin/login" replace />;
 }
 
-const NO_FOOTER_PREFIXES = ["/login", "/admin"];
+const NO_FOOTER_PREFIXES = ["/login", "/admin", "/vendedor", "/publicar", "/editar", "/pago"];
 
 function AppRoutes() {
   const { pathname } = useLocation();
@@ -69,6 +85,10 @@ function AppRoutes() {
               <VendedorDashboard />
             </PrivateRoute>
           }
+        />
+        <Route
+          path="/vendedor/*"
+          element={<PrivateRoute><Navigate to="/vendedor" replace /></PrivateRoute>}
         />
         <Route
           path="/publicar/nuevo"
@@ -118,7 +138,8 @@ function AppRoutes() {
             </PrivateRoute>
           }
         />
-        <Route path="/pago/resultado" element={<PagoResultado />} />
+        <Route path="/pago/resultado" element={<PrivateRoute><PagoResultado /></PrivateRoute>} />
+        <Route path="/oauth-landing" element={<OAuthLanding />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route
           path="/admin"
