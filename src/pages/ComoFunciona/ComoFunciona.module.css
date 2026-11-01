@@ -1,4 +1,4 @@
-.page { background: #f7f9fc; min-height: 100vh; font-family: "Inter", system-ui, sans-serif; }
+.page { background: #f7f9fc; min-height: 100vh; font-family: inherit; }
 
 .hero {
   text-align: center;
@@ -7,7 +7,7 @@
   border-bottom: 1px solid #e8edf6;
 }
 .heroTitle { font-size: 34px; font-weight: 700; color: #07153f; margin: 0 0 12px; letter-spacing: -0.4px; }
-.heroHighlight { color: #1570ff; }
+.heroHighlight { color: #1d4ed8; }
 .heroSub { font-size: 16px; color: #6b7a99; margin: 0; }
 
 .shell { width: min(1100px, 100% - 48px); margin: 0 auto; padding: 40px 0 60px; display: flex; flex-direction: column; gap: 24px; }
@@ -70,7 +70,7 @@
 /* Trust banner */
 .trustBanner {
   background: linear-gradient(135deg, #eef4ff 0%, #f0f7ff 100%);
-  border: 1px solid rgba(21,112,255,0.15);
+  border: 1px solid rgba(29, 78, 216,0.15);
   border-radius: 16px;
   padding: 24px 28px;
   display: flex;
@@ -79,7 +79,7 @@
   flex-wrap: wrap;
 }
 .trustLeft { display: flex; align-items: flex-start; gap: 16px; flex: 1; min-width: 0; }
-.trustIcon { width: 48px; height: 48px; border-radius: 12px; background: rgba(21,112,255,0.1); color: #1570ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.trustIcon { width: 48px; height: 48px; border-radius: 12px; background: rgba(29, 78, 216,0.1); color: #1d4ed8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .trustTitle { font-size: 16px; font-weight: 700; color: #07153f; margin: 0 0 4px; }
 .trustDesc { font-size: 13.5px; color: #6b7a99; margin: 0; line-height: 1.5; }
 .trustCta {
@@ -94,7 +94,7 @@
 /* Benefits */
 .benefitsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .benefitItem { display: flex; align-items: flex-start; gap: 14px; }
-.benefitIcon { width: 40px; height: 40px; border-radius: 10px; background: rgba(21,112,255,0.08); color: #1570ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.benefitIcon { width: 40px; height: 40px; border-radius: 10px; background: rgba(29, 78, 216,0.08); color: #1d4ed8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .benefitItem strong { display: block; font-size: 13.5px; font-weight: 700; color: #07153f; margin-bottom: 4px; }
 .benefitItem p { font-size: 12.5px; color: #6b7a99; margin: 0; line-height: 1.5; }
 

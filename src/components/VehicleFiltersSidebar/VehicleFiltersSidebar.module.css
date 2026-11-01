@@ -21,8 +21,8 @@
   margin-bottom: 1rem;
 }
 
-.topRow h3,
-.mobileTop h3 {
+.topRow h2,
+.mobileTop h2 {
   margin: 0;
   font-size: 1.05rem;
 }
@@ -31,7 +31,7 @@
 .mobileTop button {
   border: none;
   background: transparent;
-  color: #2563eb;
+  color: #1d4ed8;
   font-weight: 700;
   cursor: pointer;
 }
@@ -40,7 +40,9 @@
   margin-bottom: 1rem;
 }
 
-.group label {
+.group label,
+.label,
+.legend {
   display: block;
   font-size: 0.86rem;
   font-weight: 700;
@@ -49,7 +51,7 @@
 }
 
 .group select,
-.group input[type="number"] {
+.group input[type="text"] {
   width: 100%;
   height: 42px;
   border-radius: 12px;
@@ -101,12 +103,67 @@
 .saveBtn {
   border: 1px solid #cfe0ff;
   background: #f8fbff;
-  color: #2563eb;
+  color: #1d4ed8;
 }
 
 @media (max-width: 640px) {
   .group select,
-  .group input[type="number"] {
+  .group input[type="text"] {
     height: 46px;
   }
+}
+.fieldset {
+  border: none;
+  padding: 0;
+  margin-inline: 0;
+  min-width: 0;
+}
+
+.legend {
+  padding: 0;
+}
+
+.numberWrap {
+  position: relative;
+}
+
+.prefix {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.hasPrefix input[type="text"] {
+  padding-left: 1.6rem;
+}
+
+.group select:focus-visible,
+.group input[type="text"]:focus-visible,
+.checks input:focus-visible,
+.topRow button:focus-visible,
+.mobileTop button:focus-visible,
+.resultsBtn:focus-visible,
+.saveBtn:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.catalogError {
+  margin: 0.45rem 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
+.catalogError button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: #1d4ed8;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
 }

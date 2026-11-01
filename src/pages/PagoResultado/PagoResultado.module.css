@@ -16,7 +16,7 @@
 .card {
   background: #fff;
   border-radius: 20px;
-  box-shadow: 0 4px 32px rgba(37, 99, 235, 0.10);
+  box-shadow: 0 4px 32px rgba(29, 78, 216, 0.10);
   padding: 48px 40px;
   max-width: 480px;
   width: 100%;
@@ -28,7 +28,7 @@
 }
 
 .iconWrap {
-  color: var(--icon-color, #2563eb);
+  color: var(--icon-color, #1d4ed8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,10 +99,10 @@
 .retryBtn:hover { background: #e5e7eb; }
 
 .dashboardBtn {
-  background: #2563eb;
+  background: #1d4ed8;
   color: #fff;
 }
-.dashboardBtn:hover { background: #1d4ed8; }
+.dashboardBtn:hover { background: #1e40af; }
 
 @media (max-width: 520px) {
   .card {

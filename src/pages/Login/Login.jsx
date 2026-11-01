@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId, useRef, createContext, useContext } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
-  Eye, EyeOff, ArrowRight, Mail, Lock, Phone, User, CreditCard,
+  Eye, EyeOff, ArrowRight, Mail, Lock, Phone, User,
   Shield, FileText, MessageSquare, BarChart2, Users, HelpCircle, X, CheckCircle2,
-  CheckCircle,
+  CheckCircle, Building2,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
+import { isValidSvPhone, normalizeSvPhone } from "../../lib/phone";
+import { loginHref, rememberNext, safeNext } from "../../lib/redirect";
 import styles from "./Login.module.css";
 import logoVehiculo from "../../assets/logo-vehiculo.png";
 
@@ -32,6 +34,10 @@ const BRAND = {
   },
 };
 
+// Apple requiere cuenta de Apple Developer (US$99/año) y configurarlo en Supabase.
+// Oculto hasta que el cliente decida activarlo; el resto del flujo ya lo soporta.
+const SHOW_APPLE = false;
+
 /* ── Password strength ── */
 function getStrength(pwd) {
   if (!pwd) return null;
@@ -56,13 +62,12 @@ const Login = () => {
   /* ── Login state ── */
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   /* ── Register state ── */
   const [nombre, setNombre] = useState("");
   const [apellido, setApellido] = useState("");
-  const [dui, setDui] = useState("");
+  const [accountType, setAccountType] = useState("PARTICULAR");
   const [regEmail, setRegEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -81,38 +86,44 @@ const Login = () => {
   const [resendSent, setResendSent] = useState(false);
 
   /* ── Forgot password modal ── */
-  const [showForgot, setShowForgot] = useState(false);
+  // /login?forgot=1 abre directo el modal (ej. desde un link de recuperación vencido)
+  const [showForgot, setShowForgot] = useState(() => searchParams.get("forgot") === "1");
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
   const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [resendError, setResendError] = useState("");
+  const forgotInputRef = useRef(null);
+  const forgotTriggerRef = useRef(null);
 
-  const { user, loading: authLoading, signIn, signUp, resetPassword } = useAuth();
+  const { user, loading: authLoading, signIn, signInWithGoogle, signInWithApple, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
+  // A dónde volver después de entrar (ej. la publicación donde quiso contactar al vendedor)
+  const next = safeNext(searchParams.get("next"));
 
   /* ── Auto-redirect if already logged in ── */
   useEffect(() => {
     if (!authLoading && user) {
       if (sessionStorage.getItem("mv_just_registered")) {
         sessionStorage.removeItem("mv_just_registered");
-        navigate("/", { replace: true });
+        navigate(next || "/", { replace: true });
       } else {
-        const dest = user.id === "mock-admin-001" ? "/admin" : "/vendedor";
+        const dest = next || (user.role === "ADMIN" ? "/admin" : "/vendedor");
         navigate(dest, { replace: true });
       }
     }
-  }, [authLoading, user, navigate]);
+  }, [authLoading, user, navigate, next]);
 
   /* ── Switch view ── */
-  const switchView = (next) => {
-    setView(next);
+  const switchView = (target) => {
+    setView(target);
     setFieldErrors({});
     setGeneralError("");
     setInfo("");
     setShowPassword(false);
     setShowRegPassword(false);
     setShowConfirm(false);
-    navigate(next === "register" ? "/login?view=register" : "/login", { replace: true });
+    navigate(loginHref(next, target === "register" ? "register" : undefined), { replace: true });
   };
 
   /* ── Clear field error on change ── */
@@ -149,9 +160,8 @@ const Login = () => {
     const errs = {};
     if (!nombre.trim()) errs.nombre = "Ingresá tu nombre.";
     if (!apellido.trim()) errs.apellido = "Ingresá tu apellido.";
-    if (!dui.trim()) errs.dui = "Ingresá tu DUI.";
-    else if (!/^\d{8}-\d$/.test(dui.trim())) errs.dui = "Formato inválido. Ejemplo: 01234567-8";
     if (!regEmail) errs.regEmail = "Ingresá tu email.";
+    if (!isValidSvPhone(telefono)) errs.telefono = "Ingresá un teléfono válido de 8 dígitos.";
     if (!regPassword) errs.regPassword = "Ingresá una contraseña.";
     else if (regPassword.length < 8) errs.regPassword = "Mínimo 8 caracteres.";
     if (!confirmPassword) errs.confirmPassword = "Confirmá tu contraseña.";
@@ -163,8 +173,9 @@ const Login = () => {
     try {
       const { data, error: err } = await signUp(regEmail, regPassword, {
         full_name: `${nombre.trim()} ${apellido.trim()}`,
-        phone: telefono.trim(),
-        dui:   dui.trim(),
+        phone: normalizeSvPhone(telefono),
+        // El documento (o los datos de la empresa) se pide al publicar por primera vez
+        account_type: accountType,
       });
       if (err) throw err;
 
@@ -184,6 +195,15 @@ const Login = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /* ── Google / Apple ── */
+  const handleOAuth = async (provider) => {
+    setGeneralError("");
+    const fn = provider === "apple" ? signInWithApple : signInWithGoogle;
+    rememberNext(next);
+    const { error: err } = await fn();
+    if (err) setGeneralError(`No pudimos conectar con ${provider === "apple" ? "Apple" : "Google"}. Intentá nuevamente.`);
   };
 
   /* ── Forgot password submit ── */
@@ -208,7 +228,17 @@ const Login = () => {
     setForgotEmail("");
     setForgotError("");
     setForgotSuccess(false);
+    forgotTriggerRef.current?.focus();
   };
+
+  /* ── Forgot modal: foco inicial + Escape para cerrar ── */
+  useEffect(() => {
+    if (!showForgot) return;
+    forgotInputRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape") closeForgot(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [showForgot]);
 
   const isLogin = view === "login";
   const brand = BRAND[view];
@@ -217,10 +247,14 @@ const Login = () => {
   const handleResend = async () => {
     if (resending || resendSent) return;
     setResending(true);
+    setResendError("");
     try {
-      await supabase.auth.resend({ type: "signup", email: pendingEmail });
+      const { error: err } = await supabase.auth.resend({ type: "signup", email: pendingEmail });
+      if (err) throw err;
       setResendSent(true);
-    } catch {}
+    } catch (err) {
+      setResendError(translateError(err?.message));
+    }
     setResending(false);
   };
 
@@ -228,9 +262,10 @@ const Login = () => {
   if (pendingEmail) {
     return (
       <div className={styles.page}>
+        <title>Revisá tu email | Mi Vehículo</title>
         <header className={styles.topNav}>
           <Link to="/" className={styles.navLogo}>
-            <img src={logoVehiculo} alt="Mi Vehículo" className={styles.navLogoImg} />
+            <img src={logoVehiculo} alt="Mi Vehículo" className={styles.navLogoImg} width="176" height="32" />
           </Link>
         </header>
 
@@ -308,6 +343,7 @@ const Login = () => {
                       </button>
                     </p>
                   )}
+                  {resendError && <p className={styles.errorMsg} role="alert">{resendError}</p>}
                   <p className={styles.resendRow}>
                     <button
                       type="button"
@@ -326,7 +362,7 @@ const Login = () => {
         </div>
 
         <footer className={styles.footer}>
-          <span>© 2026 Mi Vehículo. Todos los derechos reservados.</span>
+          <span>© 2026 Go technology. Todos los derechos reservados.</span>
           <div className={styles.footerLinks}>
             <Link to="/terminos">Términos y condiciones</Link>
             <span>·</span>
@@ -339,10 +375,13 @@ const Login = () => {
 
   return (
     <div className={styles.page}>
+      <title>{isLogin ? "Ingresar | Mi Vehículo" : "Crear cuenta | Mi Vehículo"}</title>
+      <meta name="description" content="Ingresá o creá tu cuenta en Mi Vehículo para publicar y gestionar tus vehículos en El Salvador." />
+
       {/* ── Top nav ── */}
       <header className={styles.topNav}>
         <Link to="/" className={styles.navLogo}>
-          <img src={logoVehiculo} alt="Mi Vehículo" className={styles.navLogoImg} />
+          <img src={logoVehiculo} alt="Mi Vehículo" className={styles.navLogoImg} width="176" height="32" />
         </Link>
         <Link to="/contacto" className={styles.helpLink}>
           <HelpCircle size={17} />
@@ -386,11 +425,6 @@ const Login = () => {
 
           {/* Right — form */}
           <main className={styles.formPanel}>
-            {/* Mobile logo */}
-            <Link to="/" className={styles.mobileLogo}>
-              <img src={logoVehiculo} alt="Mi Vehículo" />
-            </Link>
-
             <div className={styles.formInner}>
               <header className={styles.formHeader}>
                 <h2 className={styles.formTitle}>
@@ -403,7 +437,7 @@ const Login = () => {
                 </p>
               </header>
 
-              {generalError && <p className={styles.errorMsg}>{generalError}</p>}
+              {generalError && <p className={styles.errorMsg} role="alert">{generalError}</p>}
               {info && <p className={styles.infoMsg}>{info}</p>}
 
               {/* ── LOGIN FORM ── */}
@@ -412,7 +446,7 @@ const Login = () => {
                   <Field label="Email" error={fieldErrors.email}>
                     <div className={styles.inputWrap}>
                       <Mail size={16} className={styles.inputIcon} />
-                      <input
+                      <FieldInput
                         type="email"
                         className={`${styles.input} ${fieldErrors.email ? styles.inputError : ""}`}
                         value={email}
@@ -426,7 +460,7 @@ const Login = () => {
                   <Field label="Contraseña" error={fieldErrors.password}>
                     <div className={styles.inputWrap}>
                       <Lock size={16} className={styles.inputIcon} />
-                      <input
+                      <FieldInput
                         type={showPassword ? "text" : "password"}
                         className={`${styles.input} ${styles.inputWithEye} ${fieldErrors.password ? styles.inputError : ""}`}
                         value={password}
@@ -439,12 +473,8 @@ const Login = () => {
                   </Field>
 
                   <div className={styles.optionsRow}>
-                    <CheckboxField
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      label="Recordarme"
-                    />
                     <button
+                      ref={forgotTriggerRef}
                       type="button"
                       className={styles.forgotLink}
                       onClick={() => setShowForgot(true)}
@@ -460,11 +490,31 @@ const Login = () => {
               {/* ── REGISTER FORM ── */}
               {!isLogin && (
                 <form onSubmit={handleRegister} className={styles.form} noValidate>
+                  <Field label="Tipo de cuenta" group>
+                    <div className={styles.segmented} role="radiogroup" aria-label="Tipo de cuenta">
+                      {[
+                        { value: "PARTICULAR", label: "Particular", icon: <User size={15} /> },
+                        { value: "EMPRESA",    label: "Empresa",    icon: <Building2 size={15} /> },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={accountType === opt.value}
+                          className={`${styles.segBtn} ${accountType === opt.value ? styles.segBtnActive : ""}`}
+                          onClick={() => setAccountType(opt.value)}
+                        >
+                          {opt.icon}{opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+
                   <div className={styles.nameRow}>
                     <Field label="Nombre" error={fieldErrors.nombre}>
                       <div className={styles.inputWrap}>
                         <User size={16} className={styles.inputIcon} />
-                        <input
+                        <FieldInput
                           type="text"
                           className={`${styles.input} ${fieldErrors.nombre ? styles.inputError : ""}`}
                           value={nombre}
@@ -478,7 +528,7 @@ const Login = () => {
                     <Field label="Apellido" error={fieldErrors.apellido}>
                       <div className={styles.inputWrap}>
                         <User size={16} className={styles.inputIcon} />
-                        <input
+                        <FieldInput
                           type="text"
                           className={`${styles.input} ${fieldErrors.apellido ? styles.inputError : ""}`}
                           value={apellido}
@@ -490,31 +540,10 @@ const Login = () => {
                     </Field>
                   </div>
 
-                  <Field label="DUI" error={fieldErrors.dui}>
-                    <div className={styles.inputWrap}>
-                      <CreditCard size={16} className={styles.inputIcon} />
-                      <input
-                        type="text"
-                        className={`${styles.input} ${fieldErrors.dui ? styles.inputError : ""}`}
-                        value={dui}
-                        onChange={(e) => {
-                          let v = e.target.value.replace(/[^0-9-]/g, "");
-                          if (v.length === 8 && !v.includes("-")) v = v + "-";
-                          if (v.length > 10) v = v.slice(0, 10);
-                          setDui(v);
-                          clearField("dui");
-                        }}
-                        placeholder="01234567-8"
-                        autoComplete="off"
-                        maxLength={10}
-                      />
-                    </div>
-                  </Field>
-
                   <Field label="Email" error={fieldErrors.regEmail}>
                     <div className={styles.inputWrap}>
                       <Mail size={16} className={styles.inputIcon} />
-                      <input
+                      <FieldInput
                         type="email"
                         className={`${styles.input} ${fieldErrors.regEmail ? styles.inputError : ""}`}
                         value={regEmail}
@@ -528,7 +557,7 @@ const Login = () => {
                   <Field label="Teléfono / WhatsApp" error={fieldErrors.telefono}>
                     <div className={styles.inputWrap}>
                       <Phone size={16} className={styles.inputIcon} />
-                      <input
+                      <FieldInput
                         type="tel"
                         className={`${styles.input} ${fieldErrors.telefono ? styles.inputError : ""}`}
                         value={telefono}
@@ -542,7 +571,7 @@ const Login = () => {
                   <Field label="Contraseña" error={fieldErrors.regPassword}>
                     <div className={styles.inputWrap}>
                       <Lock size={16} className={styles.inputIcon} />
-                      <input
+                      <FieldInput
                         type={showRegPassword ? "text" : "password"}
                         className={`${styles.input} ${styles.inputWithEye} ${fieldErrors.regPassword ? styles.inputError : ""}`}
                         value={regPassword}
@@ -573,7 +602,7 @@ const Login = () => {
                   <Field label="Confirmar contraseña" error={fieldErrors.confirmPassword}>
                     <div className={styles.inputWrap}>
                       <Lock size={16} className={styles.inputIcon} />
-                      <input
+                      <FieldInput
                         type={showConfirm ? "text" : "password"}
                         className={`${styles.input} ${styles.inputWithEye} ${fieldErrors.confirmPassword ? styles.inputError : ""}`}
                         value={confirmPassword}
@@ -605,6 +634,20 @@ const Login = () => {
                 </form>
               )}
 
+              <div className={styles.divider}>o</div>
+              <div className={styles.socialRow}>
+                <button type="button" className={styles.googleBtn} onClick={() => handleOAuth("google")}>
+                  <GoogleIcon />
+                  Continuar con Google
+                </button>
+                {SHOW_APPLE && (
+                  <button type="button" className={`${styles.googleBtn} ${styles.appleBtn}`} onClick={() => handleOAuth("apple")}>
+                    <AppleIcon />
+                    Continuar con Apple
+                  </button>
+                )}
+              </div>
+
               <p className={styles.switchRow}>
                 {isLogin ? (
                   <>¿No tenés cuenta?{" "}
@@ -627,7 +670,7 @@ const Login = () => {
 
       {/* ── Footer ── */}
       <footer className={styles.footer}>
-        <span>© 2026 Mi Vehículo. Todos los derechos reservados.</span>
+        <span>© 2026 Go technology. Todos los derechos reservados.</span>
         <div className={styles.footerLinks}>
           <Link to="/terminos">Términos y condiciones</Link>
           <span>·</span>
@@ -638,45 +681,52 @@ const Login = () => {
       {/* ── Forgot password modal ── */}
       {showForgot && (
         <div className={styles.modalOverlay} onClick={closeForgot}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.modalClose} onClick={closeForgot} aria-label="Cerrar">
-              <X size={18} />
+          <div
+            className={styles.modalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="forgot-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button type="button" className={styles.modalClose} onClick={closeForgot} aria-label="Cerrar">
+              <X size={18} aria-hidden="true" />
             </button>
 
             {forgotSuccess ? (
               <div className={styles.modalSuccess}>
                 <div className={styles.modalSuccessIcon}>
-                  <CheckCircle2 size={40} />
+                  <CheckCircle2 size={40} aria-hidden="true" />
                 </div>
-                <h3>Email enviado</h3>
+                <h3 id="forgot-title">Email enviado</h3>
                 <p>
                   Si existe una cuenta con <strong>{forgotEmail}</strong>, vas a recibir un
                   link para restablecer tu contraseña en los próximos minutos.
                 </p>
-                <button className={styles.submitBtn} onClick={closeForgot} type="button">
+                <button className={styles.submitBtn} onClick={closeForgot} type="button" autoFocus>
                   Entendido
                 </button>
               </div>
             ) : (
               <>
-                <h3 className={styles.modalTitle}>Recuperar contraseña</h3>
+                <h3 id="forgot-title" className={styles.modalTitle}>Recuperar contraseña</h3>
                 <p className={styles.modalSub}>
                   Ingresá tu email y te enviamos un link para restablecer tu contraseña.
                 </p>
 
-                {forgotError && <p className={styles.errorMsg}>{forgotError}</p>}
+                {forgotError && <p className={styles.errorMsg} role="alert">{forgotError}</p>}
 
                 <form onSubmit={handleForgot} className={styles.form} noValidate>
                   <div className={styles.inputWrap}>
-                    <Mail size={16} className={styles.inputIcon} />
+                    <Mail size={16} className={styles.inputIcon} aria-hidden="true" />
                     <input
+                      ref={forgotInputRef}
                       type="email"
+                      aria-label="Email"
                       className={styles.input}
                       value={forgotEmail}
                       onChange={(e) => { setForgotEmail(e.target.value); setForgotError(""); }}
                       placeholder="ejemplo@correo.com"
                       autoComplete="email"
-                      autoFocus
                     />
                   </div>
                   <SubmitBtn loading={forgotLoading}>Enviar link</SubmitBtn>
@@ -692,14 +742,57 @@ const Login = () => {
 
 /* ── Small reusable sub-components ── */
 
-function Field({ label, error, children }) {
+function GoogleIcon() {
   return (
-    <div className={styles.fieldGroup}>
-      <label className={styles.fieldLabel}>{label}</label>
-      {children}
-      {error && <p className={styles.fieldError}>{error}</p>}
-    </div>
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+    </svg>
   );
+}
+
+function AppleIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.97-3.46-1.07-1.57-2.74-1.78-3.33-1.8-1.42-.14-2.77.84-3.49.84-.72 0-1.83-.82-3.01-.8-1.55.02-2.98.9-3.78 2.29-1.61 2.8-.41 6.94 1.16 9.21.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.6-.75 3-.75s1.79.75 3.01.72c1.25-.02 2.04-1.13 2.8-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.47-3.71zM14.07 5.85c.64-.78 1.07-1.85.95-2.93-.92.04-2.04.61-2.7 1.39-.59.69-1.11 1.79-.97 2.85 1.03.08 2.08-.52 2.72-1.31z"/>
+    </svg>
+  );
+}
+
+/* Field asocia label, control y error (useId) sin tener que pasar ids a mano:
+   FieldInput / FieldSelect toman id, aria-invalid y aria-describedby del contexto. */
+const FieldCtx = createContext(null);
+
+function Field({ label, error, group = false, children }) {
+  const id = useId();
+  const errorId = `${id}-error`;
+  return (
+    <FieldCtx.Provider value={{ id, errorId: error ? errorId : undefined, invalid: !!error }}>
+      <div className={styles.fieldGroup}>
+        {group
+          ? <span className={styles.fieldLabel}>{label}</span>
+          : <label className={styles.fieldLabel} htmlFor={id}>{label}</label>}
+        {children}
+        {error && <p id={errorId} className={styles.fieldError}>{error}</p>}
+      </div>
+    </FieldCtx.Provider>
+  );
+}
+
+function useFieldA11y() {
+  const ctx = useContext(FieldCtx);
+  if (!ctx) return {};
+  return { id: ctx.id, "aria-invalid": ctx.invalid || undefined, "aria-describedby": ctx.errorId };
+}
+
+function FieldInput(props) {
+  return <input {...useFieldA11y()} {...props} />;
+}
+
+function FieldSelect(props) {
+  return <select {...useFieldA11y()} {...props} />;
 }
 
 function EyeToggle({ show, onToggle }) {

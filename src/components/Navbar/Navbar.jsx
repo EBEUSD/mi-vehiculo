@@ -2,28 +2,28 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import styles from "./Navbar.module.css";
 import {
-  FaCarSide,
-  FaMotorcycle,
-  FaTruckPickup,
-  FaTruck,
-  FaHeart,
-  FaChevronDown,
-  FaThLarge,
-  FaUserCircle,
-  FaSignOutAlt,
-} from "react-icons/fa";
-import { HiMenuAlt3, HiX } from "react-icons/hi";
+  ChevronDown, CircleUser, Heart, LayoutGrid, LogOut, Menu, Plus, Search, User, X,
+} from "lucide-react";
 import logoVehiculo from "../../assets/logo-vehiculo.png";
 import { useAuth } from "../../context/AuthContext";
+import { VEHICLE_CATEGORIES, PRODUCT_CATEGORIES } from "../../lib/categories";
+
+// Accesos rápidos de la barra secundaria
+const QUICK_LINKS = [
+  ...VEHICLE_CATEGORIES.filter((c) => ["carros", "motos", "camiones", "maquinaria"].includes(c.id))
+    .map((c) => ({ label: c.short, to: `/vehiculos?type=${c.id}&sortBy=relevant&page=1` })),
+  ...PRODUCT_CATEGORIES.map((c) => ({ label: c.label, to: c.href })),
+];
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen]   = useState(false);
   const [dropOpen, setDropOpen]   = useState(false);
+  const [query, setQuery]         = useState("");
   const { user, signOut }         = useAuth();
   const navigate                  = useNavigate();
   const dropRef                   = useRef(null);
 
-  const isAdmin   = user?.id === "mock-admin-001";
+  const isAdmin   = user?.role === "ADMIN";
   const fullName  = user?.user_metadata?.full_name || user?.email || "Usuario";
   const firstName = fullName.split(" ")[0];
   const initial   = firstName.charAt(0).toUpperCase();
@@ -42,6 +42,13 @@ const Navbar = () => {
   const handleToggleMenu = () => setMenuOpen((p) => !p);
   const handleCloseMenu  = () => setMenuOpen(false);
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const q = query.trim();
+    handleCloseMenu();
+    navigate(`/vehiculos?${new URLSearchParams({ ...(q && { q }), sortBy: "relevant", page: "1" })}`);
+  };
+
   const handleSignOut = async () => {
     setDropOpen(false);
     handleCloseMenu();
@@ -54,18 +61,24 @@ const Navbar = () => {
       <div className={styles.topBar}>
         <div className={styles.container}>
           <Link to="/" className={styles.logo} onClick={handleCloseMenu}>
-            <img src={logoVehiculo} alt="Mi Vehículo" className={styles.logoImg} />
+            <img src={logoVehiculo} alt="Mi Vehículo" className={styles.logoImg} width="187" height="34" />
           </Link>
 
-          <div className={styles.search}>
-            <input type="text" placeholder="Buscar por marca, modelo, año..." />
-            <button>Buscar</button>
-          </div>
+          <form className={styles.search} onSubmit={handleSearch} role="search">
+            <Search size={17} className={styles.searchIcon} aria-hidden="true" />
+            <input
+              type="search"
+              placeholder="Buscar por marca, modelo, año..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Buscar vehículos"
+            />
+            <button type="submit">Buscar</button>
+          </form>
 
           <nav className={styles.topNav}>
-            <Link to="/vehiculos">Categorías</Link>
-            <Link to="/vendedor">Ofrecé tu vehículo</Link>
-            <Link to="/favoritos">Favoritos</Link>
+            <Link to="/#categorias">Categorías</Link>
+            <Link to="/favoritos"><Heart size={16} /> Favoritos</Link>
 
             {/* Account — dropdown when logged in */}
             {user ? (
@@ -80,8 +93,9 @@ const Navbar = () => {
                     {initial}
                   </span>
                   {isAdmin ? "Admin" : "Mi cuenta"}
-                  <FaChevronDown
-                    size={11}
+                  <ChevronDown
+                    size={14}
+                    aria-hidden="true"
                     className={dropOpen ? styles.chevronOpen : styles.chevron}
                   />
                 </button>
@@ -100,7 +114,7 @@ const Navbar = () => {
                         className={styles.accountMenuItem}
                         onClick={() => setDropOpen(false)}
                       >
-                        <FaThLarge size={13} /> Panel de administración
+                        <LayoutGrid size={14} aria-hidden="true" /> Panel de administración
                       </Link>
                     ) : (
                       <>
@@ -109,41 +123,43 @@ const Navbar = () => {
                           className={styles.accountMenuItem}
                           onClick={() => setDropOpen(false)}
                         >
-                          <FaThLarge size={13} /> Mi panel
+                          <LayoutGrid size={14} aria-hidden="true" /> Mi panel
                         </Link>
                         <Link
                           to="/vendedor?tab=perfil"
                           className={styles.accountMenuItem}
                           onClick={() => setDropOpen(false)}
                         >
-                          <FaUserCircle size={13} /> Ver mi perfil
+                          <CircleUser size={14} aria-hidden="true" /> Ver mi perfil
                         </Link>
                       </>
                     )}
 
                     <div className={styles.accountMenuDivider} />
                     <button className={styles.accountMenuSignOut} onClick={handleSignOut}>
-                      <FaSignOutAlt size={13} /> Cerrar sesión
+                      <LogOut size={14} aria-hidden="true" /> Cerrar sesión
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <Link to="/login">Iniciar sesión</Link>
+              <Link to="/login"><User size={16} /> Iniciar sesión</Link>
             )}
 
-            <Link to="/favoritos" className={styles.cartBtn} aria-label="Favoritos">
-              <FaHeart />
+            <Link to="/publicar/nuevo" className={styles.ctaBtn}>
+              <Plus size={16} strokeWidth={2.6} /> Ofrecé tu vehículo
             </Link>
           </nav>
 
           <button
             className={styles.mobileMenuBtn}
-            aria-label="Abrir menú"
+            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
             onClick={handleToggleMenu}
             type="button"
           >
-            {menuOpen ? <HiX /> : <HiMenuAlt3 />}
+            {menuOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
           </button>
         </div>
       </div>
@@ -151,24 +167,30 @@ const Navbar = () => {
       <div className={styles.subBar}>
         <div className={styles.container}>
           <nav className={styles.subNav}>
-            <Link to="/vehiculos"><FaCarSide /><span>Autos</span></Link>
-            <Link to="/vehiculos?type=Motos"><FaMotorcycle /><span>Motos</span></Link>
-            <Link to="/vehiculos?type=Camionetas"><FaTruckPickup /><span>Camionetas</span></Link>
-            <Link to="/vehiculos?type=Camiones"><FaTruck /><span>Camiones</span></Link>
+            {QUICK_LINKS.map((l) => <Link key={l.label} to={l.to}>{l.label}</Link>)}
           </nav>
 
           <nav className={styles.subNavRight}>
+            <Link to="/nosotros">Misión, visión y valores</Link>
             <Link to="/faq">Consejos e información</Link>
           </nav>
         </div>
       </div>
 
       {/* Mobile panel */}
-      <div className={`${styles.mobilePanel} ${menuOpen ? styles.mobilePanelOpen : ""}`}>
+      {/* inert cuando está cerrado: sus links no reciben foco ni los lee el lector de pantalla */}
+      <div
+        id="mobile-menu"
+        className={`${styles.mobilePanel} ${menuOpen ? styles.mobilePanelOpen : ""}`}
+        inert={!menuOpen}
+      >
         <div className={styles.mobilePanelInner}>
+          <Link to="/publicar/nuevo" onClick={handleCloseMenu} className={styles.mobileCta}>
+            <Plus size={18} strokeWidth={2.6} /> Ofrecé tu vehículo
+          </Link>
+
           <nav className={styles.mobileNavPrimary}>
-            <Link to="/vehiculos" onClick={handleCloseMenu}>Categorías</Link>
-            <Link to="/vendedor"  onClick={handleCloseMenu}>Ofrecé tu vehículo</Link>
+            <Link to="/#categorias" onClick={handleCloseMenu}>Categorías</Link>
             <Link to="/favoritos" onClick={handleCloseMenu}>Favoritos</Link>
             {user ? (
               <>
@@ -185,19 +207,16 @@ const Navbar = () => {
           <div className={styles.mobileDivider} />
 
           <nav className={styles.mobileNavCategories}>
-            <Link to="/vehiculos" onClick={handleCloseMenu}><FaCarSide /><span>Autos</span></Link>
-            <Link to="/vehiculos?type=Motos" onClick={handleCloseMenu}><FaMotorcycle /><span>Motos</span></Link>
-            <Link to="/vehiculos?type=Camionetas" onClick={handleCloseMenu}><FaTruckPickup /><span>Camionetas</span></Link>
-            <Link to="/vehiculos?type=Camiones" onClick={handleCloseMenu}><FaTruck /><span>Camiones</span></Link>
+            {QUICK_LINKS.map((l) => (
+              <Link key={l.label} to={l.to} onClick={handleCloseMenu}>{l.label}</Link>
+            ))}
           </nav>
 
           <div className={styles.mobileDivider} />
 
           <nav className={styles.mobileNavSecondary}>
+            <Link to="/nosotros" onClick={handleCloseMenu}>Misión, visión y valores</Link>
             <Link to="/faq" onClick={handleCloseMenu}>Consejos e información</Link>
-            <Link to="/favoritos" onClick={handleCloseMenu} className={styles.mobileCart}>
-              <FaHeart /><span>Favoritos</span>
-            </Link>
           </nav>
         </div>
       </div>

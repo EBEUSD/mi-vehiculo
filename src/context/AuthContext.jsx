@@ -1,27 +1,79 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api, setTokens, clearTokens, getAccessToken } from "../lib/api";
 import { supabase } from "../lib/supabase";
+import PageLoader from "../components/PageLoader/PageLoader";
 
 const AuthContext = createContext(null);
-
-const normalize = (u) => ({
-  id:            u.id,
-  email:         u.email,
-  role:          u.role,
-  user_metadata: { full_name: u.fullName, phone: u.phone || null },
-});
 
 const normalizeSupabase = (u) => ({
   id:             u.id,
   email:          u.email,
-  role:           u.user_metadata?.role || u.app_metadata?.role || "SELLER",
+  // Nunca leer el rol de user_metadata: el propio usuario lo puede editar.
+  // app_metadata es solo un valor inicial; el definitivo viene de /profile (resolveRole).
+  role:           u.app_metadata?.role || "SELLER",
   emailConfirmed: !!u.email_confirmed_at,
   user_metadata:  {
     full_name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "",
     phone:     u.user_metadata?.phone || null,
-    dui:       u.user_metadata?.dui   || null,
+    dui:             u.user_metadata?.dui             || null,
+    account_type:    u.user_metadata?.account_type    || null,
+    document_type:   u.user_metadata?.document_type   || (u.user_metadata?.dui ? "DUI" : null),
+    document_number: u.user_metadata?.document_number || u.user_metadata?.dui || null,
+    nit:             u.user_metadata?.nit             || null,
+    company_name:    u.user_metadata?.company_name    || null,
+    company_address: u.user_metadata?.company_address || null,
+    company_phone:   u.user_metadata?.company_phone   || null,
+    nrc:             u.user_metadata?.nrc             || null,
   },
 });
+
+// El rol real vive en la base (profiles.role) y lo expone el backend.
+// El teléfono del registro también: /auth/register lo guarda en el perfil, no en user_metadata.
+const resolveRole = async (u) => {
+  try {
+    const res = await api.get("/profile");
+    const role  = res?.data?.role;
+    const phone = u.user_metadata?.phone || res?.data?.phone || null;
+    return { ...u, ...(role ? { role } : {}), user_metadata: { ...u.user_metadata, phone } };
+  } catch { return u; }
+};
+
+// Bloqueo de cuenta. El backend también debe rechazar a los bloqueados:
+// este chequeo solo evita mostrar la app a una cuenta suspendida.
+const isBlocked = async (userId) => {
+  try {
+    const { data } = await supabase.from("profiles").select("blocked").eq("id", userId).single();
+    return !!data?.blocked;
+  } catch { return false; }
+};
+
+const BLOCKED_ERROR = { message: "Tu cuenta fue suspendida. Contactá al soporte para más información." };
+
+// Datos locales que no deben sobrevivir a un cierre de sesión
+const clearLocalSession = () => {
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("mv_pending_meta_") || k.startsWith("miVehiculo_publicar"))
+      .forEach((k) => localStorage.removeItem(k));
+    sessionStorage.removeItem("mv_pending_payment");
+  } catch { /* storage bloqueado */ }
+  if ("caches" in window) caches.delete("api-cache").catch(() => {});
+};
+
+// Metadata extra del registro (tipo de cuenta, documento, NIT) que /auth/register
+// no recibe: se guarda en user_metadata de Supabase apenas hay sesión.
+const PENDING_META_KEY = (email) => `mv_pending_meta_${(email || "").toLowerCase()}`;
+
+const applyPendingMetadata = async (email) => {
+  try {
+    const raw = localStorage.getItem(PENDING_META_KEY(email));
+    if (!raw) return null;
+    const { data, error } = await supabase.auth.updateUser({ data: JSON.parse(raw) });
+    if (error) return null;
+    localStorage.removeItem(PENDING_META_KEY(email));
+    return data.user;
+  } catch { return null; }
+};
 
 // Mock users — solo disponibles en desarrollo, excluidos del bundle de producción
 const MOCKS = import.meta.env.PROD ? {} : {
@@ -33,12 +85,12 @@ const MOCKS = import.meta.env.PROD ? {} : {
   vendedor: {
     cred: { password: "123456" },
     user: { id: "mock-vendedor-001", email: "vendedor@test.com", role: "SELLER", emailConfirmed: true,
-            user_metadata: { full_name: "Carlos Mendoza", phone: "+503 7200-8891" } },
+            user_metadata: { full_name: "Carlos Mendoza", phone: "+503 7200-8891", account_type: "PARTICULAR" } },
   },
   usuario: {
     cred: { password: "123456" },
     user: { id: "mock-usuario-001", email: "usuario@test.com", role: "USER", emailConfirmed: true,
-            user_metadata: { full_name: "Laura Gómez", phone: "+503 7300-5432" } },
+            user_metadata: { full_name: "Laura Gómez", phone: "+503 7300-5432", account_type: "PARTICULAR" } },
   },
 };
 
@@ -61,21 +113,22 @@ export function AuthProvider({ children }) {
       (async () => {
         try {
           const u = JSON.parse(stored);
-          if (u?.id?.startsWith("mock-")) {
+          if (!import.meta.env.PROD && u?.id?.startsWith("mock-")) {
             setUser(u);
           } else {
             // Validate the Supabase session — catches expired tokens
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
               setTokens(session.access_token, session.refresh_token);
-              persistUser(normalizeSupabase(session.user));
+              persistUser(await resolveRole(normalizeSupabase(session.user)));
             } else {
               clearTokens();
               localStorage.removeItem("mv_user");
             }
           }
         } catch {
-          try { setUser(JSON.parse(stored)); } catch {}
+          clearTokens();
+          localStorage.removeItem("mv_user");
         }
         setLoading(false);
       })();
@@ -83,11 +136,15 @@ export function AuthProvider({ children }) {
     }
 
     // No backend session: check for a pending Supabase OAuth session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setTokens(session.access_token, session.refresh_token);
-        persistUser(normalizeSupabase(session.user));
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return;
+      if (await isBlocked(session.user.id)) {
+        await supabase.auth.signOut().catch(() => {});
+        return;
       }
+      setTokens(session.access_token, session.refresh_token);
+      const updated = await applyPendingMetadata(session.user.email);
+      persistUser(await resolveRole(normalizeSupabase(updated || session.user)));
     }).finally(() => setLoading(false));
   }, []);
 
@@ -95,11 +152,26 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session && !getAccessToken()) {
-        setTokens(session.access_token, session.refresh_token);
-        persistUser(normalizeSupabase(session.user));
+        // Login con Google/Apple: mismo chequeo de bloqueo que con contraseña
+        (async () => {
+          if (await isBlocked(session.user.id)) {
+            await supabase.auth.signOut().catch(() => {});
+            return;
+          }
+          setTokens(session.access_token, session.refresh_token);
+          const updated = await applyPendingMetadata(session.user.email);
+          persistUser(await resolveRole(normalizeSupabase(updated || session.user)));
+        })();
       }
       if (event === "TOKEN_REFRESHED" && session) {
         setTokens(session.access_token, session.refresh_token);
+      }
+      // Sesión cerrada en otra pestaña o refresh vencido
+      if (event === "SIGNED_OUT") {
+        clearTokens();
+        clearLocalSession();
+        setUser((prev) => (prev?.id?.startsWith("mock-") ? prev : null));
+        localStorage.removeItem("mv_user");
       }
     });
     return () => subscription.unsubscribe();
@@ -107,7 +179,7 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     // Mock shortcuts
-    const mock = MOCKS[email] || Object.values(MOCKS).find((m) => m.user.email === email);
+    const mock = import.meta.env.PROD ? null : MOCKS[email] || Object.values(MOCKS).find((m) => m.user.email === email);
     if (mock && mock.cred.password === password) {
       persistUser(mock.user);
       return { data: { user: mock.user }, error: null };
@@ -117,24 +189,14 @@ export function AuthProvider({ children }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      // Verificar si la cuenta está bloqueada — en try separado para no confundir
-      // un error de red/RLS con una contraseña incorrecta
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("blocked")
-          .eq("id", data.user.id)
-          .single();
-        if (profile?.blocked) {
-          await supabase.auth.signOut();
-          return { data: null, error: { message: "Tu cuenta fue suspendida. Contactá al soporte para más información." } };
-        }
-      } catch {
-        // Profile check failed (RLS / red) — no bloquear el login
+      if (await isBlocked(data.user.id)) {
+        await supabase.auth.signOut();
+        return { data: null, error: BLOCKED_ERROR };
       }
 
       setTokens(data.session.access_token, data.session.refresh_token);
-      const u = normalizeSupabase(data.user);
+      const updated = await applyPendingMetadata(email);
+      const u = await resolveRole(normalizeSupabase(updated || data.user));
       persistUser(u);
       return { data: { user: u }, error: null };
     } catch (err) {
@@ -152,6 +214,16 @@ export function AuthProvider({ children }) {
     return { error };
   };
 
+  const signInWithApple = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: {
+        redirectTo: `${window.location.origin}/oauth-landing`,
+      },
+    });
+    return { error };
+  };
+
   const signUp = async (email, password, metadata = {}) => {
     try {
       await api.post("/auth/register", {
@@ -161,12 +233,18 @@ export function AuthProvider({ children }) {
         phone:    metadata.phone     || "",
       });
 
+      const { full_name: _fn, ...extraMeta } = metadata;
+      if (Object.keys(extraMeta).length) {
+        localStorage.setItem(PENDING_META_KEY(email), JSON.stringify(extraMeta));
+      }
+
       // Intentar login inmediato — funciona cuando la confirmación de email
       // está desactivada o el backend auto-confirmó en modo development.
       const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
       if (!loginError && loginData?.session) {
         setTokens(loginData.session.access_token, loginData.session.refresh_token);
-        const u = normalizeSupabase(loginData.user);
+        const updated = await applyPendingMetadata(email);
+        const u = await resolveRole(normalizeSupabase(updated || loginData.user));
         persistUser(u);
         return { data: { user: u, session: loginData.session }, error: null };
       }
@@ -186,13 +264,34 @@ export function AuthProvider({ children }) {
     try { await api.post("/auth/logout"); } catch (err) { console.warn("[logout]", err?.message); }
     await supabase.auth.signOut().catch(() => {});
     clearTokens();
+    clearLocalSession();
     persistUser(null);
     return { error: null };
   };
 
   const refreshUser = async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
-    if (u) persistUser(normalizeSupabase(u));
+    if (u) persistUser(await resolveRole(normalizeSupabase(u)));
+  };
+
+  // Guarda datos de la cuenta (tipo, teléfono, documento, empresa) en user_metadata.
+  // Nombre y teléfono además se sincronizan con el perfil del backend.
+  const updateProfile = async (meta) => {
+    if (user?.id?.startsWith("mock-")) {
+      persistUser({ ...user, user_metadata: { ...user.user_metadata, ...meta } });
+      return { error: null };
+    }
+    const { data, error } = await supabase.auth.updateUser({ data: meta });
+    if (error) return { error };
+    const patch = {
+      ...(meta.full_name ? { fullName: meta.full_name } : {}),
+      ...(meta.phone ? { phone: meta.phone } : {}),
+    };
+    if (Object.keys(patch).length) {
+      try { await api.patch("/profile", patch); } catch (err) { console.warn("[profile]", err?.message); }
+    }
+    persistUser(await resolveRole(normalizeSupabase(data.user)));
+    return { error: null };
   };
 
   const resetPassword = async (email) => {
@@ -219,13 +318,21 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Las funciones dependen solo de user (signOut) — se recalcula cuando cambia la sesión
+  const value = useMemo(
+    () => ({ user, loading, signIn, signInWithGoogle, signInWithApple, signUp, signOut, resetPassword, refreshSession, refreshUser, updateProfile }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, loading]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signInWithGoogle, signUp, signOut, resetPassword, refreshSession, refreshUser }}>
-      {!loading && children}
+    <AuthContext.Provider value={value}>
+      {loading ? <PageLoader /> : children}
     </AuthContext.Provider>
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext);
 }

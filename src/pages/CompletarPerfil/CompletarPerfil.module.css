@@ -1,0 +1,159 @@
+.page {
+  min-height: 100vh;
+  background: #f4f7fc;
+  padding: 0 16px 48px;
+}
+
+.topNav {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.topNav img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.card {
+  max-width: 480px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 12px 40px rgba(11, 27, 77, 0.08);
+  padding: 32px 28px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--navy);
+}
+
+.sub {
+  margin: 6px 0 24px;
+  color: #5b6782;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.inputWrap {
+  position: relative;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a96b0;
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid #e2e8f4;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 16px;
+  color: #1f2a44;
+  background: #fff;
+}
+
+.inputWithIcon {
+  padding-left: 40px;
+}
+
+.input:focus {
+  border-color: var(--brand);
+  outline: none;
+}
+
+.inputError {
+  border-color: #ef4444;
+}
+
+.fieldError {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: #dc2626;
+}
+
+.errorMsg {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.submitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--brand-dark);
+}
+
+.submitBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.footNote {
+  margin: 20px 0 0;
+  font-size: 0.85rem;
+  color: #6b7690;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .card {
+    padding: 24px 18px;
+  }
+}

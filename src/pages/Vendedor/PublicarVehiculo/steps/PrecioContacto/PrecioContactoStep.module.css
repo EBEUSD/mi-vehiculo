@@ -460,8 +460,8 @@
 }
 
 .planHighlight {
-  border-color: #1570ff;
-  box-shadow: 0 0 0 1px #1570ff, 0 8px 32px rgba(21, 112, 255, 0.10);
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 1px #1d4ed8, 0 8px 32px rgba(29, 78, 216, 0.10);
 }
 
 .planSelected {
@@ -625,4 +625,12 @@
     margin: 0 auto;
     width: 100%;
   }
+}
+
+/* Aviso de validación debajo de un campo */
+.fieldHint {
+  margin: 6px 0 0;
+  color: #dc2626;
+  font-size: 12.5px;
+  font-weight: 600;
 }

@@ -1,31 +1,31 @@
 import { Link } from "react-router-dom";
 import {
   Search, Car, MessageCircle, Shield, Pencil, CheckCircle2,
-  Megaphone, DollarSign, Users, Tag, Lock, Headphones, Heart, ArrowRight,
+  Megaphone, DollarSign, Users, Tag, Headphones, Heart, ArrowRight,
 } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
 import styles from "./ComoFunciona.module.css";
 
 const BUYER_STEPS = [
-  { icon: <Search size={26} />, title: "Buscá", desc: "Explorá miles de vehículos y usá filtros para encontrar lo que necesitás." },
+  { icon: <Search size={26} />, title: "Buscá", desc: "Explorá las publicaciones y usá los filtros para encontrar lo que necesitás." },
   { icon: <Car size={26} />, title: "Elegí", desc: "Revisá los detalles, fotos y características del vehículo que te interesa." },
   { icon: <MessageCircle size={26} />, title: "Contactá", desc: "Hablá directamente con el vendedor por WhatsApp u otros medios." },
-  { icon: <Shield size={26} />, title: "Comprá seguro", desc: "Coordiná la visita, revisá el vehículo y cerrá tu compra con total tranquilidad." },
+  { icon: <Shield size={26} />, title: "Comprá seguro", desc: "Coordiná la visita y revisá el vehículo y su documentación antes de pagar." },
 ];
 
 const SELLER_STEPS = [
   { icon: <Pencil size={24} />, title: "Publicá", desc: "Completá los datos de tu vehículo y subí fotos de calidad en minutos." },
-  { icon: <CheckCircle2 size={24} />, title: "Revisión (opcional)", desc: "Revisamos tu publicación para asegurar calidad y confianza en la plataforma." },
-  { icon: <Megaphone size={24} />, title: "Se publica", desc: "Tu vehículo queda visible para miles de compradores interesados." },
+  { icon: <CheckCircle2 size={24} />, title: "Elegí tu plan", desc: "Publicá gratis o elegí un plan con más fotos, video y mejor posición en los resultados." },
+  { icon: <Megaphone size={24} />, title: "Se publica", desc: "Tu primera publicación queda pendiente de aprobación mientras verificamos tus datos; después, tus avisos salen al instante." },
   { icon: <MessageCircle size={24} />, title: "Recibí consultas", desc: "Te contactan por WhatsApp u otros medios para coordinar una visita." },
   { icon: <DollarSign size={24} />, title: "Vendé", desc: "Cerrá la venta y marcá tu publicación como vendida." },
 ];
 
 const BENEFITS = [
-  { icon: <CheckCircle2 size={22} />, title: "Publicaciones verificadas", desc: "Más confianza para compradores y vendedores." },
-  { icon: <Lock size={22} />, title: "Sin costos ocultos", desc: "Publicar tu vehículo es gratis y sin letra chica." },
-  { icon: <Headphones size={22} />, title: "Soporte siempre", desc: "Nuestro equipo está listo para ayudarte cuando lo necesites." },
-  { icon: <Heart size={22} />, title: "Comunidad confiable", desc: "Miles de usuarios ya confían en Mi Vehículo." },
+  { icon: <MessageCircle size={22} />, title: "Contacto directo", desc: "Hablás con el vendedor, sin intermediarios." },
+  { icon: <Tag size={22} />, title: "Múltiples planes", desc: "Desde gratuito a premium, con todo el detalle." },
+  { icon: <Headphones size={22} />, title: "Soporte por email", desc: "Te respondemos en menos de 24 horas hábiles." },
+  { icon: <Heart size={22} />, title: "Hecho para El Salvador", desc: "Compradores y vendedores de todo el país, en un solo lugar." },
 ];
 
 function StepFlow({ steps, color }) {
@@ -50,6 +50,8 @@ function StepFlow({ steps, color }) {
 
 const ComoFunciona = () => (
   <div className={styles.page}>
+    <title>Cómo funciona | Mi Vehículo</title>
+    <meta name="description" content="Cómo comprar y vender vehículos en Mi Vehículo: buscá, contactá directo al vendedor y publicá tu vehículo en minutos." />
     <Navbar />
 
     <main>
@@ -67,7 +69,7 @@ const ComoFunciona = () => (
         {/* Compradores */}
         <section className={styles.flowCard}>
           <div className={styles.flowLabel}>
-            <div className={styles.flowLabelIcon} style={{ background: "rgba(21,112,255,0.1)", color: "#1570ff" }}>
+            <div className={styles.flowLabelIcon} style={{ background: "rgba(29, 78, 216,0.1)", color: "#1d4ed8" }}>
               <Users size={28} />
             </div>
             <div>
@@ -77,7 +79,7 @@ const ComoFunciona = () => (
           </div>
           <div className={styles.flowDivider} />
           <div className={styles.flowSteps}>
-            <StepFlow steps={BUYER_STEPS} color="#1570ff" />
+            <StepFlow steps={BUYER_STEPS} color="#1d4ed8" />
           </div>
         </section>
 
@@ -107,13 +109,13 @@ const ComoFunciona = () => (
             <div>
               <h3 className={styles.trustTitle}>Confianza y transparencia</h3>
               <p className={styles.trustDesc}>
-                Verificamos publicaciones, promovemos buenas prácticas y te acompañamos en todo el proceso
-                para que tengas una experiencia segura.
+                Promovemos buenas prácticas, te damos consejos para comprar y vender seguro y te
+                acompañamos en todo el proceso.
               </p>
             </div>
           </div>
           <Link to="/publicar/nuevo" className={styles.trustCta}>
-            Vender mi vehículo <ArrowRight size={18} />
+            Ofrecé tu vehículo <ArrowRight size={18} />
           </Link>
         </div>
 

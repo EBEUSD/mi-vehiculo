@@ -62,13 +62,7 @@ const VehicleResultsToolbar = ({
           >
             Mayor precio
           </button>
-
-          <button
-            className={sortBy === "kmAsc" ? styles.active : ""}
-            onClick={() => onSortChange("kmAsc")}
-          >
-            Menor km
-          </button>
+          {/* "Menor km" vuelve cuando la API soporte orderBy por kilometraje */}
         </div>
       </div>
     </div>

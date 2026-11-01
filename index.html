@@ -5,14 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <title>Mi Vehículo — Comprá y vendé vehículos en El Salvador</title>
-    <meta name="description" content="El marketplace de vehículos, repuestos y accesorios más grande de El Salvador." />
+    <link rel="canonical" href="https://mi-vehiculo.vercel.app/" />
+
+    <!-- Vista previa al compartir (WhatsApp, Facebook, X). og:image necesita URL absoluta:
+         cambiar el dominio cuando esté activo mivehiculosv.com -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Mi Vehículo" />
+    <meta property="og:locale" content="es_SV" />
+    <meta property="og:title" content="Mi Vehículo — La plataforma integral de vehículos en El Salvador" />
+    <meta property="og:description" content="Comprá, vendé, alquilá y permutá vehículos, repuestos, accesorios y servicios. Todo en un solo lugar." />
+    <meta property="og:url" content="https://mi-vehiculo.vercel.app/" />
+    <meta property="og:image" content="https://mi-vehiculo.vercel.app/imagen-compartir.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Carro, moto, camión, lancha y avión sobre fondo azul" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://mi-vehiculo.vercel.app/imagen-compartir.jpg" />
 
     <!-- PWA -->
-    <meta name="theme-color" content="#7e14ff" />
+    <meta name="theme-color" content="#0b1b4d" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Mi Vehículo" />
+
+    <!-- Tipografía -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Imagen del hero: se pide antes de que cargue el JS -->
+    <link rel="preload" as="image" type="image/webp" fetchpriority="high"
+          imagesrcset="/hero-800.webp 800w, /hero-1200.webp 1200w, /hero.webp 1774w"
+          imagesizes="(max-width: 520px) 460px, (max-width: 900px) 600px, 100vw" />
+
+    <!-- Datos estructurados del sitio -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Mi Vehículo",
+        "url": "https://mi-vehiculo.vercel.app/",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://mi-vehiculo.vercel.app/vehiculos?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
 
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

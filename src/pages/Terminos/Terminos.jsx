@@ -18,7 +18,10 @@ const SECTIONS = [
   {
     id: "cuentas",
     title: "3. Cuentas de usuario",
-    content: "Para publicar anuncios o acceder a ciertas funcionalidades, es necesario crear una cuenta. El usuario es responsable de mantener la confidencialidad de su cuenta y de todas las actividades que ocurran bajo la misma.",
+    content: [
+      "Para publicar anuncios o acceder a ciertas funcionalidades, es necesario crear una cuenta. El usuario es responsable de mantener la confidencialidad de su cuenta y de todas las actividades que ocurran bajo la misma.",
+      "El usuario declara que la información proporcionada es verdadera, completa y actualizada, y que tiene capacidad legal para contratar conforme a la legislación salvadoreña.",
+    ],
   },
   {
     id: "publicaciones",
@@ -33,7 +36,13 @@ const SECTIONS = [
   {
     id: "responsabilidades",
     title: "6. Responsabilidades",
-    content: "Mi Vehículo no se responsabiliza por la veracidad de la información publicada por los usuarios, ni por el resultado de las transacciones entre particulares. Recomendamos siempre verificar el estado del vehículo y la documentación antes de cualquier operación.",
+    content: [
+      "Mi Vehículo no se responsabiliza por la veracidad de la información publicada por los usuarios, ni por el resultado de las transacciones entre particulares. Recomendamos siempre verificar el estado del vehículo y la documentación antes de cualquier operación.",
+      "Cualquier insignia, sello, etiqueta o indicador de \"verificado\" no constituye una garantía absoluta sobre el estado, valor, seguridad, funcionamiento o situación jurídica del vehículo. El Usuario deberá revisar personalmente la documentación y realizar las comprobaciones que considere necesarias antes de adquirir un vehículo.",
+      "Mi Vehículo no será responsable por daños, pérdidas, incumplimientos, fraudes, defectos, vicios ocultos, accidentes, deudas, multas, gravámenes, problemas de titularidad o cualquier controversia derivada de una operación entre usuarios.",
+      "El Operador procurará mantener la Plataforma disponible y segura, pero no garantiza que estará libre de interrupciones, errores, vulnerabilidades o contenidos fraudulentos publicados por terceros.",
+      "Cualquier tipo de financiamiento y sus requisitos correspondientes será exclusiva responsabilidad del vendedor o entidad financiera correspondiente y de los acuerdos entre las partes.",
+    ],
   },
   {
     id: "privacidad",
@@ -48,12 +57,63 @@ const SECTIONS = [
   {
     id: "modificaciones",
     title: "9. Modificaciones",
-    content: "Mi Vehículo se reserva el derecho de modificar estos Términos en cualquier momento. Los cambios serán notificados mediante el sitio web. El uso continuado de la plataforma implica la aceptación de los nuevos términos.",
+    content: "Mi Vehículo se reserva el derecho de modificar estos Términos en cualquier momento, así como las tarifas de publicación, destaque, suscripción y demás servicios. Los cambios serán notificados mediante el sitio web. El uso continuado de la plataforma implica la aceptación de los nuevos términos.",
   },
   {
     id: "ley",
     title: "10. Ley aplicable y jurisdicción",
     content: "Estos Términos se rigen por las leyes de la República de El Salvador. Cualquier controversia será sometida a la jurisdicción de los Tribunales competentes de San Salvador, El Salvador.",
+  },
+  {
+    id: "precio",
+    title: "11. Precio y condiciones de venta",
+    content: "El precio indicado en una publicación será establecido por el Vendedor. El Vendedor deberá indicar claramente si el precio:",
+    list: [
+      "incluye impuestos;",
+      "incluye gastos adicionales;",
+      "está sujeto a financiamiento;",
+      "corresponde únicamente al vehículo;",
+      "está sujeto a condiciones especiales.",
+    ],
+    after: [
+      "La Plataforma no garantiza que el precio publicado sea el precio final de la operación.",
+      "Los Usuarios deberán acordar directamente las condiciones de la compraventa antes de efectuar cualquier pago.",
+    ],
+  },
+  {
+    id: "compraventa",
+    title: "12. Compraventa",
+    content: [
+      "La publicación de un vehículo no constituye una oferta ni una garantía de la Plataforma sobre su existencia, titularidad, estado mecánico, historial, kilometraje, precio, documentación o legalidad.",
+      "Antes de comprar, el interesado deberá verificar por su cuenta la identidad del vendedor, la documentación, el VIN/chasis, la situación jurídica, gravámenes, multas, impuestos, historial, estado mecánico y cualquier otro aspecto relevante.",
+      "El contrato de compraventa, el pago, la entrega, la transferencia de propiedad y las obligaciones derivadas serán responsabilidad exclusiva de comprador y vendedor.",
+    ],
+  },
+  {
+    id: "prohibidas",
+    title: "13. Conductas prohibidas",
+    content: "Queda prohibido utilizar la Plataforma para:",
+    list: [
+      "Fraudes, estafas, suplantación de identidad o actividades ilícitas.",
+      "Publicar información o documentación falsa.",
+      "Manipular precios, fotografías, kilometraje o características del vehículo.",
+      "Publicar vehículos inexistentes o sin autorización para su comercialización.",
+      "Intentar acceder, alterar o interferir con cuentas, sistemas o información de terceros.",
+      "Utilizar herramientas automatizadas para extraer información sin autorización.",
+    ],
+  },
+  {
+    id: "comunicaciones",
+    title: "14. Comunicaciones",
+    content: "El usuario acepta recibir comunicaciones relacionadas con su cuenta, anuncios, operaciones, seguridad y funcionamiento de la Plataforma.",
+  },
+  {
+    id: "suspension",
+    title: "15. Suspensión y terminación",
+    content: [
+      "El Operador podrá suspender, restringir o cancelar el acceso a la Plataforma cuando sea necesario para proteger a usuarios, prevenir fraude, cumplir obligaciones legales o hacer cumplir estos Términos.",
+      "El usuario podrá dejar de utilizar la Plataforma y solicitar el cierre de su cuenta conforme a los procedimientos disponibles.",
+    ],
   },
 ];
 
@@ -67,6 +127,8 @@ const Terminos = () => {
 
   return (
     <div className={styles.page}>
+      <title>Términos y condiciones | Mi Vehículo</title>
+      <meta name="description" content="Términos y condiciones de uso de Mi Vehículo: publicaciones, planes, pagos y responsabilidades de usuarios." />
       <Navbar />
 
       <main>
@@ -130,7 +192,15 @@ const Terminos = () => {
             <div className={styles.contentCard} key={activeId}>
               <div className={styles.sectionBadge}>{activeIdx + 1} / {SECTIONS.length}</div>
               <h2 className={styles.sectionTitle}>{activeSection.title}</h2>
-              <p className={styles.sectionText}>{activeSection.content}</p>
+              <div className={styles.sectionText}>
+                {[].concat(activeSection.content).map((t) => <p key={t}>{t}</p>)}
+                {activeSection.list && (
+                  <ul className={styles.sectionList}>
+                    {activeSection.list.map((t) => <li key={t}>{t}</li>)}
+                  </ul>
+                )}
+                {activeSection.after?.map((t) => <p key={t}>{t}</p>)}
+              </div>
 
               {/* Prev / Next */}
               <div className={styles.sectionNav}>

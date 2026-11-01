@@ -62,6 +62,8 @@ const Privacidad = () => {
 
   return (
     <div className={styles.page}>
+      <title>Política de privacidad | Mi Vehículo</title>
+      <meta name="description" content="Cómo Mi Vehículo recopila, usa y protege tus datos personales." />
       <Navbar />
 
       <main>

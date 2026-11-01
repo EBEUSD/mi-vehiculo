@@ -15,10 +15,10 @@ export default defineConfig({
         name: 'Mi Vehículo',
         short_name: 'Mi Vehículo',
         description: 'Comprá y vendé vehículos, repuestos y accesorios en El Salvador.',
-        theme_color: '#7e14ff',
-        background_color: '#7e14ff',
+        theme_color: '#0b1b4d',
+        background_color: '#0b1b4d',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         start_url: '/',
         scope: '/',
         lang: 'es',
@@ -53,12 +53,21 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/marketplace-autos-backend\.onrender\.com\/api\//,
+            // Solo catálogo público (GET). Nunca cachear perfil, favoritos, consultas,
+            // pagos ni admin: el caché no distingue usuarios y queda tras el logout.
+            urlPattern: ({ url, request }) =>
+              request.method === 'GET' &&
+              !request.headers.has('Authorization') &&
+              // Literal: esta función se copia al service worker y no ve variables de este archivo
+              url.origin === 'https://marketplace-autos-backend.onrender.com' &&
+              /^\/api\/v1\/(vehicles|products|catalog|location|locations)(\/|\?|$)/.test(url.pathname) &&
+              !/^\/api\/v1\/vehicles\/me\b/.test(url.pathname),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
               networkTimeoutSeconds: 10,
-              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 100, maxAgeSeconds: 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
             },
           },
           {
@@ -75,7 +84,8 @@ export default defineConfig({
     }),
   ],
   server: {
-    host: true,
+    // Exponer en la red local solo cuando se prueba en el celular: VITE_HOST=1 npm run dev
+    host: !!globalThis.process?.env.VITE_HOST,
     proxy: {
       '/api': {
         target: BACKEND,

@@ -4,7 +4,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import logoVehiculo from "../../../../assets/logo-vehiculo.png";
 import styles from "./PublicarTopbar.module.css";
 
-const PublicarTopbar = ({ onSaveDraft, draftSaved }) => {
+const PublicarTopbar = ({ onSaveDraft, draftSaved, title = "Publicar vehículo" }) => {
   const { user } = useAuth();
   const navigate  = useNavigate();
   const fullName  = user?.user_metadata?.full_name || user?.email || "Usuario";
@@ -20,17 +20,19 @@ const PublicarTopbar = ({ onSaveDraft, draftSaved }) => {
 
         <span className={styles.divider} />
 
-        <p className={styles.title}>Publicar vehículo</p>
+        <p className={styles.title}>{title}</p>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={`${styles.saveBtn} ${draftSaved ? styles.saveBtnSaved : ""}`}
-            onClick={onSaveDraft}
-          >
-            {draftSaved ? <Check size={15} strokeWidth={3} /> : <Save size={15} />}
-            <span>{draftSaved ? "Guardado" : "Guardar borrador"}</span>
-          </button>
+          {onSaveDraft && (
+            <button
+              type="button"
+              className={`${styles.saveBtn} ${draftSaved ? styles.saveBtnSaved : ""}`}
+              onClick={onSaveDraft}
+            >
+              {draftSaved ? <Check size={15} strokeWidth={3} /> : <Save size={15} />}
+              <span>{draftSaved ? "Guardado" : "Guardar borrador"}</span>
+            </button>
+          )}
 
           <div className={styles.userChip}>
             <span className={styles.avatar}>{initial}</span>

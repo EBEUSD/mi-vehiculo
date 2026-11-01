@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://mi-vehiculo.vercel.app/</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/vehiculos</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/productos</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/como-funciona</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/nosotros</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/faq</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/contacto</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/terminos</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/privacidad</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/vehiculos?type=carros</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/vehiculos?type=motos</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/vehiculos?type=camiones</loc></url>
+  <url><loc>https://mi-vehiculo.vercel.app/vehiculos?type=maquinaria</loc></url>
+</urlset>

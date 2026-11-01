@@ -34,7 +34,7 @@ const tracOpts  = ["Delantera 4x2", "Trasera 4x2", "4x4", "AWD"];
 const stateOpts = ["Excelente", "Muy bueno", "Bueno", "Regular"];
 const vtvOpts   = ["Al día", "Vencida", "No aplica"];
 const debtOpts  = ["Sin deudas", "Tiene deudas"];
-const ownerOpts = ["Titular", "Familiar", "Gestor", "Concesionaria"];
+const ownerOpts = ["Titular", "Familiar", "Gestor", "Agencia/Lote"];
 
 // Initial reach based on existing data (e.g. from saved draft)
 const calcReach = (fd) => {
@@ -43,6 +43,23 @@ const calcReach = (fd) => {
   if (fd.combustible) return 1;
   return 0;
 };
+
+// Grupo de opciones tipo chip
+const Chips = ({ opts, value, onSelect }) => (
+  <div className={styles.chips}>
+    {opts.map((o) => (
+      <button
+        key={o}
+        type="button"
+        className={`${styles.chip} ${value === o ? styles.chipActive : ""}`}
+        aria-pressed={value === o}
+        onClick={() => onSelect(o)}
+      >
+        {o}
+      </button>
+    ))}
+  </div>
+);
 
 const CaracteristicasCompletasStep = ({ formData, onChange }) => {
   const [maxReached,  setMaxReached]  = useState(() => calcReach(formData));
@@ -75,20 +92,8 @@ const CaracteristicasCompletasStep = ({ formData, onChange }) => {
   const isConfirmed = (i) => maxReached > i && currentCard !== i;
   const isVisible   = (i) => i <= maxReached;
 
-  const Chips = ({ name, opts }) => (
-    <div className={styles.chips}>
-      {opts.map((o) => (
-        <button
-          key={o}
-          type="button"
-          className={`${styles.chip} ${formData[name] === o ? styles.chipActive : ""}`}
-          onClick={() => setValue(name, o)}
-        >
-          {o}
-        </button>
-      ))}
-    </div>
-  );
+  // Chips conectados al formulario
+  const chipProps = (name) => ({ value: formData[name], onSelect: (v) => setValue(name, v) });
 
   const selectedColor = COLOR_SWATCHES.find((c) => c.label === formData.color);
 
@@ -125,7 +130,7 @@ const CaracteristicasCompletasStep = ({ formData, onChange }) => {
           <p className={styles.doneValue}>{formData.combustible}</p>
         ) : (
           <>
-            <Chips name="combustible" opts={fuelOpts} />
+            <Chips opts={fuelOpts} {...chipProps("combustible")} />
             <div className={styles.cardFooter}>
               {snapshot && <button type="button" className={styles.cancelBtn} onClick={cancelEdit}>Cancelar</button>}
               <button
@@ -160,7 +165,7 @@ const CaracteristicasCompletasStep = ({ formData, onChange }) => {
             <p className={styles.doneValue}>{formData.transmision}</p>
           ) : (
             <>
-              <Chips name="transmision" opts={transOpts} />
+              <Chips opts={transOpts} {...chipProps("transmision")} />
               <div className={styles.cardFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={cancelEdit}>Cancelar</button>
                 <button
@@ -253,11 +258,11 @@ const CaracteristicasCompletasStep = ({ formData, onChange }) => {
                   </div>
                   <div className={styles.field}>
                     <label>Puertas</label>
-                    <Chips name="puertas" opts={doorsOpts} />
+                    <Chips opts={doorsOpts} {...chipProps("puertas")} />
                   </div>
                   <div className={`${styles.field} ${styles.full}`}>
                     <label>Tracción</label>
-                    <Chips name="traccion" opts={tracOpts} />
+                    <Chips opts={tracOpts} {...chipProps("traccion")} />
                   </div>
                 </div>
               </div>
@@ -282,19 +287,19 @@ const CaracteristicasCompletasStep = ({ formData, onChange }) => {
                 <div className={styles.docsGrid}>
                   <div className={`${styles.field} ${styles.full}`}>
                     <label>Estado general</label>
-                    <Chips name="estadoGeneral" opts={stateOpts} />
+                    <Chips opts={stateOpts} {...chipProps("estadoGeneral")} />
                   </div>
                   <div className={styles.field}>
                     <label>Papeles al día</label>
-                    <Chips name="papelesAlDia" opts={["Sí", "No"]} />
+                    <Chips opts={["Sí", "No"]} {...chipProps("papelesAlDia")} />
                   </div>
                   <div className={styles.field}>
                     <label>Tarjeta de circulación</label>
-                    <Chips name="vtv" opts={vtvOpts} />
+                    <Chips opts={vtvOpts} {...chipProps("vtv")} />
                   </div>
                   <div className={styles.field}>
                     <label>Deudas</label>
-                    <Chips name="deudas" opts={debtOpts} />
+                    <Chips opts={debtOpts} {...chipProps("deudas")} />
                   </div>
                   <div className={styles.field}>
                     <label>Titularidad</label>

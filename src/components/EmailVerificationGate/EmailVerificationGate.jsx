@@ -56,7 +56,7 @@ export default function EmailVerificationGate({ children }) {
           disabled={checking}
           style={{
             display: "flex", alignItems: "center", gap: 6,
-            padding: "0.6rem 1.25rem", background: "#2563eb", color: "#fff",
+            padding: "0.6rem 1.25rem", background: "#1d4ed8", color: "#fff",
             border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: "0.9rem",
           }}
         >
@@ -68,8 +68,8 @@ export default function EmailVerificationGate({ children }) {
           <button
             onClick={handleResend}
             style={{
-              padding: "0.6rem 1.25rem", background: "transparent", color: "#2563eb",
-              border: "1.5px solid #2563eb", borderRadius: 8, fontWeight: 600,
+              padding: "0.6rem 1.25rem", background: "transparent", color: "#1d4ed8",
+              border: "1.5px solid #1d4ed8", borderRadius: 8, fontWeight: 600,
               cursor: "pointer", fontSize: "0.9rem",
             }}
           >

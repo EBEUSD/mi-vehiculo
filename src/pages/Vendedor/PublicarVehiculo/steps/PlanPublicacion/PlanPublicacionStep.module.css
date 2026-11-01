@@ -55,8 +55,8 @@
 }
 
 .cardHighlight {
-  border-color: #1570ff;
-  box-shadow: 0 0 0 1px #1570ff, 0 8px 32px rgba(21, 112, 255, 0.1);
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 1px #1d4ed8, 0 8px 32px rgba(29, 78, 216, 0.1);
 }
 
 .cardSelected {
@@ -221,8 +221,55 @@
   text-align: center;
 }
 
+/* ── Planes a consultar (anual / empresas) ── */
+.consultGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.consultCard {
+  padding: 20px 18px 18px;
+  border-radius: 18px;
+  border: 2px dashed #d5dcea;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.consultCard .price {
+  font-size: 24px;
+  letter-spacing: -0.8px;
+}
+
+.consultBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.consultBtn:hover {
+  filter: brightness(1.1);
+}
+
 /* ── Responsive ─────────────── */
 @media (max-width: 820px) {
+  .consultGrid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
   .grid {
     grid-template-columns: 1fr;
     max-width: 420px;

@@ -1,0 +1,90 @@
+.wrap {
+  display: grid;
+  place-items: center;
+  min-height: 50vh;
+  padding: 48px 16px;
+  /* No mostrar nada si la carga dura menos de ~250ms */
+  opacity: 0;
+  animation: appear 0.3s ease 0.25s forwards;
+}
+
+.fullScreen {
+  min-height: 100vh;
+  background: #f4f7fc;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.logo {
+  height: 32px;
+  width: auto;
+}
+
+/* Ruta con línea discontinua y un auto que la recorre */
+.road {
+  position: relative;
+  width: 220px;
+  height: 40px;
+  overflow: hidden;
+}
+
+.road::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 4px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, #c7d4ee 0 14px, transparent 14px 24px);
+  background-size: 24px 4px;
+  animation: lines 0.6s linear infinite;
+}
+
+.car {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  animation: drive 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.carBody { fill: var(--brand); }
+.carWindow { fill: #dbe7ff; }
+.wheel { fill: var(--navy); stroke: #fff; stroke-width: 3; }
+
+.label {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #5b6782;
+}
+
+@keyframes appear {
+  to { opacity: 1; }
+}
+
+@keyframes drive {
+  0%   { transform: translateX(-60px); }
+  100% { transform: translateX(226px); }
+}
+
+@keyframes lines {
+  to { background-position: -24px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .car {
+    animation: none;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .road::after {
+    animation: none;
+  }
+}

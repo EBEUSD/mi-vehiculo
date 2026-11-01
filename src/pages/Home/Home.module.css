@@ -1,54 +1,53 @@
 .home {
   min-height: 100vh;
-  background: #f3f4f6;
+  background: #fff;
   color: #111827;
   overflow-x: clip;
 }
 
 .main {
   width: 100%;
-  padding-bottom: 3rem;
   overflow-x: clip;
 }
 
-.floatingCategories,
-.filtersSection,
+.searchSection,
+.categoriesSection,
 .featuredSection {
   width: min(1180px, calc(100% - 2rem));
   margin-left: auto;
   margin-right: auto;
 }
 
-.floatingCategories {
-  margin-top: -42px;
+.searchSection {
   position: relative;
   z-index: 5;
+  margin-top: -6.5rem;
 }
 
-.filtersSection {
-  margin-top: 1.3rem;
+.categoriesSection {
+  margin-top: 4rem;
 }
 
 .featuredSection {
-  margin-top: 2.2rem;
+  margin-top: 3rem;
+}
+
+.featuredSection:empty {
+  display: none;
 }
 
 @media (max-width: 768px) {
-  .floatingCategories,
-  .filtersSection,
+  .searchSection,
+  .categoriesSection,
   .featuredSection {
-    width: min(100% - 1rem, 1180px);
+    width: min(100% - 1.5rem, 1180px);
   }
 
-  .floatingCategories {
-    margin-top: -18px;
+  .searchSection {
+    margin-top: -5.5rem;
   }
 
-  .filtersSection {
-    margin-top: 1rem;
-  }
-
-  .featuredSection {
-    margin-top: 1.5rem;
+  .categoriesSection {
+    margin-top: 2.5rem;
   }
 }

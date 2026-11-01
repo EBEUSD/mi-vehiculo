@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { Car, Wrench, Package, ChevronRight, ArrowLeft } from "lucide-react";
+import { Car, Wrench, Package, UserCog, ChevronRight, ArrowLeft } from "lucide-react";
 import Navbar from "../../../components/Navbar/Navbar";
+import { VEHICLE_CATEGORIES } from "../../../lib/categories";
 import styles from "./PublicarCategoria.module.css";
 
 const CATEGORIAS = [
@@ -8,11 +9,11 @@ const CATEGORIAS = [
     id: "vehiculo",
     icon: <Car size={36} />,
     titulo: "Vehículo",
-    sub: "Autos, motos, camionetas, camiones y más",
+    sub: "Carros, motos, camiones, maquinaria, acuáticos, aeronaves y más",
     ruta: "/publicar/vehiculo",
     color: "#1a6eff",
     bg: "#eef5ff",
-    items: ["Autos", "Motos", "Camionetas", "Camiones", "Buses"],
+    items: VEHICLE_CATEGORIES.map((c) => c.label),
   },
   {
     id: "repuesto",
@@ -34,6 +35,17 @@ const CATEGORIAS = [
     bg: "#f5f3ff",
     items: ["Audio", "Rines", "Iluminación", "Interior", "Seguridad"],
   },
+  {
+    id: "servicio",
+    icon: <UserCog size={36} />,
+    titulo: "Servicio",
+    sub: "Talleres, grúas, detailing, trámites, seguros y más",
+    // Todavía no hay alta de servicios en el backend: por ahora se gestiona por contacto
+    ruta: "/contacto?asunto=servicio",
+    color: "#d97706",
+    bg: "#fffbeb",
+    items: ["Taller mecánico", "CarWash", "Grúas", "Trámites SERTRACEN", "Seguros"],
+  },
 ];
 
 const PublicarCategoria = () => {
@@ -41,6 +53,7 @@ const PublicarCategoria = () => {
 
   return (
     <div className={styles.page}>
+      <title>Publicar | Mi Vehículo</title>
       <Navbar />
 
       <main className={styles.main}>

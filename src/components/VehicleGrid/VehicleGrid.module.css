@@ -10,6 +10,7 @@
 }
 
 .card {
+  position: relative;
   background: #fff;
   border: 1px solid #e5ecf5;
   border-radius: 14px;
@@ -70,7 +71,7 @@
 }
 
 .blue {
-  background: #2563eb;
+  background: #1d4ed8;
 }
 
 .gray {
@@ -92,6 +93,13 @@
   justify-content: center;
   color: #64748b;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.favorite:focus-visible,
+.removeBtn:focus-visible,
+.cardLink:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
 }
 
 .favoriteActive {
@@ -164,7 +172,7 @@
 }
 
 .favoriteActions {
-  margin-top: 0.65rem;
+  padding: 0 0.85rem 0.8rem;
   display: flex;
   justify-content: flex-start;
 }
@@ -175,7 +183,7 @@
   border-radius: 10px;
   border: 1px solid #dbe4f0;
   background: #fff;
-  color: #2563eb;
+  color: #1d4ed8;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -242,5 +250,41 @@
   .info span,
   .compactGrid .info span {
     font-size: 0.84rem;
+  }
+}
+/* Skeleton de carga */
+.skeleton {
+  pointer-events: none;
+}
+
+.skeleton:hover {
+  transform: none;
+}
+
+.skelLine {
+  height: 0.85rem;
+  border-radius: 6px;
+  background: #eef2f7;
+  margin-bottom: 0.55rem;
+  animation: skelPulse 1.2s ease-in-out infinite;
+}
+
+.skelShort {
+  width: 60%;
+}
+
+.skeleton .imageWrap {
+  animation: skelPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skelPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skelLine,
+  .skeleton .imageWrap {
+    animation: none;
   }
 }

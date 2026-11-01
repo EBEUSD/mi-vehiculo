@@ -87,3 +87,11 @@
   .formGrid { grid-template-columns: 1fr; }
   .fullWidth { grid-column: span 1; }
 }
+
+/* Aviso de validación */
+.fieldHint {
+  margin: 6px 0 0;
+  color: #dc2626;
+  font-size: 12.5px;
+  font-weight: 600;
+}

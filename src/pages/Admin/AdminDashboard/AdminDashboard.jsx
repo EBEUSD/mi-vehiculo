@@ -65,46 +65,64 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
   const [saving, setSaving]               = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pubs, setPubs]                   = useState(null);
+  const [actionError, setActionError]     = useState("");
 
   useEffect(() => {
+    let ignore = false;
     api.get("/admin/vehicles?limit=200")
       .then((res) => {
+        if (ignore) return;
         const list = (res.data || []).filter((v) => v.seller?.email === user.email);
         setPubs(list);
       })
-      .catch(() => setPubs([]));
+      .catch(() => { if (!ignore) setPubs([]); });
+    return () => { ignore = true; };
   }, [user.email]);
 
+  // El rol se cambia por el backend, que valida en el servidor que quien llama es ADMIN
   const changeRole = async (role) => {
     if (saving) return;
     setSaving(true);
+    setActionError("");
     try {
-      await supabase.from("profiles").update({ role }).eq("id", user.id);
+      await api.patch(`/admin/profiles/${user.id}/role`, { role });
       onChangeRole(user.id, role);
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
+    } catch (err) {
+      setActionError(err.message || "No se pudo cambiar el rol.");
+    } finally { setSaving(false); }
+  };
+
+  // Supabase no lanza excepción si RLS rechaza: devuelve { error } o 0 filas afectadas
+  const runProfileWrite = async (query) => {
+    const { data, error } = await query.select("id");
+    if (error) throw error;
+    if (!data?.length) throw new Error("Sin permisos para modificar este usuario.");
   };
 
   const toggleBlock = async () => {
     if (saving) return;
     setSaving(true);
+    setActionError("");
     try {
       const blocked = !user.blocked;
-      await supabase.from("profiles").update({ blocked }).eq("id", user.id);
+      await runProfileWrite(supabase.from("profiles").update({ blocked }).eq("id", user.id));
       onBlock(user.id, blocked);
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
+    } catch (err) {
+      setActionError(err.message || "No se pudo actualizar el bloqueo.");
+    } finally { setSaving(false); }
   };
 
   const deleteUser = async () => {
     if (saving) return;
     setSaving(true);
+    setActionError("");
     try {
-      await supabase.from("profiles").delete().eq("id", user.id);
+      await runProfileWrite(supabase.from("profiles").delete().eq("id", user.id));
       onDelete(user.id);
       onClose();
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
+    } catch (err) {
+      setActionError(err.message || "No se pudo eliminar el usuario.");
+    } finally { setSaving(false); }
   };
 
   return (
@@ -210,6 +228,12 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
               </div>
             )}
           </div>
+
+          {actionError && (
+            <p role="alert" style={{ margin: "0 0 0.75rem", padding: "0.6rem 0.8rem", borderRadius: 8, background: "#fef2f2", color: "#b91c1c", fontSize: "0.82rem" }}>
+              {actionError}
+            </p>
+          )}
 
           <div className={styles.drawerSection}>
             <h4 className={styles.drawerSectionTitle}>Cambiar rol</h4>
@@ -424,16 +448,18 @@ function Overview() {
 /* ── ViewUsuarios ───────────────────────────── */
 function ViewUsuarios({ onViewProfile, refreshKey }) {
   const [profiles, setProfiles] = useState([]);
-  const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [loadedKey, setLoadedKey] = useState(null);
+  const queryKey = `${roleFilter}|${refreshKey}`;
+  const loading  = loadedKey !== queryKey;
 
   useEffect(() => {
-    setLoading(true);
     let query = supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200);
     if (roleFilter) query = query.eq("role", roleFilter);
+    let ignore = false;
     query
-      .then(({ data }) => setProfiles(
+      .then(({ data }) => !ignore && setProfiles(
         (data || []).map((u) => ({
           ...u,
           fullName:  u.full_name,
@@ -444,7 +470,8 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
         }))
       ))
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ignore) setLoadedKey(`${roleFilter}|${refreshKey}`); });
+    return () => { ignore = true; };
   }, [roleFilter, refreshKey]);
 
   const filtered = profiles.filter((u) => {
@@ -503,7 +530,7 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
                 <div style={{
                   flexShrink: 0, width: 40, height: 40, borderRadius: "50%",
                   background: u.blocked ? "#fee2e2" : "#dbeafe",
-                  color: u.blocked ? "#dc2626" : "#1d4ed8",
+                  color: u.blocked ? "#dc2626" : "#1e40af",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontWeight: 700, fontSize: "1rem",
                 }}>
@@ -553,17 +580,19 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
 /* ── ViewPublicaciones ──────────────────────── */
 function ViewPublicaciones() {
   const [vehicles, setVehicles]     = useState([]);
-  const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [loadedFilter, setLoadedFilter] = useState(null);
+  const loading = loadedFilter !== statusFilter;
 
   useEffect(() => {
-    setLoading(true);
     const params = statusFilter ? `?status=${statusFilter}&limit=100` : "?limit=100";
+    let ignore = false;
     api.get(`/admin/vehicles${params}`)
-      .then((res) => setVehicles(res.data || []))
+      .then((res) => { if (!ignore) setVehicles(res.data || []); })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ignore) setLoadedFilter(statusFilter); });
+    return () => { ignore = true; };
   }, [statusFilter]);
 
   const changeStatus = async (id, status, extra = {}) => {
@@ -806,20 +835,25 @@ function ViewFacturacion() {
     const qs   = `from=${from}&to=${to}`;
     const pqs  = `${qs}${planFilter ? `&plan=${planFilter}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}&limit=50`;
 
+    let ignore = false;
     Promise.all([
       api.get(`/admin/payments/stats?${qs}`),
       api.get(`/admin/payments?${pqs}`),
     ])
       .then(([s, p]) => {
+        if (ignore) return;
         setStats(s.data || null);
         setPayments(Array.isArray(p.data) ? p.data : []);
         setBackendReady(true);
       })
       .catch((err) => {
         const code = err?.status || err?.response?.status;
-        if (code === 404 || code === 501) setBackendReady(false);
+        if (!ignore && (code === 404 || code === 501)) setBackendReady(false);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!ignore) setLoading(false); });
+    return () => { ignore = true; };
+    // getRange solo depende de estos mismos filtros
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset, customFrom, customTo, planFilter, statusFilter]);
 
   const fmtMoney = (n) =>
@@ -1077,14 +1111,14 @@ const AdminDashboard = () => {
             </div>
 
             <nav className={styles.sideNav}>
-              {NAV.map(({ id, label, icon: Icon }) => (
+              {NAV.map(({ id, label, icon: NavIcon }) => (
                 <button
                   key={id}
                   title={label}
                   className={`${styles.sideItem} ${view === id ? styles.sideActive : ""}`}
                   onClick={() => goTo(id)}
                 >
-                  <Icon size={17} />
+                  <NavIcon size={17} />
                   <span>{label}</span>
                 </button>
               ))}
