@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import styles from "./Navbar.module.css";
 import {
-  ChevronDown, CircleUser, Heart, LayoutGrid, LogOut, Menu, Plus, Search, User, X,
+  ChevronDown, CircleUser, Download, Heart, LayoutGrid, LogOut, Menu, Plus, Search, User, X,
 } from "lucide-react";
 import logoVehiculo from "../../assets/logo-vehiculo.png";
 import { useAuth } from "../../context/AuthContext";
 import { VEHICLE_CATEGORIES, PRODUCT_CATEGORIES } from "../../lib/categories";
+import { useInstallState, canOfferInstall, requestInstall } from "../../lib/pwaInstall";
 
 // Accesos rápidos de la barra secundaria
 const QUICK_LINKS = [
@@ -22,6 +23,7 @@ const Navbar = () => {
   const { user, signOut }         = useAuth();
   const navigate                  = useNavigate();
   const dropRef                   = useRef(null);
+  const showInstall               = canOfferInstall(useInstallState());
 
   const isAdmin   = user?.role === "ADMIN";
   const fullName  = user?.user_metadata?.full_name || user?.email || "Usuario";
@@ -47,6 +49,11 @@ const Navbar = () => {
     const q = query.trim();
     handleCloseMenu();
     navigate(`/vehiculos?${new URLSearchParams({ ...(q && { q }), sortBy: "relevant", page: "1" })}`);
+  };
+
+  const handleInstall = () => {
+    handleCloseMenu();
+    requestInstall();
   };
 
   const handleSignOut = async () => {
@@ -173,6 +180,11 @@ const Navbar = () => {
           <nav className={styles.subNavRight}>
             <Link to="/nosotros">Misión, visión y valores</Link>
             <Link to="/faq">Consejos e información</Link>
+            {showInstall && (
+              <button type="button" className={styles.installLink} onClick={handleInstall}>
+                <Download size={14} aria-hidden="true" /> Instalar app
+              </button>
+            )}
           </nav>
         </div>
       </div>
@@ -217,6 +229,11 @@ const Navbar = () => {
           <nav className={styles.mobileNavSecondary}>
             <Link to="/nosotros" onClick={handleCloseMenu}>Misión, visión y valores</Link>
             <Link to="/faq" onClick={handleCloseMenu}>Consejos e información</Link>
+            {showInstall && (
+              <button type="button" className={styles.mobileInstallBtn} onClick={handleInstall}>
+                <Download size={18} aria-hidden="true" /> Agregar a pantalla principal
+              </button>
+            )}
           </nav>
         </div>
       </div>

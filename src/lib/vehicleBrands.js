@@ -101,6 +101,35 @@ export const POPULAR_MODELS = {
     AKT: ["NKD 125", "CR4 125", "TT 150", "AK 125"],
     BMW: ["G 310 R", "G 310 GS", "F 850 GS", "R 1250 GS", "S 1000 RR"],
     Haojue: ["DK 150", "KA 150", "NK 150", "Express 125"],
+    // Marcas locales: modelos enviados por el cliente
+    Freedom: [
+      "Fire 125", "Fire 150",                                                         // Trabajo
+      "Switch 150", "Holkan 160", "CR1", "CR2", "CR4N", "CR5 250", "Spitzer 250 R",   // Calle/Sport
+      "FXR 150", "FXR 200",                                                           // Todoterreno
+      "Space 125", "Life 110", "Click 150",                                           // Scooters
+    ],
+    Dayun: [
+      "150-29A", "Mecha 200-9", "250-R",   // Deportivas
+      "125-6", "Panda 150-6E",             // Urbano/Trabajo
+      "200 GY",                            // Doble propósito
+    ],
+    Serpento: [
+      "Hurricane 200", "Hurricane 250", "Forza 150", "Falcon 200RR",   // Sport/Pista
+      "Defender RR 150", "Traxx 200", "Krait 250", "Rally 250",        // Todoterreno
+      "Aspid 125", "Aspid 150", "Taypan R 150",                        // Mensajería
+      "RS2 125", "RS3 150",                                            // Scooters
+    ],
+    Katana: [
+      "SMX 150", "SMX 200",               // Todoterreno
+      "R1 200", "R2-250", "KN 150",       // Deportivas/Calle
+      "MK1 MT", "MK1 CVT", "Nave 150",    // Scooters
+    ],
+    Genesis: [
+      "SX1 150", "SX2 200", "SX3 250 4V",              // Todoterreno/Enduro
+      "Bolt 160", "GK 125", "GK 150", "GE 150-6",      // Trabajo
+      "CR3", "GSR-4",                                  // Sport
+      "Klik 150cc",                                    // Automática
+    ],
   },
   camiones: {
     Isuzu: ["NPR", "NQR", "NMR", "ELF", "FRR", "FVR", "FTR"],

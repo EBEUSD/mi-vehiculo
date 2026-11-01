@@ -477,3 +477,35 @@
 .accountMenuSignOut:hover {
   background: #fff5f5;
 }
+
+/* Instalar la app (PWA) */
+.installLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1d4ed8;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mobileInstallBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.8rem 0.9rem;
+  border: 0;
+  border-radius: 12px;
+  background: #eef3ff;
+  color: #1d4ed8;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}

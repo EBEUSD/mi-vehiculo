@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Download, Share, X } from "lucide-react";
+import { Download, EllipsisVertical, Share, X } from "lucide-react";
+import {
+  useInstallState, requestInstall, closeInstallHelp, isIOS, isTouchDevice,
+} from "../../lib/pwaInstall";
 import styles from "./InstallPrompt.module.css";
 
 const DISMISS_KEY = "mv_install_dismissed";
@@ -13,8 +16,6 @@ const ENGAGEMENT_MS = 30000;
 const HIDDEN_PREFIXES = ["/login", "/reset-password", "/publicar", "/editar", "/vendedor", "/admin", "/oauth-landing"];
 const isHiddenRoute = (pathname) =>
   HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
-
-const hasFinePointer = () => window.matchMedia?.("(pointer: fine)").matches;
 
 // Cuenta una visita por sesión del navegador; se evalúa una vez al cargar la app
 const visitCount = (() => {
@@ -31,13 +32,6 @@ const visitCount = (() => {
   }
 })();
 
-const isStandalone = () =>
-  window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone === true;
-
-const isIOS = () =>
-  /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
-  (window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1);
-
 const recentlyDismissed = () => {
   try {
     const ts = Number(localStorage.getItem(DISMISS_KEY));
@@ -48,12 +42,14 @@ const recentlyDismissed = () => {
 };
 
 // "Agregar a pantalla principal": botón nativo en Android/Chrome, instrucciones en iOS Safari.
-// Nunca en la primera carga: recién desde la segunda visita o tras ~30 s de uso.
+// Solo, nunca en la primera carga: recién desde la segunda visita o tras ~30 s de uso.
+// Desde el menú ("Agregar a pantalla principal") se abre siempre.
 const InstallPrompt = () => {
   const { pathname } = useLocation();
-  const [deferred, setDeferred] = useState(null);
-  const [showIOS, setShowIOS]   = useState(false);
-  const [engaged, setEngaged]   = useState(visitCount >= 2);
+  const { deferred, installed, helpOpen } = useInstallState();
+  const [showIOS, setShowIOS]     = useState(false);
+  const [engaged, setEngaged]     = useState(visitCount >= 2);
+  const [dismissed, setDismissed] = useState(recentlyDismissed);
 
   useEffect(() => {
     if (engaged) return;
@@ -61,46 +57,28 @@ const InstallPrompt = () => {
     return () => clearTimeout(t);
   }, [engaged]);
 
+  // iOS no dispara beforeinstallprompt: mostramos instrucciones tras unos segundos
   useEffect(() => {
-    if (isStandalone() || recentlyDismissed()) return;
-
-    const onPrompt = (e) => {
-      e.preventDefault();
-      setDeferred(e);
-    };
-    const onInstalled = () => setDeferred(null);
-
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-
-    // iOS no dispara beforeinstallprompt: mostramos instrucciones tras unos segundos
-    let timer;
-    // En escritorio (puntero fino) solo se muestra si el navegador ofreció la instalación
-    if (isIOS() && !hasFinePointer()) timer = setTimeout(() => setShowIOS(true), 4000);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-      clearTimeout(timer);
-    };
-  }, []);
+    if (installed || dismissed || !isIOS() || !isTouchDevice()) return;
+    const t = setTimeout(() => setShowIOS(true), 4000);
+    return () => clearTimeout(t);
+  }, [installed, dismissed]);
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* sin storage */ }
-    setDeferred(null);
+    setDismissed(true);
     setShowIOS(false);
+    closeInstallHelp();
   };
 
   const install = async () => {
-    if (!deferred) return;
-    deferred.prompt();
-    const { outcome } = await deferred.userChoice.catch(() => ({}));
+    const outcome = await requestInstall();
     if (outcome !== "accepted") dismiss();
-    setDeferred(null);
   };
 
-  if (!engaged || isHiddenRoute(pathname)) return null;
-  if (!deferred && !showIOS) return null;
+  if (installed) return null;
+  const auto = engaged && !dismissed && !isHiddenRoute(pathname) && (deferred || showIOS);
+  if (!helpOpen && !auto) return null;
 
   return (
     <div className={styles.banner} role="dialog" aria-label="Agregar a pantalla principal">
@@ -109,10 +87,15 @@ const InstallPrompt = () => {
         <strong>Agregá Mi Vehículo a tu pantalla principal</strong>
         {deferred ? (
           <span>Abrila como una app, más rápido y sin buscarla.</span>
-        ) : (
+        ) : isIOS() ? (
           <span>
             Tocá <Share size={13} className={styles.inlineIcon} /> Compartir y luego
             “Agregar a pantalla de inicio”.
+          </span>
+        ) : (
+          <span>
+            Abrí el menú <EllipsisVertical size={13} className={styles.inlineIcon} /> del
+            navegador y tocá “Agregar a pantalla principal” o “Instalar app”.
           </span>
         )}
       </div>
