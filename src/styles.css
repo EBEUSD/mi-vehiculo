@@ -12,7 +12,7 @@ html {
 body {
   margin: 0;
   font-family:
-    Inter,
+    "Plus Jakarta Sans",
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
@@ -45,3 +45,39 @@ a {
   overflow-x: clip;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Colores de marca: usar estas variables en estilos nuevos */
+:root {
+  --brand:       #1d4ed8;
+  --brand-dark:  #1e40af;
+  --navy:        #0b1b4d;
+  --accent:      #f7c548;
+  --container:   1180px;
+}
+
+textarea {
+  font: inherit;
+}
+
+/* Foco visible para quien navega con teclado (no aparece al hacer clic) */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid rgba(29, 78, 216, 0.55);
+  outline-offset: 2px;
+}
+
+/* Espacio reservado mientras se descarga una página (lazy) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

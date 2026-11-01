@@ -30,7 +30,7 @@
 .progressCurrent {
   font-size: 13px;
   font-weight: 800;
-  color: #1570ff;
+  color: #1d4ed8;
 }
 
 .progressTotal {
@@ -75,7 +75,7 @@
 .trackFill {
   left: 0;
   width: var(--pct, 0%);
-  background: linear-gradient(90deg, #1570ff, #3b82f6);
+  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
   transition: width 0.35s ease;
 }
 
@@ -119,10 +119,10 @@
 
 /* Active step */
 .stepActive .circle {
-  border-color: #1570ff;
-  background: #1570ff;
+  border-color: #1d4ed8;
+  background: #1d4ed8;
   color: #fff;
-  box-shadow: 0 0 0 4px rgba(21, 112, 255, 0.12), 0 4px 14px rgba(21, 112, 255, 0.3);
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12), 0 4px 14px rgba(29, 78, 216, 0.3);
 }
 
 /* Completed step */

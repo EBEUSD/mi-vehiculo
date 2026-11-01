@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 const BASE_URL = import.meta.env.DEV
   ? "/api/v1"
   : "https://marketplace-autos-backend.onrender.com/api/v1";
@@ -35,16 +37,41 @@ const handle = async (res) => {
   return json;
 };
 
+// Token vencido (401): se renueva una vez con Supabase y se repite la request
+let _refreshing = null;
+const refreshAccessToken = () => {
+  if (!_refreshing) {
+    _refreshing = supabase.auth.refreshSession()
+      .then(({ data, error }) => {
+        if (error || !data?.session) return false;
+        setTokens(data.session.access_token, data.session.refresh_token);
+        return true;
+      })
+      .catch(() => false)
+      .finally(() => { _refreshing = null; });
+  }
+  return _refreshing;
+};
+
+const request = async (path, init = {}) => {
+  const send = () => fetch(`${BASE_URL}${path}`, { ...init, headers: init.headers() });
+  let res = await send();
+  if (res.status === 401 && _accessToken && await refreshAccessToken()) res = await send();
+  return handle(res);
+};
+
+const uploadHeaders = () => {
+  const h = {};
+  if (_accessToken) h["Authorization"] = `Bearer ${_accessToken}`;
+  return h;
+};
+
 export const api = {
-  get:    (path)        => fetch(`${BASE_URL}${path}`, { headers: authHeaders() }).then(handle),
-  post:   (path, body)  => fetch(`${BASE_URL}${path}`, { method: "POST",  headers: authHeaders(), body: JSON.stringify(body) }).then(handle),
-  patch:  (path, body)  => fetch(`${BASE_URL}${path}`, { method: "PATCH", headers: authHeaders(), body: JSON.stringify(body) }).then(handle),
-  delete: (path)        => fetch(`${BASE_URL}${path}`, { method: "DELETE", headers: authHeaders() }).then(handle),
+  get:    (path)        => request(path, { headers: authHeaders }),
+  post:   (path, body)  => request(path, { method: "POST",   headers: authHeaders, body: JSON.stringify(body) }),
+  patch:  (path, body)  => request(path, { method: "PATCH",  headers: authHeaders, body: JSON.stringify(body) }),
+  delete: (path)        => request(path, { method: "DELETE", headers: authHeaders }),
 
   // multipart — for image uploads (no Content-Type: browser sets boundary automatically)
-  upload: (path, formData) => {
-    const h = {};
-    if (_accessToken) h["Authorization"] = `Bearer ${_accessToken}`;
-    return fetch(`${BASE_URL}${path}`, { method: "POST", headers: h, body: formData }).then(handle);
-  },
+  upload: (path, formData) => request(path, { method: "POST", headers: uploadHeaders, body: formData }),
 };

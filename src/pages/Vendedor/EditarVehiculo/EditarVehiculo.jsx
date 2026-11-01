@@ -6,6 +6,11 @@ import {
 } from "lucide-react";
 import Navbar from "../../../components/Navbar/Navbar";
 import { api } from "../../../lib/api";
+import { formatUSD, isValidPrice, parseMoney } from "../../../lib/money";
+import { formatSvPhone, isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
+import { IMAGE_ACCEPT, validateImageFiles } from "../../../lib/images";
+import useSafeTimeout from "../../../hooks/useSafeTimeout";
+import LocationSelect from "../shared/LocationSelect/LocationSelect";
 import styles from "./EditarVehiculo.module.css";
 
 /* ── Constants ──────────────────────────────── */
@@ -46,20 +51,21 @@ const fromApi = (v, attrDefs) => {
     km:                String(v.mileage     || 0),
     condicion:         v.condition === "NEW" ? "Nuevo" : "Usado",
     categoria:         v.category           || "AUTO",
-    precio:            String(v.price       || 0),
+    precio:            v.price ? String(v.price) : "",
     aceptaPermuta:     v.acceptsExchange    ? "Si" : "No",
     precioNegociable:  v.negotiablePrice    ? "Si" : "No",
     financiacion:      v.financingAvailable ? "Si" : "No",
     descripcion:       v.description        || "",
-    phone:             v.contactPhone       || "",
+    phone:             formatSvPhone(v.contactPhone),
     provinceId:        String(v.city?.province?.id || ""),
     provincia:         v.city?.province?.name      || "",
     cityId:            String(v.city?.id            || ""),
     ciudad:            v.city?.name                || "",
     combustible:       v.attributes?.find((a) => a.definition?.name?.toLowerCase().includes("combustible"))?.value || "Gasolina",
     transmision:       v.attributes?.find((a) => a.definition?.name?.toLowerCase().includes("transm"))?.value || "Manual",
-    combustibleDefId:  combustibleDef?.id || 1,
-    transmisionDefId:  transmisionDef?.id || 2,
+    // Sin definición en el catálogo → el atributo no se envía
+    combustibleDefId:  combustibleDef?.id ?? null,
+    transmisionDefId:  transmisionDef?.id ?? null,
     status:            v.status || "ACTIVE",
     images:            v.images || [],
   };
@@ -90,14 +96,14 @@ const EditarVehiculo = () => {
   const { slug }   = useParams();
   const navigate   = useNavigate();
   const fileRef    = useRef(null);
+  const later      = useSafeTimeout();
 
   const [loading, setLoading]   = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [form, setForm]         = useState(null);
   const [brands, setBrands]     = useState([]);
-  const [models, setModels]     = useState([]);
-  const [provinces, setProvinces] = useState([]);
-  const [cities, setCities]     = useState([]);
+  // Modelos guardados junto a la marca que los pidió
+  const [modelsState, setModelsState] = useState({ brandId: null, list: [] });
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -106,48 +112,38 @@ const EditarVehiculo = () => {
 
   /* Load vehicle + catalog data in parallel */
   useEffect(() => {
-    setLoading(true);
+    let ignore = false;
     Promise.all([
       api.get(`/vehicles/${slug}/detail`),
       api.get("/catalog/attribute-definitions").catch(() => ({ data: [] })),
       api.get("/catalog/brands").catch(() => ({ data: [] })),
-      api.get("/location/provinces").catch(() => ({ data: [] })),
     ])
-      .then(([vehicleRes, defsRes, brandsRes, provincesRes]) => {
-        const v = vehicleRes.data;
-        const f = fromApi(v, defsRes.data || []);
-        setForm(f);
+      .then(([vehicleRes, defsRes, brandsRes]) => {
+        if (ignore) return;
+        setForm(fromApi(vehicleRes.data, defsRes.data || []));
         setBrands(brandsRes.data || []);
-        setProvinces(provincesRes.data || []);
-
-        // Load models for the vehicle's brand
-        if (f.marcaId) {
-          api.get(`/catalog/brands/${f.marcaId}/models`)
-            .then((r) => setModels(r.data || []))
-            .catch(() => {});
-        }
-        // Load cities for the vehicle's province
-        if (f.provinceId) {
-          api.get(`/location/provinces/${f.provinceId}/cities`)
-            .then((r) => setCities(r.data || []))
-            .catch(() => {});
-        }
       })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!ignore) setNotFound(true); })
+      .finally(() => { if (!ignore) setLoading(false); });
+    return () => { ignore = true; };
   }, [slug]);
 
-  /* Cascade: brand → models */
+  /* Cascade: brand → models (descarta respuestas de una marca anterior) */
+  const brandId = form?.marcaId || "";
+  useEffect(() => {
+    if (!brandId) return;
+    let ignore = false;
+    api.get(`/catalog/brands/${brandId}/models`)
+      .then((r) => { if (!ignore) setModelsState({ brandId, list: r.data || [] }); })
+      .catch(() => { if (!ignore) setModelsState({ brandId, list: [] }); });
+    return () => { ignore = true; };
+  }, [brandId]);
+  const models = modelsState.brandId === brandId ? modelsState.list : [];
+
   const handleBrandChange = (e) => {
     const id    = e.target.value;
     const brand = brands.find((b) => String(b.id) === id);
     setForm((p) => ({ ...p, marcaId: id, marca: brand?.name || "", modeloId: "", modelo: "" }));
-    setModels([]);
-    if (id) {
-      api.get(`/catalog/brands/${id}/models`)
-        .then((r) => setModels(r.data || []))
-        .catch(() => {});
-    }
   };
 
   const handleModelChange = (e) => {
@@ -156,23 +152,10 @@ const EditarVehiculo = () => {
     setForm((p) => ({ ...p, modeloId: id, modelo: model?.name || "" }));
   };
 
-  /* Cascade: province → cities */
-  const handleProvinceChange = (e) => {
-    const id   = e.target.value;
-    const prov = provinces.find((p) => String(p.id) === id);
-    setForm((p) => ({ ...p, provinceId: id, provincia: prov?.name || "", cityId: "", ciudad: "" }));
-    setCities([]);
-    if (id) {
-      api.get(`/location/provinces/${id}/cities`)
-        .then((r) => setCities(r.data || []))
-        .catch(() => {});
-    }
-  };
-
-  const handleCityChange = (e) => {
-    const id   = e.target.value;
-    const city = cities.find((c) => String(c.id) === id);
-    setForm((p) => ({ ...p, cityId: id, ciudad: city?.name || "" }));
+  /* Departamento → municipio */
+  const handleLocationChange = (patch) => {
+    setForm((p) => ({ ...p, ...patch }));
+    setSaved(false);
   };
 
   const set = (name, value) => {
@@ -191,7 +174,8 @@ const EditarVehiculo = () => {
     if (!form.modeloId)  errs.modeloId  = "Seleccioná el modelo.";
     if (!form.anio)      errs.anio      = "Seleccioná el año.";
     if (!form.km && form.km !== "0") errs.km = "Ingresá el kilometraje.";
-    if (!form.precio || Number(form.precio) <= 0) errs.precio = "Ingresá un precio válido.";
+    if (!isValidPrice(form.precio)) errs.precio = "Ingresá un precio mayor a $0 (ej.: 15,000).";
+    if (form.phone && !isValidSvPhone(form.phone)) errs.phone = "El teléfono debe tener 8 dígitos.";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -209,21 +193,21 @@ const EditarVehiculo = () => {
         version:            form.version            || undefined,
         condition:          form.condicion === "Nuevo" ? "NEW" : "USED",
         mileage:            parseInt(String(form.km).replace(/\D/g, "")) || 0,
-        price:              parseFloat(String(form.precio).replace(/[^\d.]/g, "")) || 0,
+        price:              parseMoney(form.precio),
         currency:           "USD",
         acceptsExchange:    form.aceptaPermuta === "Si",
         negotiablePrice:    form.precioNegociable === "Si",
         financingAvailable: form.financiacion === "Si",
         description:        form.descripcion || undefined,
-        contactPhone:       form.phone || undefined,
+        contactPhone:       normalizeSvPhone(form.phone),
         cityId:             Number(form.cityId) > 0 ? Number(form.cityId) : undefined,
         attributes: [
           { definitionId: form.combustibleDefId, value: form.combustible },
           { definitionId: form.transmisionDefId, value: form.transmision },
-        ].filter((a) => a.value),
+        ].filter((a) => a.definitionId && a.value),
       });
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      later(() => setSaved(false), 3000);
     } catch (err) {
       setSaveError(err?.message || "No se pudo guardar. Intentá de nuevo.");
     } finally {
@@ -268,8 +252,11 @@ const EditarVehiculo = () => {
 
   /* Upload new images */
   const handleUploadImages = async (e) => {
-    const files = Array.from(e.target.files || []);
+    const picked = Array.from(e.target.files || []);
     e.target.value = "";
+    if (!picked.length) return;
+    const { valid: files, error } = validateImageFiles(picked);
+    if (error) setSaveError(error);
     if (!files.length) return;
     setUploadingImages(true);
     try {
@@ -290,6 +277,7 @@ const EditarVehiculo = () => {
   if (loading) {
     return (
       <div className={styles.page}>
+        <title>Editar vehículo | Mi Vehículo</title>
         <Navbar />
         <div className={styles.center}><Loader2 size={28} className={styles.spin} /> Cargando…</div>
       </div>
@@ -313,6 +301,7 @@ const EditarVehiculo = () => {
 
   return (
     <div className={styles.page}>
+      <title>{`Editar ${[form.marca, form.modelo].filter(Boolean).join(" ") || "vehículo"} | Mi Vehículo`}</title>
       <Navbar />
 
       {/* Top bar */}
@@ -467,7 +456,7 @@ const EditarVehiculo = () => {
                 <Field label="Precio (USD)" required error={errors.precio}>
                   <div className={styles.inputPrefix}>
                     <span>$</span>
-                    <input type="text" name="precio" value={form.precio} onChange={handleChange} placeholder="Ej: 15000" />
+                    <input type="text" inputMode="decimal" name="precio" value={form.precio} onChange={handleChange} placeholder="Ej: 15,000" />
                   </div>
                 </Field>
               </div>
@@ -482,25 +471,18 @@ const EditarVehiculo = () => {
             <section className={styles.card}>
               <h2 className={styles.cardTitle}>Contacto y ubicación</h2>
               <div className={styles.grid2}>
-                <Field label="Teléfono / WhatsApp">
-                  <input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+503 7000-0000" />
+                <Field label="Teléfono / WhatsApp" error={errors.phone}>
+                  <input type="tel" inputMode="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+503 7000-0000" />
                 </Field>
 
                 <div /> {/* spacer */}
 
-                <Field label="Departamento">
-                  <select value={form.provinceId} onChange={handleProvinceChange}>
-                    <option value="">Seleccioná el departamento</option>
-                    {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </Field>
-
-                <Field label="Municipio">
-                  <select value={form.cityId} onChange={handleCityChange} disabled={!form.provinceId}>
-                    <option value="">{!form.provinceId ? "Primero elegí el departamento" : "Seleccioná el municipio"}</option>
-                    {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </Field>
+                <LocationSelect
+                  provinceId={form.provinceId}
+                  cityId={form.cityId}
+                  onChange={handleLocationChange}
+                  fieldClassName={styles.field}
+                />
               </div>
             </section>
 
@@ -522,7 +504,7 @@ const EditarVehiculo = () => {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  accept={IMAGE_ACCEPT}
                   multiple
                   className={styles.hiddenInput}
                   onChange={handleUploadImages}
@@ -596,7 +578,7 @@ const EditarVehiculo = () => {
                 <li><span>Marca</span><strong>{form.marca || "—"}</strong></li>
                 <li><span>Modelo</span><strong>{form.modelo || "—"}</strong></li>
                 <li><span>Año</span><strong>{form.anio || "—"}</strong></li>
-                <li><span>Precio</span><strong>{form.precio ? `$${Number(form.precio).toLocaleString("en-US")}` : "—"}</strong></li>
+                <li><span>Precio</span><strong>{formatUSD(form.precio)}</strong></li>
                 <li><span>Fotos</span><strong>{form.images.length}</strong></li>
               </ul>
             </div>

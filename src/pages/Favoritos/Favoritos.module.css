@@ -82,7 +82,7 @@
 .savedPill svg,
 .alertPill svg {
   font-size: 1rem;
-  color: #2563eb;
+  color: #1d4ed8;
 }
 
 .createAlertBtn {
@@ -91,7 +91,7 @@
   border-radius: 14px;
   border: 1px solid #cfe0ff;
   background: #f8fbff;
-  color: #2563eb;
+  color: #1d4ed8;
   font-weight: 800;
   font-size: 0.94rem;
   cursor: pointer;
@@ -126,8 +126,8 @@
 }
 
 .activeSort {
-  color: #2563eb !important;
-  border-bottom-color: #2563eb !important;
+  color: #1d4ed8 !important;
+  border-bottom-color: #1d4ed8 !important;
 }
 
 .layout {
@@ -189,11 +189,11 @@
 }
 
 .categoryItemActive {
-  color: #1570ff;
+  color: #1d4ed8;
   font-weight: 600;
 }
-.categoryItemActive .categoryLabel svg { color: #1570ff; }
-.categoryItemActive strong { color: #1570ff; }
+.categoryItemActive .categoryLabel svg { color: #1d4ed8; }
+.categoryItemActive strong { color: #1d4ed8; }
 
 .filterGroup {
   margin-bottom: 1.2rem;
@@ -242,7 +242,7 @@
   top: 10px;
   height: 4px;
   border-radius: 999px;
-  background: #2563eb;
+  background: #1d4ed8;
 }
 
 .fakeThumbLeft,
@@ -252,7 +252,7 @@
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  background: #2563eb;
+  background: #1d4ed8;
   border: 3px solid #ffffff;
   box-shadow: 0 0 0 1px #bfdbfe;
 }
@@ -311,7 +311,7 @@
   border-radius: 14px;
   border: 1px solid #cfe0ff;
   background: #f8fbff;
-  color: #2563eb;
+  color: #1d4ed8;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -345,7 +345,7 @@
 }
 
 .alertBannerLeft svg {
-  color: #2563eb;
+  color: #1d4ed8;
   font-size: 1.1rem;
   margin-top: 0.15rem;
 }
@@ -375,7 +375,7 @@
   border-radius: 13px;
   border: 1px solid #cfe0ff;
   background: #f8fbff;
-  color: #2563eb;
+  color: #1d4ed8;
   font-weight: 800;
   cursor: pointer;
 }
@@ -396,7 +396,7 @@
 
 .emptyState svg {
   font-size: 2rem;
-  color: #2563eb;
+  color: #1d4ed8;
 }
 
 .emptyState h2 {
@@ -517,4 +517,39 @@
   .alertBanner {
     border-radius: 18px;
   }
+}
+.categoryItem {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sidebarTitle {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+.noMatch {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #667085;
+}
+
+button.emptyBtn {
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.categoryItem:focus-visible,
+.clearBtn:focus-visible,
+.emptyBtn:focus-visible,
+.sortBar button:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
 }

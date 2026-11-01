@@ -1,10 +1,12 @@
 import { useRef, useState } from "react";
 import { AlertCircle, Check, CloudUpload, Info, Loader2, RefreshCw, Star, Trash2 } from "lucide-react";
+import { PLANS, getMaxPhotos, getPlan } from "../../../../../lib/plans";
+import { IMAGE_ACCEPT, MAX_IMAGE_MB as MAX_SIZE_MB, validateImageFiles } from "../../../../../lib/images";
+import { revokePreviews } from "../../../../../lib/publishDrafts";
 import styles from "./FotosStep.module.css";
 
-const MAX_PHOTOS  = 20;
-const MAX_SIZE_MB = 10;
-const VALID_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const FREE_PLAN = PLANS.find((p) => p.precio === null);
+const PAID_PLANS = PLANS.filter((p) => p.precio !== null);
 
 const FotosStep = ({ formData, onChange }) => {
   const fileInputRef    = useRef(null);
@@ -14,26 +16,20 @@ const FotosStep = ({ formData, onChange }) => {
   const [localError, setLocalError] = useState("");
   const [isDragging, setIsDragging] = useState(false);
 
+  // Límite según el plan elegido (sin plan aún: el máximo comprable)
+  const MAX_PHOTOS = getMaxPhotos(formData.plan);
   const photos = formData.fotos || [];
-  // Ref always points to latest photos — safe to read inside async callbacks
-  const photosRef = useRef(photos);
-  photosRef.current = photos;
+  const plan   = getPlan(formData.plan);
 
   const updatePhotos = (next) =>
     onChange({ target: { name: "fotos", value: next } });
 
   const patchPhoto = (id, patch) =>
-    updatePhotos(photosRef.current.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    updatePhotos(photos.map((p) => (p.id === id ? { ...p, ...patch } : p)));
 
   const validateFiles = (files) => {
-    const valid = [];
-    let err = "";
-    files.forEach((f) => {
-      if (!VALID_TYPES.includes(f.type))       err = "Solo JPG, PNG o WEBP.";
-      else if (f.size > MAX_SIZE_MB * 1024 * 1024) err = `Cada imagen debe pesar menos de ${MAX_SIZE_MB} MB.`;
-      else valid.push(f);
-    });
-    return { valid, err };
+    const { valid, error } = validateImageFiles(files);
+    return { valid, err: error };
   };
 
   const addPhotos = async (files) => {
@@ -91,6 +87,7 @@ const FotosStep = ({ formData, onChange }) => {
     const { valid, err } = validateFiles([files[0]]);
     if (err) { setLocalError(err); return; }
     const file = valid[0];
+    revokePreviews(photos.filter((p) => p.id === replacePhotoId));
     patchPhoto(replacePhotoId, {
       file,
       preview: URL.createObjectURL(file),
@@ -110,6 +107,7 @@ const FotosStep = ({ formData, onChange }) => {
   const handleDeletePhoto = () => {
     if (!selectedPhoto) return;
     const deleted  = photos.find((p) => p.id === selectedPhoto);
+    revokePreviews([deleted]);
     const filtered = photos.filter((p) => p.id !== selectedPhoto);
     const next     = filtered.map((p, i) =>
       deleted?.isMain && i === 0 ? { ...p, isMain: true } : p
@@ -139,10 +137,10 @@ const FotosStep = ({ formData, onChange }) => {
         onDrop={handleDrop}
       >
         <input ref={fileInputRef} type="file"
-          accept="image/png,image/jpeg,image/jpg,image/webp"
+          accept={IMAGE_ACCEPT}
           multiple className={styles.hiddenInput} onChange={handleAddFiles} />
         <input ref={replaceInputRef} type="file"
-          accept="image/png,image/jpeg,image/jpg,image/webp"
+          accept={IMAGE_ACCEPT}
           className={styles.hiddenInput} onChange={handleReplaceFile} />
 
         <div className={styles.uploadIcon}><CloudUpload size={48} /></div>
@@ -153,6 +151,14 @@ const FotosStep = ({ formData, onChange }) => {
         </h3>
         <p>JPG, PNG, WEBP · Máximo {MAX_SIZE_MB} MB por foto · Hasta {MAX_PHOTOS} fotos</p>
       </div>
+
+      <p className={styles.planLimitNote}>
+        {plan
+          ? <>Tu plan <strong>{plan.nombre}</strong> permite hasta <strong>{plan.fotos} fotos</strong>.</>
+          : <>El plan <strong>{FREE_PLAN?.nombre}</strong> permite hasta <strong>{FREE_PLAN?.fotos} fotos</strong>;
+              {" "}los planes pagos, más ({PAID_PLANS.map((p) => `${p.nombre}: ${p.fotos}`).join(" · ")}).
+              {" "}Si subís más de {FREE_PLAN?.fotos}, al elegir el plan vas a poder decidir cuáles conservar.</>}
+      </p>
 
       {localError && <p className={styles.photoError}>{localError}</p>}
 
@@ -233,7 +239,8 @@ const FotosStep = ({ formData, onChange }) => {
       <div className={styles.infoNotice}>
         <Info size={16} />
         <p>
-          Las fotos se suben al publicar el aviso.
+          Las fotos se suben al publicar el aviso y <strong>no se guardan en el borrador</strong>:
+          si salís de la página, vas a tener que volver a cargarlas.
           {mainPhoto && " La foto principal será la primera imagen del aviso."}
         </p>
       </div>

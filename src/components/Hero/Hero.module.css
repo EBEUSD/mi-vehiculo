@@ -1,19 +1,27 @@
+/* La imagen tiene espacio libre a la izquierda para el texto.
+   El padding inferior deja lugar al buscador que se superpone (Home). */
 .hero {
   position: relative;
   overflow: hidden;
-  min-height: 420px;
-  background:
-    linear-gradient(90deg, rgba(1, 24, 68, 0.9), rgba(3, 41, 103, 0.78)),
-    url("https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1800&q=80")
-      center/cover no-repeat;
+  background: #0b1b4d;
+}
+
+/* Equivale al antiguo background: right center / cover */
+.bgImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  pointer-events: none;
+  user-select: none;
 }
 
 .overlay {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 70% 45%, rgba(59, 130, 246, 0.18), transparent 28%),
-    radial-gradient(circle at 85% 20%, rgba(96, 165, 250, 0.1), transparent 25%);
+  background: linear-gradient(90deg, rgba(11, 27, 77, 0.96) 0%, rgba(11, 27, 77, 0.78) 40%, rgba(11, 27, 77, 0.1) 75%);
   pointer-events: none;
 }
 
@@ -22,177 +30,150 @@
   z-index: 2;
   width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
-  min-height: 420px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 1rem;
+  padding: 4rem 0 9.5rem;
 }
 
 .content {
-  padding: 1rem 0;
+  max-width: 600px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(247, 197, 72, 0.55);
+  background: rgba(247, 197, 72, 0.12);
+  color: #f7c548;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .content h1 {
-  margin: 0;
+  margin: 1.1rem 0 0;
   color: #fff;
-  font-size: clamp(2.3rem, 5vw, 3.7rem);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  max-width: 620px;
+  font-size: clamp(2.2rem, 4.6vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
 }
 
 .content p {
-  margin: 1rem 0 0;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 1.08rem;
-  line-height: 1.65;
-  max-width: 560px;
+  margin: 1.1rem 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.content p.slogan {
+  margin-top: 0.9rem;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.slogan strong {
+  color: #fff;
+  font-style: normal;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
   margin-top: 1.8rem;
 }
 
 .primaryBtn,
 .secondaryBtn {
-  border-radius: 999px;
-  font-weight: 800;
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.7rem;
-  transition: 0.2s ease;
+  gap: 0.55rem;
+  min-height: 50px;
+  padding: 0 1.4rem;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .primaryBtn {
-  border: none;
-  background: #fff;
-  color: #0a2e74;
-  padding: 1rem 1.35rem;
-  box-shadow: 0 16px 30px rgba(3, 17, 47, 0.18);
+  background: #f7c548;
+  color: #0b1b4d;
+  box-shadow: 0 10px 24px rgba(247, 197, 72, 0.3);
 }
+
+.primaryBtn:hover { background: #f4b923; }
 
 .secondaryBtn {
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
   color: #fff;
-  padding: 1rem 1.2rem;
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.primaryBtn:hover,
-.secondaryBtn:hover {
-  transform: translateY(-2px);
-}
+.secondaryBtn:hover { background: rgba(255, 255, 255, 0.1); }
 
-.carWrap {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  min-height: 100%;
-}
+.primaryBtn:active,
+.secondaryBtn:active { transform: scale(0.98); }
 
-.carWrap img {
-  width: 100%;
-  max-width: 610px;
-  object-fit: contain;
-  filter: drop-shadow(0 28px 28px rgba(0, 0, 0, 0.26));
-}
+/* Tablet / celular: los vehículos arriba, el texto abajo sobre fondo sólido */
+@media (max-width: 900px) {
+  /* Equivale a background-size: auto 300px; background-position: 78% top */
+  .bgImg {
+    inset: 0 auto auto 78%;
+    width: auto;
+    height: 300px;
+    max-width: none;
+    object-fit: fill;
+    transform: translateX(-78%);
+  }
 
-@media (max-width: 980px) {
+  .overlay {
+    background: linear-gradient(180deg, rgba(11, 27, 77, 0) 0, rgba(11, 27, 77, 0) 150px, #0b1b4d 300px);
+  }
+
   .container {
-    grid-template-columns: 1fr;
-    padding: 2rem 0 3.5rem;
-    min-height: auto;
+    width: min(100% - 1.5rem, 1180px);
+    padding: 240px 0 8rem;
   }
 
   .content {
+    margin: 0 auto;
     text-align: center;
-  }
-
-  .content p {
-    margin-left: auto;
-    margin-right: auto;
   }
 
   .actions {
     justify-content: center;
   }
-
-  .carWrap {
-    order: -1;
-  }
-
-  .carWrap img {
-    max-width: 500px;
-  }
-}
-
-@media (max-width: 768px) {
-  .container {
-    width: min(100% - 1rem, 1180px);
-    padding: 1.35rem 0 2.4rem;
-    gap: 0.5rem;
-  }
-
-  .carWrap img {
-    max-width: 420px;
-  }
-
-  .content h1 {
-    font-size: clamp(2rem, 10vw, 3rem);
-  }
-
-  .content p {
-    font-size: 1rem;
-    line-height: 1.55;
-  }
 }
 
 @media (max-width: 520px) {
-  .hero {
-    min-height: auto;
+  .bgImg {
+    left: 80%;
+    height: 230px;
+    transform: translateX(-80%);
+  }
+
+  .overlay {
+    background: linear-gradient(180deg, rgba(11, 27, 77, 0) 0, rgba(11, 27, 77, 0) 110px, #0b1b4d 230px);
   }
 
   .container {
-    padding: 1rem 0 2rem;
-  }
-
-  .carWrap {
-    margin-top: 0.25rem;
-  }
-
-  .carWrap img {
-    max-width: 100%;
+    padding: 185px 0 7rem;
   }
 
   .content h1 {
-    font-size: 3rem;
-    line-height: 0.98;
-    max-width: 320px;
-    margin-left: auto;
-    margin-right: auto;
+    font-size: 2.05rem;
   }
 
   .content p {
-    max-width: 320px;
+    font-size: 0.96rem;
   }
 
   .actions {
     flex-direction: column;
-    align-items: center;   /* fix: centrar botones */
-    gap: 0.75rem;
-  }
-
-  .primaryBtn,
-  .secondaryBtn {
-    width: 100%;
-    max-width: 300px;
+    align-items: stretch;
   }
 }

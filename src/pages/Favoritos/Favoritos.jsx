@@ -1,161 +1,169 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  FiBell,
-  FiHeart,
-  FiTrash2,
-  FiFolder,
-} from "react-icons/fi";
-import { FaCarSide, FaMotorcycle, FaTruckPickup, FaTruck } from "react-icons/fa";
+import { Heart, Trash2, Folder, Car, Motorbike, Van, Truck } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
 import VehicleGrid from "../../components/VehicleGrid/VehicleGrid";
 import { api } from "../../lib/api";
-import { useAuth } from "../../context/AuthContext";
-import { clearFavorites, getFavorites } from "../../utils/favorites";
+import { mapVehicleCard } from "../../lib/vehicleImage";
+import { useFavorites } from "../../hooks/useFavorites";
 import styles from "./Favoritos.module.css";
 
-const PLACEHOLDER_IMG =
-  "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&auto=format&fit=crop";
-
-const mapVehicle = (v) => ({
-  id:           v.id,
-  slug:         v.slug,
-  title:        [v.brand?.name, v.model?.name, v.version].filter(Boolean).join(" "),
-  price:        v.price   || 0,
-  year:         v.year    || 0,
-  km:           v.mileage || 0,
-  fuel:         v.attributes?.find((a) => a.definition?.name === "Combustible")?.value || "",
-  transmission: v.attributes?.find((a) => a.definition?.name === "Transmisión")?.value || "",
-  location:     [v.city?.name, v.city?.province?.name].filter(Boolean).join(", "),
-  image:        v.images?.[0]?.url || PLACEHOLDER_IMG,
-  tag:          v.plan === "premium" ? "DESTACADO" : v.condition === "NEW" ? "NUEVO" : "USADO",
-  type:         v.category || "AUTO",
-  condition:    v.condition === "NEW" ? "new" : "used",
-});
+const TYPE_FILTERS = [
+  { key: "todos",      icon: <Folder size={16} aria-hidden="true" />,    label: "Todos" },
+  { key: "AUTO",       icon: <Car size={16} aria-hidden="true" />,       label: "Carros" },
+  { key: "MOTO",       icon: <Motorbike size={16} aria-hidden="true" />, label: "Motos" },
+  { key: "CAMIONETA",  icon: <Van size={16} aria-hidden="true" />,       label: "Panel / Microbús" },
+  { key: "CAMION",     icon: <Truck size={16} aria-hidden="true" />,     label: "Camión / Bus" },
+];
 
 const Favoritos = () => {
-  const { user }                       = useAuth();
-  const [favoriteIds, setFavoriteIds]  = useState([]);
-  const [rawVehicles, setRawVehicles]  = useState([]);
-  const [loading, setLoading]          = useState(false);
-  const [sortBy, setSortBy]            = useState("recent");
-  const [typeFilter, setTypeFilter]    = useState("todos");
+  const { ids, items, loading: favLoading, error: favError, isServer, clear, reload } = useFavorites();
+  const [sortBy, setSortBy]         = useState("recent");
+  const [typeFilter, setTypeFilter] = useState("todos");
 
-  const isAuthed = !!user && !user.id?.startsWith("mock-");
-
-  /* Load favorites — API when authenticated, localStorage otherwise */
+  // Con sesión: refresca la lista del servidor al entrar
   useEffect(() => {
-    if (isAuthed) {
-      setLoading(true);
-      api.get("/favorites")
-        .then((res) => setRawVehicles((res.data || []).map((item) => mapVehicle(item.vehicle || item))))
-        .catch(() => setRawVehicles([]))
-        .finally(() => setLoading(false));
-      return;
-    }
+    if (isServer) reload();
+  }, [isServer, reload]);
 
-    const sync = () => setFavoriteIds(getFavorites());
-    sync();
-    window.addEventListener("favorites-updated", sync);
-    return () => window.removeEventListener("favorites-updated", sync);
-  }, [isAuthed]);
+  /* Sin sesión: se buscan los vehículos de los ids guardados en localStorage.
+     Cache por id para no volver a pedir todo al quitar uno. */
+  const [cache, setCache] = useState({}); // id → row | { failed, status }
+  const [retryTick, setRetryTick] = useState(0);
+  const missing = isServer ? [] : ids.filter((id) => !(id in cache));
+  const missingKey = missing.join(",");
 
-  /* Fetch vehicles by localStorage IDs (unauthenticated path) */
   useEffect(() => {
-    if (isAuthed) return;
-    if (!favoriteIds.length) { setRawVehicles([]); return; }
-    Promise.allSettled(favoriteIds.map((id) => api.get(`/vehicles/${id}`)))
-      .then((results) =>
-        setRawVehicles(
-          results
-            .filter((r) => r.status === "fulfilled")
-            .map((r) => mapVehicle(r.value.data))
-        )
-      );
-  }, [favoriteIds, isAuthed]);
+    if (!missingKey) return;
+    let ignore = false;
+    const pending = missingKey.split(",");
+    // TODO backend: GET /vehicles/:id no está documentado (solo /vehicles/:slug/detail)
+    Promise.allSettled(pending.map((id) => api.get(`/vehicles/${id}`))).then((results) => {
+      if (ignore) return;
+      setCache((prev) => {
+        const next = { ...prev };
+        results.forEach((r, i) => {
+          next[pending[i]] = r.status === "fulfilled" && r.value?.data
+            ? r.value.data
+            : { failed: true, status: r.reason?.status };
+        });
+        return next;
+      });
+    });
+    return () => { ignore = true; };
+  }, [missingKey, retryTick]);
+
+  const localRows = ids.map((id) => cache[id]).filter((r) => r && !r.failed);
+  // Error de red (no un 404 de una publicación borrada)
+  const localError = !isServer && ids.some((id) => cache[id]?.failed && cache[id].status !== 404);
+
+  const loading = isServer ? favLoading && items.length === 0 : missing.length > 0;
+  const loadError = isServer ? Boolean(favError) : localError && localRows.length === 0;
+
+  const retry = () => {
+    if (isServer) { reload(); return; }
+    setCache((prev) => Object.fromEntries(Object.entries(prev).filter(([, v]) => !v?.failed)));
+    setRetryTick((t) => t + 1);
+  };
+
+  // Server: ordenado por fecha de guardado (desc). Local: el último agregado va al final del array.
+  const allVehicles = useMemo(
+    () => (isServer ? items : [...localRows].reverse()).map(mapVehicleCard),
+    [isServer, items, localRows]
+  );
 
   const favoriteVehicles = useMemo(() => {
-    const TYPE_MAP = { autos: "AUTO", motos: "MOTO", camionetas: "CAMIONETA", camiones: "CAMION" };
     const filtered = typeFilter === "todos"
-      ? rawVehicles
-      : rawVehicles.filter((v) => v.type === TYPE_MAP[typeFilter]);
+      ? allVehicles
+      : allVehicles.filter((v) => v.category === typeFilter);
 
     switch (sortBy) {
       case "priceAsc":  return [...filtered].sort((a, b) => a.price - b.price);
       case "priceDesc": return [...filtered].sort((a, b) => b.price - a.price);
-      case "kmAsc":     return [...filtered].sort((a, b) => a.km - b.km);
+      case "kmAsc":     return [...filtered].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
       case "recent":
-      default:          return [...filtered].sort((a, b) => b.year - a.year);
+      default:          return filtered;
     }
-  }, [rawVehicles, sortBy, typeFilter]);
+  }, [allVehicles, sortBy, typeFilter]);
 
-  const counts = {
-    todos:      rawVehicles.length,
-    autos:      rawVehicles.filter((v) => v.type === "AUTO").length,
-    motos:      rawVehicles.filter((v) => v.type === "MOTO").length,
-    camionetas: rawVehicles.filter((v) => v.type === "CAMIONETA").length,
-    camiones:   rawVehicles.filter((v) => v.type === "CAMION").length,
-  };
+  const countFor = (key) =>
+    key === "todos" ? allVehicles.length : allVehicles.filter((v) => v.category === key).length;
 
   const handleClear = () => {
+    if (!window.confirm("¿Quitar todos tus favoritos?")) return;
     setTypeFilter("todos");
-    if (isAuthed) {
-      setRawVehicles([]);
-    } else {
-      clearFavorites();
-      setFavoriteIds([]);
-      setRawVehicles([]);
-    }
+    clear();
   };
+
+  const isEmpty = !loading && !loadError && allVehicles.length === 0;
 
   return (
     <div className={styles.page}>
+      <title>Mis favoritos | Mi Vehículo</title>
+      <meta name="description" content="Los vehículos que guardaste en Mi Vehículo para compararlos más tarde." />
+      <meta name="robots" content="noindex" />
+
       <Navbar />
 
       <main className={styles.main}>
         <div className={styles.container}>
-          <div className={styles.breadcrumbs}>
+          <nav className={styles.breadcrumbs} aria-label="Migas de pan">
             <Link to="/">Inicio</Link>
-            <span>›</span>
+            <span aria-hidden="true">›</span>
             <span>Favoritos</span>
-          </div>
+          </nav>
 
           <header className={styles.header}>
             <h1>Tus favoritos</h1>
-            <p>Guardaste estos vehículos para compararlos más tarde.</p>
+            {allVehicles.length > 0 && <p>Guardaste estos vehículos para compararlos más tarde.</p>}
           </header>
 
-          <div className={styles.topRow}>
-            <div className={styles.metaPills}>
-              <div className={styles.savedPill}>
-                <FiHeart />
-                <span>{favoriteVehicles.length} vehículos guardados</span>
+          {allVehicles.length > 0 && (
+            <div className={styles.topRow}>
+              <div className={styles.metaPills}>
+                <div className={styles.savedPill}>
+                  <Heart size={16} aria-hidden="true" />
+                  <span>
+                    {allVehicles.length} {allVehicles.length === 1 ? "vehículo guardado" : "vehículos guardados"}
+                  </span>
+                </div>
               </div>
 
-              <div className={styles.alertPill}>
-                <FiBell />
-                <span>Activá alertas y te avisamos si bajan de precio</span>
+              <div className={styles.sortBar} role="group" aria-label="Ordenar favoritos">
+                <span>Ordenar por:</span>
+                {[
+                  ["recent", "Más recientes"],
+                  ["priceAsc", "Menor precio"],
+                  ["priceDesc", "Mayor precio"],
+                  ["kmAsc", "Menor kilometraje"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={sortBy === key ? styles.activeSort : ""}
+                    aria-pressed={sortBy === key}
+                    onClick={() => setSortBy(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-
-              <button className={styles.createAlertBtn}>Crear alerta</button>
             </div>
-
-            <div className={styles.sortBar}>
-              <span>Ordenar por:</span>
-              <button className={sortBy === "recent" ? styles.activeSort : ""} onClick={() => setSortBy("recent")}>Más recientes</button>
-              <button className={sortBy === "priceAsc" ? styles.activeSort : ""} onClick={() => setSortBy("priceAsc")}>Menor precio</button>
-              <button className={sortBy === "priceDesc" ? styles.activeSort : ""} onClick={() => setSortBy("priceDesc")}>Mayor precio</button>
-              <button className={sortBy === "kmAsc" ? styles.activeSort : ""} onClick={() => setSortBy("kmAsc")}>Menor kilometraje</button>
-            </div>
-          </div>
+          )}
 
           {loading ? (
-            <div className={styles.emptyState}>
-              <p style={{ color: "#6b7280" }}>Cargando favoritos…</p>
+            <VehicleGrid vehicles={[]} loading compact skeletonCount={5} />
+          ) : loadError ? (
+            <div className={styles.emptyState} role="alert">
+              <h2>No pudimos cargar tus favoritos</h2>
+              <p>Revisá tu conexión e intentá de nuevo.</p>
+              <button type="button" className={styles.emptyBtn} onClick={retry}>
+                Reintentar
+              </button>
             </div>
-          ) : favoriteVehicles.length === 0 ? (
+          ) : isEmpty ? (
             <div className={styles.emptyState}>
-              <FiHeart />
+              <Heart size={32} aria-hidden="true" />
               <h2>No tenés favoritos todavía</h2>
               <p>Guardá publicaciones para verlas más tarde acá.</p>
               <Link to="/vehiculos" className={styles.emptyBtn}>
@@ -166,89 +174,41 @@ const Favoritos = () => {
             <div className={styles.layout}>
               <aside className={styles.sidebar}>
                 <div className={styles.sidebarCard}>
-                  <h3>Organizá tus favoritos</h3>
+                  <h2 className={styles.sidebarTitle}>Organizá tus favoritos</h2>
 
                   <div className={styles.categoryList}>
-                    {[
-                      { key: "todos",      icon: <FiFolder />,      label: "Todos",      count: counts.todos      },
-                      { key: "autos",      icon: <FaCarSide />,     label: "Autos",      count: counts.autos      },
-                      { key: "motos",      icon: <FaMotorcycle />,  label: "Motos",      count: counts.motos      },
-                      { key: "camionetas", icon: <FaTruckPickup />, label: "Camionetas", count: counts.camionetas },
-                      { key: "camiones",   icon: <FaTruck />,       label: "Camiones",   count: counts.camiones   },
-                    ].map(({ key, icon, label, count }) => (
+                    {TYPE_FILTERS.map(({ key, icon, label }) => (
                       <button
                         key={key}
+                        type="button"
                         className={`${styles.categoryItem} ${typeFilter === key ? styles.categoryItemActive : ""}`}
+                        aria-pressed={typeFilter === key}
                         onClick={() => setTypeFilter(key)}
-                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
                       >
-                        <div className={styles.categoryLabel}>{icon}<span>{label}</span></div>
-                        <strong>{count}</strong>
+                        <span className={styles.categoryLabel}>{icon}<span>{label}</span></span>
+                        <strong>{countFor(key)}</strong>
                       </button>
                     ))}
                   </div>
-                </div>
 
-                <div className={styles.sidebarCard}>
-                  <h3>Filtrar resultados</h3>
-
-                  <div className={styles.filterGroup}>
-                    <label>Precio</label>
-                    <div className={styles.rangeNumbers}>
-                      <span>$ 0</span>
-                      <span>$ 60.000</span>
-                    </div>
-                    <div className={styles.fakeRange}>
-                      <div className={styles.fakeTrack} />
-                      <div className={styles.fakeFill} />
-                      <span className={styles.fakeThumbLeft} />
-                      <span className={styles.fakeThumbRight} />
-                    </div>
-                  </div>
-
-                  <div className={styles.filterGroup}>
-                    <label>Ubicación</label>
-                    <select>
-                      <option>Todos los departamentos</option>
-                    </select>
-                  </div>
-
-                  <div className={styles.filterGroup}>
-                    <label>Tipo de vendedor</label>
-                    <div className={styles.checkList}>
-                      <label><div><input type="checkbox" /><span>Particular</span></div><strong>—</strong></label>
-                      <label><div><input type="checkbox" /><span>Concesionario</span></div><strong>—</strong></label>
-                    </div>
-                  </div>
-
-                  <button className={styles.clearBtn} onClick={handleClear}>
-                    <FiTrash2 />
-                    <span>Limpiar favoritos</span>
+                  <button type="button" className={styles.clearBtn} onClick={handleClear}>
+                    <Trash2 size={16} aria-hidden="true" />
+                    <span>Limpiar todo</span>
                   </button>
                 </div>
               </aside>
 
-              <section className={styles.results}>
-                <div className={styles.alertBanner}>
-                  <div className={styles.alertBannerLeft}>
-                    <FiBell />
-                    <div>
-                      <strong>Activá alertas para saber cuando baja el precio</strong>
-                      <p>Recibí notificaciones por email o WhatsApp si alguno de tus favoritos baja de precio.</p>
-                    </div>
-                  </div>
-                  <div className={styles.alertBannerRight}>
-                    <button>Activar alerta</button>
-                    <span>×</span>
-                  </div>
-                </div>
-
-                <VehicleGrid
-                  vehicles={favoriteVehicles}
-                  compact
-                  showRemove
-                  currentSearch=""
-                />
+              <section className={styles.results} aria-label="Vehículos guardados">
+                {favoriteVehicles.length === 0 ? (
+                  <p className={styles.noMatch}>No hay favoritos en esta categoría.</p>
+                ) : (
+                  <VehicleGrid
+                    vehicles={favoriteVehicles}
+                    compact
+                    showRemove
+                    currentSearch=""
+                  />
+                )}
               </section>
             </div>
           )}

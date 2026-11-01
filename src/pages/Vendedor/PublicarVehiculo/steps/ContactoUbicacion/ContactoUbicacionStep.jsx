@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   EyeOff,
   Info,
@@ -8,48 +7,19 @@ import {
   Phone,
   Users,
 } from "lucide-react";
-import { api } from "../../../../../lib/api";
+import { isValidSvPhone } from "../../../../../lib/phone";
+import LocationSelect from "../../../shared/LocationSelect/LocationSelect";
 import styles from "./ContactoUbicacionStep.module.css";
 
 const ContactoUbicacionStep = ({ formData, onChange }) => {
-  const [provinces, setProvinces]     = useState([]);
-  const [cities, setCities]           = useState([]);
-  const [loadingCities, setLoadingCities] = useState(false);
-
   const setValue = (name, value) => onChange({ target: { name, value } });
 
-  useEffect(() => {
-    api.get("/location/provinces")
-      .then((res) => setProvinces(res.data || []))
-      .catch(() => setProvinces([]));
-  }, []);
-
-  useEffect(() => {
-    if (!formData.provinceId) { setCities([]); return; }
-    let cancelled = false;
-    setLoadingCities(true);
-    api.get(`/location/provinces/${formData.provinceId}/cities`)
-      .then((res) => { if (!cancelled) setCities(res.data || []); })
-      .catch(() => { if (!cancelled) setCities([]); })
-      .finally(() => { if (!cancelled) setLoadingCities(false); });
-    return () => { cancelled = true; };
-  }, [formData.provinceId]);
-
-  const handleProvinciaChange = (e) => {
-    const id   = parseInt(e.target.value, 10);
-    const prov = provinces.find((p) => p.id === id);
-    setValue("provinceId", id       || "");
-    setValue("provincia",  prov?.name || "");
-    setValue("cityId",     "");
-    setValue("ciudad",     "");
+  const handleLocationChange = (patch) => {
+    Object.entries(patch).forEach(([k, v]) => setValue(k, v));
   };
 
-  const handleCiudadChange = (e) => {
-    const id   = parseInt(e.target.value, 10);
-    const city = cities.find((c) => c.id === id);
-    setValue("cityId",  id         || "");
-    setValue("ciudad",  city?.name || "");
-  };
+  const phoneTyped = String(formData.whatsapp || "").trim() !== "";
+  const phoneOk    = isValidSvPhone(formData.whatsapp);
 
   const toggleWhatsappVisibility = () => {
     setValue("mostrarWhatsapp", formData.mostrarWhatsapp === "Si" ? "No" : "Si");
@@ -65,33 +35,13 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
           </div>
 
           <div className={styles.contactGrid}>
-            <div className={styles.field}>
-              <label>Departamento <span>*</span></label>
-              <select value={formData.provinceId || ""} onChange={handleProvinciaChange}>
-                <option value="">Seleccioná el departamento</option>
-                {provinces.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className={styles.field}>
-              <label>Municipio <span>*</span></label>
-              <select
-                value={formData.cityId || ""}
-                onChange={handleCiudadChange}
-                disabled={!formData.provinceId || loadingCities}
-              >
-                <option value="">
-                  {!formData.provinceId ? "Elegí primero el departamento"
-                    : loadingCities    ? "Cargando municipios…"
-                    : "Seleccioná el municipio"}
-                </option>
-                {cities.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+            <LocationSelect
+              required
+              provinceId={formData.provinceId}
+              cityId={formData.cityId}
+              onChange={handleLocationChange}
+              fieldClassName={styles.field}
+            />
           </div>
         </section>
 
@@ -119,13 +69,18 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
                 <span>SV</span>
                 <small>+503</small>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   name="whatsapp"
+                  aria-label="WhatsApp"
                   value={formData.whatsapp}
                   onChange={onChange}
                   placeholder="7000-0000"
                 />
               </div>
+              {phoneTyped && !phoneOk && (
+                <p className={styles.fieldHint} role="alert">El número debe tener 8 dígitos.</p>
+              )}
             </div>
 
             <div className={styles.field}>
@@ -157,6 +112,9 @@ const ContactoUbicacionStep = ({ formData, onChange }) => {
               className={`${styles.switchBtn} ${
                 formData.mostrarWhatsapp === "Si" ? styles.switchActive : ""
               }`}
+              role="switch"
+              aria-checked={formData.mostrarWhatsapp === "Si"}
+              aria-label="Mostrar WhatsApp públicamente"
               onClick={toggleWhatsappVisibility}
             >
               <span></span>

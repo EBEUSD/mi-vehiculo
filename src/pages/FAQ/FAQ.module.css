@@ -1,4 +1,4 @@
-.page { background: #f0f4fb; min-height: 100vh; font-family: "Inter", system-ui, sans-serif; }
+.page { background: #f0f4fb; min-height: 100vh; font-family: inherit; }
 
 /* ── Hero band ─────────────────────────────────── */
 .heroBand {
@@ -53,9 +53,9 @@
 .illuDot1, .illuDot2, .illuDot3 {
   position: absolute; border-radius: 50%;
 }
-.illuDot1 { width: 12px; height: 12px; background: #1570ff; top: 18px; right: 22px; }
+.illuDot1 { width: 12px; height: 12px; background: #1d4ed8; top: 18px; right: 22px; }
 .illuDot2 { width: 8px;  height: 8px;  background: rgba(255,255,255,0.3); bottom: 28px; right: 10px; }
-.illuDot3 { width: 6px;  height: 6px;  background: rgba(21,112,255,0.5); top: 50px; left: 12px; }
+.illuDot3 { width: 6px;  height: 6px;  background: rgba(29, 78, 216,0.5); top: 50px; left: 12px; }
 
 /* ── Shell ─────────────────────────────────────── */
 .shell { width: min(1100px, 100% - 48px); margin: 0 auto; padding: 0 0 60px; }
@@ -105,12 +105,12 @@
   text-align: left;
 }
 .catBtn:hover { background: #f0f4fb; }
-.catBtnActive { background: #1570ff !important; }
+.catBtnActive { background: #1d4ed8 !important; }
 .catBtnActive .catLabel { color: #fff; font-weight: 600; }
 .catBtnActive .catIcon { color: #fff; }
 
 .catIcon { color: #9aa5be; flex-shrink: 0; display: flex; transition: color 0.15s; }
-.catBtn:hover .catIcon { color: #1570ff; }
+.catBtn:hover .catIcon { color: #1d4ed8; }
 .catBtnActive .catIcon { color: #fff; }
 
 .catLabel { flex: 1; font-size: 13.5px; color: #374151; transition: color 0.15s; }
@@ -147,7 +147,7 @@
 .noResults p { font-size: 14px; color: #6b7a99; margin: 0; }
 .clearBtn {
   padding: 8px 20px; background: #f0f4fb; border: none; border-radius: 8px;
-  font-size: 13px; font-weight: 500; color: #1570ff; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: #1d4ed8; cursor: pointer;
   transition: background 0.15s;
 }
 .clearBtn:hover { background: #e2e8f4; }
@@ -161,9 +161,9 @@
 .accordionItem:hover { border-color: #c5d2ea; box-shadow: 0 2px 12px rgba(7,21,63,0.06); }
 
 .accordionItemOpen {
-  border-color: #1570ff !important;
-  box-shadow: 0 4px 20px rgba(21,112,255,0.1) !important;
-  border-left: 3px solid #1570ff !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 4px 20px rgba(29, 78, 216,0.1) !important;
+  border-left: 3px solid #1d4ed8 !important;
 }
 
 .accordionBtn {
@@ -181,7 +181,7 @@
   background: #f0f4fb; display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; transition: background 0.15s, color 0.15s; letter-spacing: 0.5px;
 }
-.accordionItemOpen .accordionNum { background: rgba(21,112,255,0.1); color: #1570ff; }
+.accordionItemOpen .accordionNum { background: rgba(29, 78, 216,0.1); color: #1d4ed8; }
 
 .accordionQ {
   flex: 1; font-size: 14.5px; font-weight: 500; color: #07153f; line-height: 1.45;
@@ -189,7 +189,7 @@
 .accordionItemOpen .accordionQ { color: #07153f; font-weight: 600; }
 
 .accordionChevron { flex-shrink: 0; color: #9aa5be; transition: color 0.15s; }
-.accordionItemOpen .accordionChevron { color: #1570ff; }
+.accordionItemOpen .accordionChevron { color: #1d4ed8; }
 
 .accordionAnswer {
   padding: 0 20px 20px 62px;
@@ -197,7 +197,7 @@
 }
 .accordionAnswer p {
   font-size: 14px; color: #4b5563; margin: 0; line-height: 1.75;
-  border-top: 1px solid rgba(21,112,255,0.08); padding-top: 14px;
+  border-top: 1px solid rgba(29, 78, 216,0.08); padding-top: 14px;
 }
 
 /* ── CTA banner ────────────────────────────────── */
@@ -217,10 +217,10 @@
 .ctaLeft p { font-size: 13.5px; color: rgba(255,255,255,0.6); margin: 0; }
 .ctaBtn {
   display: flex; align-items: center; gap: 8px;
-  padding: 12px 22px; background: #1570ff; color: #fff;
+  padding: 12px 22px; background: #1d4ed8; color: #fff;
   border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 600;
   white-space: nowrap; transition: background 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px rgba(21,112,255,0.35);
+  box-shadow: 0 4px 14px rgba(29, 78, 216,0.35);
   flex-shrink: 0;
 }
 .ctaBtn:hover { background: #1260e8; }
@@ -243,4 +243,11 @@
 @media (max-width: 560px) {
   .catNav { grid-template-columns: repeat(2, 1fr); }
   .heroStats { display: none; }
+}
+
+.accordionAnswer a {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
 }

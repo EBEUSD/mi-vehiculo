@@ -1,14 +1,21 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { api, clearTokens } from "../../../lib/api";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "../../../lib/supabase";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Home, Car, MessageCircle, Heart, PlusCircle,
   Headphones, ArrowRight, Eye, Edit2, Trash2, Pause,
   Play, CheckCircle, User, Save, ChevronRight, AlertCircle,
   Camera, Building2, TrendingUp, Bell, ShieldAlert, Lock,
+  Share2, Sparkles,
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import Navbar from "../../../components/Navbar/Navbar";
+import { HIGHLIGHT_OPTIONS } from "../../../lib/plans";
+import { DEPARTAMENTOS } from "../../../lib/categories";
+import { validateImageFiles } from "../../../lib/images";
+import useSafeTimeout from "../../../hooks/useSafeTimeout";
+import { isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
 import styles from "./VendedorDashboard.module.css";
 
 /* ── Helpers ──────────────────────────────────── */
@@ -160,8 +167,27 @@ function ViewInicio({ stats, pubs, leads, unread, onNavigate }) {
   );
 }
 
-function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
+const pubPath = (pub) => (pub.type === "product" ? `/producto/${pub.slug}` : `/vehiculo/${pub.slug}`);
+
+function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
   const meta = STATUS_META[pub.status] || STATUS_META.activo;
+  const [copied, setCopied] = useState(false);
+  const later = useSafeTimeout();
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}${pubPath(pub)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: pub.titulo, url }); } catch { /* cancelado */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      later(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("Copiá el link de tu publicación:", url);
+    }
+  };
   return (
     <article className={`${styles.pubCard} ${compact ? styles.pubCardCompact : ""}`}>
       {pub.image ? (
@@ -194,7 +220,7 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
         <div className={styles.pubActions}>
           {pub.slug && (
             <Link
-              to={pub.type === "product" ? `/producto/${pub.slug}` : `/vehiculo/${pub.slug}`}
+              to={pubPath(pub)}
               target="_blank"
               rel="noreferrer"
               className={styles.iconBtn}
@@ -217,6 +243,24 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
           >
             {pub.status === "activo" ? <Pause size={15} /> : <Play size={15} />}
           </button>
+          {pub.slug && (
+            <button
+              className={styles.iconBtn}
+              title={copied ? "¡Link copiado!" : "Compartir"}
+              onClick={handleShare}
+            >
+              {copied ? <CheckCircle size={15} /> : <Share2 size={15} />}
+            </button>
+          )}
+          {pub.status === "activo" && (
+            <button
+              className={styles.iconBtn}
+              title="Destacar"
+              onClick={() => onHighlight && onHighlight(pub)}
+            >
+              <Sparkles size={15} />
+            </button>
+          )}
           <button
             className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
             title="Eliminar"
@@ -227,6 +271,50 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit }) {
         </div>
       )}
     </article>
+  );
+}
+
+// Destacar: el backend todavía no tiene endpoint/cobro de destaque,
+// así que la opción elegida se envía como solicitud por contacto.
+function HighlightModal({ pub, onClose }) {
+  const [dias, setDias] = useState(HIGHLIGHT_OPTIONS[0].dias);
+  const opt = HIGHLIGHT_OPTIONS.find((o) => o.dias === dias);
+  const contactUrl = `/contacto?asunto=destacar&publicacion=${encodeURIComponent(pub.slug || pub.id)}&dias=${dias}`;
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalIconWrap} style={{ background: "#eef4ff" }}>
+          <Sparkles size={26} style={{ color: "#1d4ed8" }} />
+        </div>
+        <h3 className={styles.modalTitle}>Destacar publicación</h3>
+        <p className={styles.modalDesc}>
+          <strong>{pub.titulo}</strong> se resaltará y aparecerá en las primeras posiciones de búsqueda.
+        </p>
+        <div className={styles.highlightOptions}>
+          {HIGHLIGHT_OPTIONS.map((o) => (
+            <button
+              key={o.dias}
+              type="button"
+              className={`${styles.highlightOption} ${o.dias === dias ? styles.highlightOptionActive : ""}`}
+              onClick={() => setDias(o.dias)}
+            >
+              <strong>${o.precio}</strong>
+              <span>{o.dias} días</span>
+            </button>
+          ))}
+        </div>
+        <p className={styles.modalDesc} style={{ fontSize: 12.5 }}>
+          El pago online de destaques estará disponible próximamente. Por ahora envianos la solicitud y te contactamos para activarlo.
+        </p>
+        <div className={styles.modalActions}>
+          <button className={styles.modalCancelBtn} onClick={onClose} type="button">Cancelar</button>
+          <Link to={contactUrl} className={`${styles.modalConfirmBtn} ${styles.modalConfirmBlue}`}>
+            Solicitar destaque — ${opt.precio}
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -257,7 +345,7 @@ function ConsultaRow({ c }) {
 const FILTER_TABS = ["Todas", "Activas", "Pausadas", "Vendidas"];
 const FILTER_STATUS = { Todas: null, Activas: "activo", Pausadas: "pausado", Vendidas: "vendido" };
 
-function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit }) {
+function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit, onHighlight }) {
   const [filter, setFilter] = useState("Todas");
 
   const visible = FILTER_STATUS[filter]
@@ -289,7 +377,7 @@ function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit }) {
         ) : visible.length === 0 ? (
           <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>No hay publicaciones en esta categoría.</p>
         ) : (
-          visible.map((p) => <PubCard key={p.id} pub={p} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)
+          visible.map((p) => <PubCard key={p.id} pub={p} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onHighlight={onHighlight} />)
         )}
       </div>
     </div>
@@ -318,16 +406,22 @@ function ViewConsultas({ leads, loading }) {
 }
 
 /* ── Constants ──────────────────────────────────── */
-const SV_DEPARTAMENTOS = [
-  "Ahuachapán","Cabañas","Chalatenango","Cuscatlán","La Libertad",
-  "La Paz","La Unión","Morazán","San Miguel","San Salvador",
-  "San Vicente","Santa Ana","Sonsonate","Usulután",
-];
 
 const formatDUI = (val) => {
   const d = val.replace(/\D/g, "").slice(0, 9);
   return d.length <= 8 ? d : `${d.slice(0, 8)}-${d.slice(8)}`;
 };
+
+const formatNIT = (val) => {
+  const d = val.replace(/\D/g, "").slice(0, 14);
+  return [d.slice(0, 4), d.slice(4, 10), d.slice(10, 13), d.slice(13, 14)].filter(Boolean).join("-");
+};
+
+const DOC_TYPES = [
+  { value: "DUI",                label: "DUI",                   placeholder: "00000000-0",    note: "XXXXXXXX-X" },
+  { value: "TARJETA_RESIDENCIA", label: "Tarjeta de residencia", placeholder: "Número de carné" },
+  { value: "PASAPORTE",          label: "Pasaporte",             placeholder: "Número de pasaporte" },
+];
 
 /* ── ConfirmModal ────────────────────────────────── */
 function ConfirmModal({ type, userEmail, onConfirm, onClose, loading }) {
@@ -440,9 +534,10 @@ function ConfirmModal({ type, userEmail, onConfirm, onClose, loading }) {
   return null;
 }
 
-function ViewPerfil() {
-  const { user, signOut } = useAuth();
+function ViewPerfil({ onPausedAll }) {
+  const { user, signOut, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const later    = useSafeTimeout();
   const isMock   = !!user?.id?.startsWith("mock-");
 
   // Personal data — extended
@@ -450,7 +545,9 @@ function ViewPerfil() {
     fullName:     user?.user_metadata?.full_name || "",
     phone:        user?.user_metadata?.phone     || "",
     birthDate:    "",
-    dui:          "",
+    docType:      user?.user_metadata?.document_type   || "DUI",
+    docNumber:    user?.user_metadata?.document_number || user?.user_metadata?.dui || "",
+    nit:          user?.user_metadata?.nit             || "",
     gender:       "",
     department:   "",
     municipality: "",
@@ -461,14 +558,22 @@ function ViewPerfil() {
   const [saving, setSaving]   = useState(false);
   const [saved, setSaved]     = useState(false);
   const [formError, setFormError] = useState("");
+  // Si GET /profile falla no se permite guardar (evita pisar datos reales con vacíos)
+  const [loadError, setLoadError] = useState("");
 
   // Avatar
   const [avatar, setAvatar]               = useState(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError]         = useState("");
+  const avatarBlobRef = useRef(null);
 
-  // Seller type
-  const [sellerType, setSellerType]   = useState("particular");
-  const [companyName, setCompanyName] = useState("");
+  // Seller type — mismo dato que account_type (registro / completar perfil / primera publicación)
+  const meta0 = user?.user_metadata || {};
+  const [sellerType, setSellerType]   = useState(meta0.account_type === "EMPRESA" ? "empresa" : "particular");
+  const [companyName, setCompanyName] = useState(meta0.company_name || "");
+  const [companyNrc, setCompanyNrc]         = useState(meta0.nrc || "");
+  const [companyAddress, setCompanyAddress] = useState(meta0.company_address || "");
+  const [companyPhone, setCompanyPhone]     = useState(meta0.company_phone || "");
   const [companyDesc, setCompanyDesc] = useState("");
   const [website, setWebsite]         = useState("");
 
@@ -484,23 +589,29 @@ function ViewPerfil() {
   // Notifications — keys match backend: emailNewLead, emailWeeklyStats, emailPromotions, pushNewLead
   const [notifs, setNotifs]           = useState({ emailNewLead: true, emailWeeklyStats: false, emailPromotions: false, pushNewLead: false });
   const [notifSaving, setNotifSaving] = useState(false);
+  const [notifError, setNotifError]   = useState("");
 
   // Danger zone modal
   const [dangerModal,  setDangerModal]  = useState(null); // null | "pauseAll" | "deleteAccount"
   const [pausing,      setPausing]      = useState(false);
   const [deleting,     setDeleting]     = useState(false);
-  const [pauseResult,  setPauseResult]  = useState("");
+  const [pauseResult,  setPauseResult]  = useState(null); // { msg, error }
 
   useEffect(() => {
     if (isMock) return;
+    let ignore = false;
     api.get("/profile")
       .then((res) => {
+        if (ignore) return;
         const d = res.data;
+        const meta = user?.user_metadata || {};
         setForm({
           fullName:     d.fullName     || "",
           phone:        d.phone        || "",
           birthDate:    d.birthDate    || "",
-          dui:          d.dui          || "",
+          docType:      d.documentType   || meta.document_type || "DUI",
+          docNumber:    d.documentNumber || d.dui || meta.document_number || "",
+          nit:          d.nit            || meta.nit || "",
           gender:       d.gender       || "",
           department:   d.department   || "",
           municipality: d.municipality || "",
@@ -508,8 +619,9 @@ function ViewPerfil() {
         });
         setEmail(d.email || "");
         setAvatar(d.avatarUrl || null);
-        setSellerType(SELLER_TYPE_FROM_API(d.sellerType));
-        setCompanyName(d.companyName || "");
+        if (d.sellerType) setSellerType(SELLER_TYPE_FROM_API(d.sellerType));
+        else if (meta.account_type === "EMPRESA") setSellerType("empresa");
+        setCompanyName(d.companyName || meta.company_name || "");
         setCompanyDesc(d.companyDescription || "");
         setWebsite(d.website || "");
         setPlan(d.plan || null);
@@ -519,45 +631,95 @@ function ViewPerfil() {
         }
       })
       .catch((err) => {
-        setFormError(err?.message || "No se pudo cargar tu perfil. Actualizá la página antes de guardar cambios.");
+        if (!ignore) setLoadError(err?.message || "No se pudo cargar tu perfil.");
       })
-      .finally(() => setLoading(false));
-  }, [isMock]);
+      .finally(() => { if (!ignore) setLoading(false); });
+    return () => { ignore = true; };
+  }, [isMock]); // eslint-disable-line react-hooks/exhaustive-deps -- user_metadata solo como respaldo inicial
+
+  // Liberar la vista previa local del avatar (modo demo)
+  useEffect(() => () => {
+    if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current);
+  }, []);
 
   const setField = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }));
 
   const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    e.target.value = "";
+    if (!picked) return;
+    const { valid, error } = validateImageFiles([picked]);
+    if (!valid.length) { setAvatarError(error); return; }
+    const file = valid[0];
+    setAvatarError("");
     setAvatarUploading(true);
     try {
       if (isMock) {
-        setAvatar(URL.createObjectURL(file));
+        if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current);
+        avatarBlobRef.current = URL.createObjectURL(file);
+        setAvatar(avatarBlobRef.current);
         return;
       }
       const fd = new FormData();
       fd.append("avatar", file);
       const res = await api.upload("/profile/avatar", fd);
       setAvatar(res.data?.avatarUrl || res.avatarUrl || avatar);
-    } catch { /* silently ignore upload errors */ }
-    finally { setAvatarUploading(false); }
+    } catch (err) {
+      setAvatarError(err?.message || "No se pudo subir la foto. Intentá de nuevo.");
+    } finally { setAvatarUploading(false); }
   };
+
+  // Agencia/Lote y Empresa cuentan como cuenta de empresa (verificación con NIT y dirección)
+  const isBusiness = sellerType !== "particular";
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (isMock) { setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
+    if (loadError) return;
+    if (form.docType !== "DUI" && !form.nit.trim()) {
+      setFormError("Con tarjeta de residencia o pasaporte el NIT es obligatorio.");
+      return;
+    }
+    if (form.nit && !/^\d{4}-\d{6}-\d{3}-\d$/.test(form.nit)) {
+      setFormError("NIT inválido. Formato: 0000-000000-000-0");
+      return;
+    }
+    if (isBusiness && companyPhone && !isValidSvPhone(companyPhone)) {
+      setFormError("El teléfono de la empresa debe tener 8 dígitos.");
+      return;
+    }
+    if (isMock) { setSaved(true); later(() => setSaved(false), 2000); return; }
     setSaving(true); setFormError("");
+    const { docType, docNumber, nit, ...personal } = form;
     try {
       await api.patch("/profile", {
-        ...form,
+        ...personal,
+        dui:                docType === "DUI" ? docNumber : "",
         sellerType:         SELLER_TYPE_TO_API[sellerType] || "individual",
         companyName:        sellerType !== "particular" ? companyName : undefined,
         companyDescription: sellerType !== "particular" ? companyDesc  : undefined,
         website:            sellerType !== "particular" ? website      : undefined,
       });
+      // Tipo de cuenta, documento, NIT y datos de empresa viven en user_metadata hasta que /profile los soporte
+      await supabase.auth.updateUser({
+        data: {
+          account_type: isBusiness ? "EMPRESA" : "PARTICULAR",
+          document_type: docType, document_number: docNumber, nit,
+          ...(docType === "DUI" ? { dui: docNumber } : {}),
+          ...(isBusiness ? {
+            company_name:    companyName.trim() || null,
+            nrc:             companyNrc.trim() || null,
+            company_address: companyAddress.trim() || null,
+            company_phone:   normalizeSvPhone(companyPhone) || null,
+          } : {}),
+        },
+      }).catch(() => {});
+      // Refrescar el usuario del contexto (nombre en navbar, metadata)
+      if (typeof refreshUser === "function") {
+        try { await refreshUser(); } catch { /* no bloquea el guardado */ }
+      }
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch { setFormError("No se pudo guardar. Intentá de nuevo."); }
+      later(() => setSaved(false), 3000);
+    } catch (err) { setFormError(err?.message || "No se pudo guardar. Intentá de nuevo."); }
     finally { setSaving(false); }
   };
 
@@ -565,13 +727,13 @@ function ViewPerfil() {
     e.preventDefault();
     if (pwForm.next !== pwForm.confirm) { setPwError("Las contraseñas no coinciden."); return; }
     if (pwForm.next.length < 8)         { setPwError("Mínimo 8 caracteres."); return; }
-    if (isMock) { setPwSaved(true); setTimeout(() => setPwSaved(false), 2500); return; }
+    if (isMock) { setPwSaved(true); later(() => setPwSaved(false), 2500); return; }
     setPwSaving(true); setPwError("");
     try {
       await api.patch("/auth/password", { currentPassword: pwForm.current, newPassword: pwForm.next });
       setPwSaved(true);
       setPwForm({ current: "", next: "", confirm: "" });
-      setTimeout(() => setPwSaved(false), 3000);
+      later(() => setPwSaved(false), 3000);
     } catch (err) {
       if (err?.status === 429) {
         setPwError("Demasiados intentos fallidos. Esperá unos minutos antes de volver a intentarlo.");
@@ -585,35 +747,52 @@ function ViewPerfil() {
   };
 
   const handleNotifToggle = async (key) => {
+    const prev = notifs;
     const next = { ...notifs, [key]: !notifs[key] };
     setNotifs(next);
-    if (!isMock) {
-      setNotifSaving(true);
+    setNotifError("");
+    if (isMock) return;
+    setNotifSaving(true);
+    try {
       // Backend requires all 4 fields — full replacement, not partial
       await api.patch("/profile/notifications", {
         emailNewLead:    next.emailNewLead,
         emailWeeklyStats: next.emailWeeklyStats,
         emailPromotions: next.emailPromotions,
         pushNewLead:     next.pushNewLead,
-      }).catch(() => {});
+      });
+    } catch (err) {
+      setNotifs(prev); // volver al estado anterior
+      setNotifError(err?.message || "No se pudo guardar la preferencia. Intentá de nuevo.");
+    } finally {
       setNotifSaving(false);
     }
   };
 
+  const showPauseResult = (msg, error = false) => {
+    setPauseResult({ msg, error });
+    later(() => setPauseResult(null), 5000);
+  };
+
   const handlePauseAllConfirm = async () => {
     setPausing(true);
-    if (!isMock) {
-      const res = await api.patch("/profile/vehicles/pause-all").catch(() => null);
-      const n = res?.affected ?? 0;
-      setPauseResult(n === 0
-        ? "No había publicaciones activas."
-        : `${n} publicación${n !== 1 ? "es" : ""} pausada${n !== 1 ? "s" : ""}.`);
-    } else {
-      setPauseResult("Publicaciones pausadas (modo demo).");
+    try {
+      if (isMock) {
+        showPauseResult("Publicaciones pausadas (modo demo).");
+      } else {
+        const res = await api.patch("/profile/vehicles/pause-all");
+        const n = res?.affected ?? res?.data?.affected ?? 0;
+        showPauseResult(n === 0
+          ? "No había publicaciones activas."
+          : `${n} publicación${n !== 1 ? "es" : ""} pausada${n !== 1 ? "s" : ""}.`);
+      }
+      onPausedAll?.();
+    } catch (err) {
+      showPauseResult(err?.message || "No se pudieron pausar las publicaciones. Intentá de nuevo.", true);
+    } finally {
+      setPausing(false);
+      setDangerModal(null);
     }
-    setPausing(false);
-    setDangerModal(null);
-    setTimeout(() => setPauseResult(""), 5000);
   };
 
   const handleDeleteConfirm = async () => {
@@ -626,7 +805,7 @@ function ViewPerfil() {
     } catch (err) {
       setDeleting(false);
       setDangerModal(null);
-      showActionError(err?.message || "No se pudo eliminar la cuenta. Contactá soporte si el problema persiste.");
+      showPauseResult(err?.message || "No se pudo eliminar la cuenta. Contactá soporte si el problema persiste.", true);
     }
   };
 
@@ -647,6 +826,14 @@ function ViewPerfil() {
       <div className={styles.panel}>
         <div className={styles.panelHeader}><h2>Mi perfil</h2></div>
 
+        {loadError && (
+          <div className={styles.loadErrorBanner} role="alert">
+            <AlertCircle size={16} />
+            <span>{loadError} No se pueden guardar cambios hasta recargar tus datos.</span>
+            <button type="button" onClick={() => window.location.reload()}>Recargar</button>
+          </div>
+        )}
+
         <div className={styles.avatarSection}>
           <label className={styles.avatarWrap} title="Cambiar foto de perfil">
             {avatar
@@ -656,15 +843,23 @@ function ViewPerfil() {
             <div className={styles.avatarOverlay}>
               {avatarUploading ? "…" : <Camera size={15} />}
             </div>
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} disabled={avatarUploading} />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className={styles.visuallyHidden}
+              aria-label="Cambiar foto de perfil"
+              onChange={handleAvatarChange}
+              disabled={avatarUploading}
+            />
           </label>
           <div>
             <strong className={styles.avatarName}>{form.fullName || email}</strong>
             <p className={styles.avatarSub}>
               {sellerType === "empresa" ? companyName || "Empresa"
-                : sellerType === "concesionario" ? "Concesionario"
+                : sellerType === "concesionario" ? "Agencia/Lote"
                 : "Vendedor particular"}
             </p>
+            {avatarError && <p className={styles.inlineError} role="alert">{avatarError}</p>}
           </div>
         </div>
 
@@ -691,12 +886,42 @@ function ViewPerfil() {
                 <input type="date" value={form.birthDate} onChange={setField("birthDate")} max={new Date().toISOString().split("T")[0]} />
               </div>
               <div className={styles.profileField}>
-                <label>DUI <span className={styles.fieldNote}>XXXXXXXX-X</span></label>
+                <label>Tipo de documento</label>
+                <select
+                  value={form.docType}
+                  onChange={(e) => setForm((p) => ({ ...p, docType: e.target.value, docNumber: "" }))}
+                >
+                  {DOC_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+              </div>
+              <div className={styles.profileField}>
+                <label>
+                  Número de documento
+                  {form.docType === "DUI" && <span className={styles.fieldNote}> XXXXXXXX-X</span>}
+                </label>
                 <input
-                  value={form.dui}
-                  onChange={(e) => setForm((p) => ({ ...p, dui: formatDUI(e.target.value) }))}
-                  placeholder="00000000-0"
-                  maxLength={10}
+                  value={form.docNumber}
+                  onChange={(e) => setForm((p) => ({
+                    ...p,
+                    docNumber: p.docType === "DUI"
+                      ? formatDUI(e.target.value)
+                      : e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 20),
+                  }))}
+                  placeholder={DOC_TYPES.find((d) => d.value === form.docType)?.placeholder}
+                  maxLength={form.docType === "DUI" ? 10 : 20}
+                  inputMode={form.docType === "DUI" ? "numeric" : "text"}
+                />
+              </div>
+              <div className={styles.profileField}>
+                <label>
+                  NIT{form.docType === "DUI" ? " (opcional)" : " *"}
+                  <span className={styles.fieldNote}> 0000-000000-000-0</span>
+                </label>
+                <input
+                  value={form.nit}
+                  onChange={(e) => setForm((p) => ({ ...p, nit: formatNIT(e.target.value) }))}
+                  placeholder="0614-010190-101-1"
+                  maxLength={17}
                   inputMode="numeric"
                 />
               </div>
@@ -719,7 +944,7 @@ function ViewPerfil() {
                 <label>Departamento</label>
                 <select value={form.department} onChange={setField("department")}>
                   <option value="">Seleccioná un departamento</option>
-                  {SV_DEPARTAMENTOS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  {DEPARTAMENTOS.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className={styles.profileField}>
@@ -739,7 +964,7 @@ function ViewPerfil() {
             <div className={styles.sellerTypePills}>
               {[
                 { id: "particular",    label: "Particular"    },
-                { id: "concesionario", label: "Concesionario" },
+                { id: "concesionario", label: "Agencia/Lote"  },
                 { id: "empresa",       label: "Empresa"       },
               ].map((t) => (
                 <button
@@ -756,11 +981,23 @@ function ViewPerfil() {
               <div className={styles.profileGrid} style={{ marginTop: 14 }}>
                 <div className={styles.profileField}>
                   <label>Nombre comercial</label>
-                  <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nombre de tu empresa o concesionario" />
+                  <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nombre de tu empresa o agencia" />
                 </div>
                 <div className={styles.profileField}>
                   <label>Sitio web</label>
                   <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://tusitio.com" type="url" />
+                </div>
+                <div className={styles.profileField}>
+                  <label>NRC (opcional)</label>
+                  <input value={companyNrc} onChange={(e) => setCompanyNrc(e.target.value.replace(/[^0-9-]/g, "").slice(0, 10))} placeholder="123456-7" inputMode="numeric" />
+                </div>
+                <div className={styles.profileField}>
+                  <label>Teléfono de la empresa</label>
+                  <input value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="+503 2200-0000" type="tel" />
+                </div>
+                <div className={`${styles.profileField} ${styles.colSpan2}`}>
+                  <label>Dirección de la empresa</label>
+                  <input value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="Calle, número, municipio y departamento" />
                 </div>
                 {sellerType === "empresa" && (
                   <div className={`${styles.profileField} ${styles.colSpan2}`}>
@@ -781,7 +1018,7 @@ function ViewPerfil() {
           <div className={styles.profileFooter}>
             {saved     && <span className={styles.savedMsg}><CheckCircle size={15} /> Cambios guardados</span>}
             {formError && <span style={{ color: "#dc2626", fontSize: 13 }}>{formError}</span>}
-            <button type="submit" className={styles.saveBtn} disabled={saving}>
+            <button type="submit" className={styles.saveBtn} disabled={saving || !!loadError}>
               <Save size={16} /> {saving ? "Guardando…" : "Guardar cambios"}
             </button>
           </div>
@@ -864,6 +1101,7 @@ function ViewPerfil() {
           <h2><Bell size={16} style={{ marginRight: 6 }} />Notificaciones por email</h2>
           {notifSaving && <span style={{ fontSize: 12, color: "#94a3b8" }}>Guardando…</span>}
         </div>
+        {notifError && <p className={styles.inlineError} role="alert" style={{ padding: "0 20px" }}>{notifError}</p>}
         <div className={styles.notifList}>
           {[
             { key: "emailNewLead",     label: "Nueva consulta recibida",   desc: "Te avisamos cuando alguien envía un mensaje sobre tu vehículo."   },
@@ -876,7 +1114,7 @@ function ViewPerfil() {
                 <span className={styles.notifLabel}>{label}</span>
                 <span className={styles.notifDesc}>{desc}</span>
               </div>
-              <input type="checkbox" className={styles.toggleInput} checked={notifs[key]} onChange={() => handleNotifToggle(key)} />
+              <input type="checkbox" className={styles.toggleInput} checked={notifs[key]} disabled={notifSaving} onChange={() => handleNotifToggle(key)} />
               <span className={styles.toggleTrack} />
             </label>
           ))}
@@ -899,7 +1137,7 @@ function ViewPerfil() {
                 Pausar todo
               </button>
               {pauseResult && (
-                <span style={{ fontSize: 12, color: "#059669", fontWeight: 700 }}>{pauseResult}</span>
+                <span className={pauseResult.error ? styles.inlineError : styles.inlineOk} role="status">{pauseResult.msg}</span>
               )}
             </div>
           </div>
@@ -951,31 +1189,34 @@ const VALID_TABS = ["inicio", "publicaciones", "consultas", "perfil"];
 
 const VendedorDashboard = () => {
   const { user }   = useAuth();
-  const location   = useLocation();
   const navigate   = useNavigate();
-  const tabParam   = new URLSearchParams(location.search).get("tab");
-  const successParam = new URLSearchParams(location.search).get("success");
-  const [view, setView]         = useState(VALID_TABS.includes(tabParam) ? tabParam : "inicio");
-  const [showSuccess, setShowSuccess] = useState(successParam === "1");
+  const later      = useSafeTimeout();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // La pestaña vive en la URL: back/forward y links del navbar funcionan
+  const tabParam = searchParams.get("tab");
+  const view     = VALID_TABS.includes(tabParam) ? tabParam : "inicio";
+  const setView  = useCallback((id) => setSearchParams({ tab: id }), [setSearchParams]);
+  const [showSuccess, setShowSuccess] = useState(() => searchParams.get("success") === "1");
   const [pubs, setPubs]         = useState([]);
   const [loadingPubs, setLoadingPubs] = useState(true);
   const [pubsError, setPubsError]   = useState("");
   const [actionError, setActionError] = useState("");
+  const [highlightPub, setHighlightPub] = useState(null);
   const [leads, setLeads]       = useState([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
+  const isMockUser = !!user?.id?.startsWith("mock-");
+
+  // Mostrar el banner una vez y sacar success=1 de la URL
+  useEffect(() => {
+    if (searchParams.get("success") !== "1") return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("success");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    const tab = new URLSearchParams(location.search).get("tab");
-    setView(VALID_TABS.includes(tab) ? tab : "inicio");
-  }, [location.search]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (user.id?.startsWith("mock-")) {
-      setLoadingPubs(false);
-      setLoadingLeads(false);
-      return;
-    }
+    if (!user || isMockUser) return;
+    let ignore = false;
     const fetchPubs = async () => {
       setLoadingPubs(true);
       setPubsError("");
@@ -984,6 +1225,7 @@ const VendedorDashboard = () => {
           api.get("/profile/vehicles"),
           api.get("/profile/products"),
         ]);
+        if (ignore) return;
         const vehicles = vehiclesRes.status === "fulfilled"
           ? (vehiclesRes.value.data || []).map(mapRowToPub)
           : [];
@@ -995,6 +1237,7 @@ const VendedorDashboard = () => {
         }
         setPubs([...vehicles, ...products]);
       } catch {
+        if (ignore) return;
         setPubsError("Error al cargar las publicaciones. Intentá recargar la página.");
         setPubs([]);
       }
@@ -1004,20 +1247,21 @@ const VendedorDashboard = () => {
       setLoadingLeads(true);
       try {
         const res = await api.get("/leads/me");
-        setLeads((res.data || []).map(mapLead));
+        if (!ignore) setLeads((res.data || []).map(mapLead));
       } catch {
-        setLeads([]);
+        if (!ignore) setLeads([]);
       }
-      setLoadingLeads(false);
+      if (!ignore) setLoadingLeads(false);
     };
     fetchPubs();
     fetchLeads();
-  }, [user]);
+    return () => { ignore = true; };
+  }, [user, isMockUser]);
 
   const showActionError = useCallback((msg) => {
     setActionError(msg);
-    setTimeout(() => setActionError(""), 4000);
-  }, []);
+    later(() => setActionError(""), 4000);
+  }, [later]);
 
   const handleToggle = useCallback(async (pub) => {
     const newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
@@ -1034,7 +1278,7 @@ const VendedorDashboard = () => {
     } catch (err) {
       showActionError(err?.message || "No se pudo cambiar el estado. Intentá de nuevo.");
     }
-  }, []);
+  }, [showActionError]);
 
   const handleEdit = useCallback((pub) => {
     if (pub.type === "product") {
@@ -1055,6 +1299,13 @@ const VendedorDashboard = () => {
     } catch (err) {
       showActionError(err?.message || "No se pudo eliminar la publicación. Intentá de nuevo.");
     }
+  }, [showActionError]);
+
+  // "Pausar todo" solo afecta vehículos activos
+  const handlePausedAll = useCallback(() => {
+    setPubs((prev) => prev.map((p) =>
+      p.type === "vehicle" && p.status === "activo" ? { ...p, status: "pausado" } : p
+    ));
   }, []);
 
   const unread = leads.filter((c) => !c.leido).length;
@@ -1071,13 +1322,14 @@ const VendedorDashboard = () => {
 
   return (
     <div className={styles.page}>
+      <title>Mi panel | Mi Vehículo</title>
       <Navbar />
 
       {showSuccess && (
         <div className={styles.successBanner}>
           <CheckCircle size={18} />
           <span>¡Tu publicación fue enviada con éxito!</span>
-          <button className={styles.successClose} onClick={() => setShowSuccess(false)}>✕</button>
+          <button className={styles.successClose} onClick={() => setShowSuccess(false)} aria-label="Cerrar aviso">✕</button>
         </div>
       )}
 
@@ -1144,11 +1396,13 @@ const VendedorDashboard = () => {
             </div>
           )}
           {view === "inicio"        && <ViewInicio stats={stats} pubs={pubs} leads={leads} unread={unread} onNavigate={setView} />}
-          {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEdit} />}
-          {view === "consultas"     && <ViewConsultas leads={leads} loading={loadingLeads} />}
-          {view === "perfil"        && <ViewPerfil />}
+          {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs && !isMockUser} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEdit} onHighlight={setHighlightPub} />}
+          {view === "consultas"     && <ViewConsultas leads={leads} loading={loadingLeads && !isMockUser} />}
+          {view === "perfil"        && <ViewPerfil onPausedAll={handlePausedAll} />}
         </main>
       </div>
+
+      {highlightPub && <HighlightModal pub={highlightPub} onClose={() => setHighlightPub(null)} />}
     </div>
   );
 };

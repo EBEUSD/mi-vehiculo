@@ -1,77 +1,9 @@
-import { Check, Gift, Zap, Star } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Building2, CalendarClock, Check, Gift, Zap, Star } from "lucide-react";
+import { PLANS, CONSULT_PLANS } from "../../../../../lib/plans";
 import styles from "./PlanPublicacionStep.module.css";
 
-const PLANES = [
-  {
-    id: "gratuito",
-    nombre: "Gratuito",
-    subtitulo: "Para comenzar",
-    precio: null,
-    badge: null,
-    icon: Gift,
-    accent: "#64748b",
-    highlight: false,
-    incluye: [
-      "1 publicación gratis por año",
-      "60 días de duración",
-      "Hasta 10 fotos",
-      "Visible en búsquedas",
-    ],
-    noIncluye: [
-      "Posición destacada en resultados",
-      "Aparece en la página principal",
-      "Badge en el aviso",
-      "Estadísticas de visitas",
-    ],
-    nota: "Solo 1 publicación gratuita por año calendario",
-    cta: "Publicar gratis",
-  },
-  {
-    id: "basico",
-    nombre: "Básico",
-    subtitulo: "Mayor alcance",
-    precio: 5,
-    badge: "Más popular",
-    icon: Zap,
-    accent: "#1570ff",
-    highlight: true,
-    incluye: [
-      "Publicaciones ilimitadas",
-      "90 días de duración",
-      "Hasta 20 fotos",
-      "Posición destacada en búsquedas",
-      'Badge "Destacado" en tu aviso',
-      "Estadísticas de visitas",
-    ],
-    noIncluye: [
-      "Aparece en la página principal",
-    ],
-    nota: null,
-    cta: "Elegir Básico",
-  },
-  {
-    id: "premium",
-    nombre: "Premium",
-    subtitulo: "Máxima visibilidad",
-    precio: 12,
-    badge: "Mayor visibilidad",
-    icon: Star,
-    accent: "#7c3aed",
-    highlight: false,
-    incluye: [
-      "Publicaciones ilimitadas",
-      "120 días de duración",
-      "Hasta 30 fotos",
-      "Aparece en la página principal",
-      "Top de resultados de búsqueda",
-      'Badge "Premium" en tu aviso',
-      "Estadísticas avanzadas",
-    ],
-    noIncluye: [],
-    nota: null,
-    cta: "Elegir Premium",
-  },
-];
+const ICONS = { gratuito: Gift, basico: Zap, premium: Star };
 
 export default function PlanPublicacionStep({ formData, onChange }) {
   const selected = formData.plan || null;
@@ -90,8 +22,8 @@ export default function PlanPublicacionStep({ formData, onChange }) {
       </div>
 
       <div className={styles.grid}>
-        {PLANES.map((plan) => {
-          const Icon = plan.icon;
+        {PLANS.map((plan) => {
+          const Icon = ICONS[plan.id];
           const isSelected = selected === plan.id;
 
           return (
@@ -159,13 +91,47 @@ export default function PlanPublicacionStep({ formData, onChange }) {
         })}
       </div>
 
+      <div className={styles.consultGrid}>
+        {CONSULT_PLANS.map((plan) => {
+          const Icon = plan.id === "anual" ? CalendarClock : Building2;
+          return (
+            <div key={plan.id} className={styles.consultCard} style={{ "--accent": plan.accent }}>
+              <div className={styles.cardTop}>
+                <span className={styles.iconWrap} style={{ background: `${plan.accent}18`, color: plan.accent }}>
+                  <Icon size={22} />
+                </span>
+                <div>
+                  <h4 className={styles.planName}>{plan.nombre}</h4>
+                  <p className={styles.planSub}>{plan.subtitulo}</p>
+                </div>
+              </div>
+              <div className={styles.priceRow}>
+                <span className={styles.price} style={{ color: plan.accent }}>{plan.precioLabel}</span>
+                <span className={styles.pricePer}>{plan.precioPer}</span>
+              </div>
+              <ul className={styles.featureList}>
+                {plan.incluye.map((item) => (
+                  <li key={item} className={styles.featureOn}>
+                    <Check size={12} strokeWidth={3} style={{ flexShrink: 0, color: plan.accent }} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link to={plan.href} className={styles.consultBtn}>
+                {plan.cta} <ArrowRight size={14} />
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+
       {!selected && (
         <p className={styles.hint}>Seleccioná un plan para poder publicar</p>
       )}
 
       {selected && selected !== "gratuito" && (
         <div className={styles.payNote}>
-          El cobro se procesa de forma segura al confirmar. Podés pagar con tarjeta de crédito, débito o transferencia.
+          El cobro se procesa de forma segura con Wompi al confirmar. Podés pagar con tarjeta de crédito o débito, puntos, cuotas o Bitcoin.
         </div>
       )}
     </div>

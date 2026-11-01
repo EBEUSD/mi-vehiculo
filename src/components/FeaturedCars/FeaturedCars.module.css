@@ -19,7 +19,7 @@
 }
 
 .topbar a {
-  color: #2563eb;
+  color: #1d4ed8;
   text-decoration: none;
   font-weight: 700;
 }
@@ -31,6 +31,7 @@
 }
 
 .card {
+  position: relative;
   background: #fff;
   border-radius: 18px;
   overflow: hidden;
@@ -80,7 +81,7 @@
 }
 
 .blue {
-  background: #2563eb;
+  background: #1d4ed8;
 }
 
 .green {
@@ -90,7 +91,10 @@
 .favorite {
   position: absolute;
   right: 12px;
-  bottom: 12px;
+  top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -131,7 +135,7 @@
 .type {
   display: inline-block;
   margin-top: 0.65rem;
-  color: #2563eb;
+  color: #1d4ed8;
   font-size: 0.88rem;
   font-weight: 700;
 }
@@ -181,4 +185,13 @@
   color: #ef4444;
   background: #fff1f2;
   box-shadow: 0 8px 18px rgba(239, 68, 68, 0.16);
+}
+.favorite:focus-visible,
+.cardLink:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.gray {
+  background: #6b7280;
 }

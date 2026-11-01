@@ -28,7 +28,7 @@
 .notFoundCard p  { color: #6b7280; margin-bottom: 1.25rem; }
 .notFoundCard button {
   padding: 0.625rem 1.5rem;
-  background: #1570ff;
+  background: #1d4ed8;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -45,7 +45,7 @@
   margin-bottom: 1rem;
 }
 .breadcrumbs a { color: #6b7280; text-decoration: none; }
-.breadcrumbs a:hover { color: #1570ff; }
+.breadcrumbs a:hover { color: #1d4ed8; }
 
 .backBtn {
   display: inline-flex;
@@ -60,7 +60,7 @@
   padding: 0;
   margin-bottom: 1.5rem;
 }
-.backBtn:hover { color: #1570ff; }
+.backBtn:hover { color: #1d4ed8; }
 
 .layout {
   display: grid;
@@ -144,7 +144,7 @@
   background: #f1f5f9;
 }
 .thumb img    { width: 100%; height: 100%; object-fit: cover; }
-.thumbActive  { border-color: #1570ff; }
+.thumbActive  { border-color: #1d4ed8; }
 
 /* Cards */
 .card {
@@ -189,7 +189,7 @@
 }
 .badgeNew  { background: #dcfce7; color: #166534; }
 .badgeUsed { background: #f3f4f6; color: #374151; }
-.badgeCat  { background: #eff6ff; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+.badgeCat  { background: #eff6ff; color: #1e40af; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
 
 .productTitle {
   font-size: 1.25rem;
@@ -240,7 +240,7 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #1570ff;
+  background: #1d4ed8;
   color: #fff;
   display: flex;
   align-items: center;
@@ -267,21 +267,15 @@
 }
 .contactLink:hover { background: #f8fafc; }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #0f172a; --card-bg: #1e293b; }
-  :root:not([data-theme="light"]) .card,
-  :root:not([data-theme="light"]) .priceCard,
-  :root:not([data-theme="light"]) .sellerCard { border-color: #334155; }
-  :root:not([data-theme="light"]) .price { color: #f1f5f9; }
-  :root:not([data-theme="light"]) .badgeUsed { background: #1e293b; color: #94a3b8; }
-  :root:not([data-theme="light"]) .contactLink { border-color: #334155; color: #94a3b8; }
-  :root:not([data-theme="light"]) .contactLink:hover { background: #0f172a; }
-  :root:not([data-theme="light"]) .compatRow { border-color: #334155; }
-  :root:not([data-theme="light"]) .compatRow strong { color: #f1f5f9; }
+
+.card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
+.description { white-space: pre-line; color: #374151; line-height: 1.6; margin: 0; }
+
+.arrow:focus-visible,
+.thumb:focus-visible,
+.backBtn:focus-visible,
+.contactLink:focus-visible,
+.notFoundCard button:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
 }
-:root[data-theme="dark"] { --bg: #0f172a; --card-bg: #1e293b; }
-:root[data-theme="dark"] .card,
-:root[data-theme="dark"] .priceCard,
-:root[data-theme="dark"] .sellerCard { border-color: #334155; }
-:root[data-theme="dark"] .price { color: #f1f5f9; }
-:root[data-theme="dark"] .badgeUsed { background: #1e293b; color: #94a3b8; }

@@ -6,10 +6,12 @@ const CHECKOUT_URL = "https://checkout.wompi.sv/p/";
 
 export const WOMPI_PUBLIC_KEY = import.meta.env.VITE_WOMPI_PUBLIC_KEY || "";
 
-export const PLAN_AMOUNTS = {
-  basico:  500,   // $5.00 en centavos
-  premium: 1200,  // $12.00 en centavos
-};
+import { PLANS } from "./plans";
+
+// OJO: el backend valida estos montos — actualizarlo (antes 500/1200) antes de deployar.
+export const PLAN_AMOUNTS = Object.fromEntries(
+  PLANS.filter((p) => p.amountCents > 0).map((p) => [p.id, p.amountCents])
+);
 
 /**
  * Guarda el contexto en sessionStorage y redirige al checkout de WOMPI.

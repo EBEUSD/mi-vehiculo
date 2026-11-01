@@ -1,0 +1,46 @@
+.page { background: #f7f9fc; min-height: 100vh; font-family: inherit; }
+
+.hero {
+  text-align: center;
+  padding: 52px 24px 40px;
+  background: #fff;
+  border-bottom: 1px solid #e8edf6;
+}
+.heroTitle { font-size: 34px; font-weight: 700; color: #07153f; margin: 0 0 12px; letter-spacing: -0.4px; }
+.heroHighlight { color: #1d4ed8; }
+.heroSub { font-size: 16px; color: #6b7a99; margin: 0; }
+
+.shell { width: min(1100px, 100% - 48px); margin: 0 auto; padding: 40px 0 60px; display: flex; flex-direction: column; gap: 24px; }
+
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+.card {
+  background: #fff;
+  border: 1px solid #e8edf6;
+  border-radius: 20px;
+  padding: 28px;
+}
+.cardIcon { width: 48px; height: 48px; border-radius: 12px; background: rgba(29, 78, 216,0.08); color: #1d4ed8; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.cardTitle { font-size: 22px; font-weight: 700; color: #07153f; margin: 0 0 12px; }
+.cardText { font-size: 15px; color: #4b5563; line-height: 1.8; margin: 0; }
+
+.valuesGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.valueItem { background: #f7f9fc; border-radius: 14px; padding: 18px 20px; }
+.valueItem strong { display: block; font-size: 15px; font-weight: 700; color: #07153f; margin-bottom: 6px; }
+.valueItem p { font-size: 14px; color: #6b7a99; margin: 0; line-height: 1.6; }
+
+.cta {
+  align-self: center;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #1d4ed8; color: #fff; text-decoration: none;
+  font-weight: 600; font-size: 15px;
+  padding: 14px 26px; border-radius: 12px;
+  transition: background 0.15s;
+}
+.cta:hover { background: #0f5ee0; }
+
+@media (max-width: 768px) {
+  .heroTitle { font-size: 26px; }
+  .pair, .valuesGrid { grid-template-columns: 1fr; }
+  .card { padding: 22px; }
+}

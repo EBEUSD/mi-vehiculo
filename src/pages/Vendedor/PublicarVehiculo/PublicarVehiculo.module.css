@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: linear-gradient(160deg, #e8f0fc 0%, #dde7f7 40%, #e4eaf6 100%);
   color: #0f172a;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: inherit;
 }
 
 /* ── Content wrapper ──────────────────────── */
@@ -50,7 +50,7 @@
   height: 48px;
   border-radius: 14px;
   background: linear-gradient(135deg, #eff6ff, #dbeafe);
-  color: #1d4ed8;
+  color: #1e40af;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -260,7 +260,7 @@
   padding: 0 18px;
   border: 1.5px solid #bfdbfe;
   background: #eff6ff;
-  color: #1d4ed8;
+  color: #1e40af;
 }
 
 .draftBtn:hover { background: #dbeafe; transform: translateY(-1px); }
@@ -279,14 +279,14 @@
 .primaryBtn {
   padding: 0 22px;
   border: none;
-  background: linear-gradient(135deg, #1d4ed8, #1570ff);
+  background: linear-gradient(135deg, #1e40af, #1d4ed8);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(21, 112, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(29, 78, 216, 0.25);
 }
 
 .primaryBtn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(21, 112, 255, 0.3);
+  box-shadow: 0 8px 24px rgba(29, 78, 216, 0.3);
 }
 
 /* Edit */
@@ -294,7 +294,7 @@
   padding: 0 18px;
   border: 1.5px solid #bfdbfe;
   background: #fff;
-  color: #1d4ed8;
+  color: #1e40af;
 }
 
 .editBtn:hover { background: #eff6ff; transform: translateY(-1px); }
@@ -367,7 +367,7 @@
 }
 
 .termsText span {
-  color: #1d4ed8;
+  color: #1e40af;
   font-weight: 700;
   cursor: pointer;
 }
@@ -496,3 +496,46 @@
   .formCard { border-radius: 14px; padding: 18px 14px; }
   .bottomActions, .finalActions, .planActions { border-radius: 12px; }
 }
+
+/* ── Acciones: "Siguiente" separado del resto ── */
+.bottomActions { grid-template-columns: auto auto 1fr; }
+.bottomActions .primaryBtn { justify-self: end; }
+
+/* Descartar borrador: acción secundaria, no compite con "Siguiente" */
+.clearDraftLink {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #dc2626;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.clearDraftLink:hover { color: #b91c1c; }
+.clearDraftLink:focus-visible { outline: 2px solid #fca5a5; outline-offset: 2px; border-radius: 4px; }
+
+.termsText a {
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.publishError {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #dc2626;
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.publishError svg { flex-shrink: 0; margin-top: 2px; }
+
+@media (max-width: 820px) {
+  .bottomActions { grid-template-columns: 1fr; }
+  .bottomActions .primaryBtn { justify-self: stretch; }
+  .autosave { flex-wrap: wrap; text-align: center; }
+}
+
+.planActions .publishError { flex-basis: 100%; }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader, Pencil } from "lucide-react";
 import { catalogCache } from "../../../../../lib/catalogCache";
-import { getBrandsForCategory } from "../../../../../lib/vehicleBrands";
+import { getPopularModels } from "../../../../../lib/vehicleBrands";
+import { getVehicleCategory, OPERATION_TYPES } from "../../../../../lib/categories";
 import SearchableSelect from "../../../../../components/SearchableSelect/SearchableSelect";
 import FotosStep from "../Fotos/FotosStep";
 import styles from "./DatosVehiculoStep.module.css";
@@ -15,7 +16,7 @@ const YEAR_OPTIONS = [
 ];
 
 const calcReach = (fd) => {
-  const hasKm = fd.condicion === "Nuevo"
+  const hasKm = fd.condicion === "Nuevo" || !getVehicleCategory(fd.categoria).filters.km
     || (fd.condicion === "Usado" && fd.kilometraje && fd.kilometraje !== "");
   if (fd.condicion && hasKm)         return 4;
   if (fd.anio)                       return 3;
@@ -26,9 +27,9 @@ const calcReach = (fd) => {
 
 const DatosVehiculoStep = ({ formData, onChange }) => {
   const [apiBrands,     setApiBrands]     = useState([]);
-  const [models,        setModels]        = useState([]);
+  // Modelos guardados junto a la marca que los pidió
+  const [modelsState,   setModelsState]   = useState({ brandId: null, list: [] });
   const [loadingBrands, setLoadingBrands] = useState(true);
-  const [loadingModels, setLoadingModels] = useState(false);
   const [slowWarning,   setSlowWarning]   = useState(false);
   const [maxReached,    setMaxReached]    = useState(() => calcReach(formData));
   const [currentCard,   setCurrentCard]   = useState(() => calcReach(formData));
@@ -38,34 +39,37 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
 
   // Load brands on mount
   useEffect(() => {
-    setLoadingBrands(true);
+    let ignore = false;
     const timer = setTimeout(() => setSlowWarning(true), 5000);
     catalogCache.get("/catalog/brands")
-      .then((data) => setApiBrands(data || []))
-      .catch(() => setApiBrands([]))
-      .finally(() => { setLoadingBrands(false); setSlowWarning(false); clearTimeout(timer); });
-    return () => clearTimeout(timer);
+      .then((data) => { if (!ignore) setApiBrands(data || []); })
+      .catch(() => { if (!ignore) setApiBrands([]); })
+      .finally(() => {
+        clearTimeout(timer);
+        if (!ignore) { setLoadingBrands(false); setSlowWarning(false); }
+      });
+    return () => { ignore = true; clearTimeout(timer); };
   }, []);
 
   // Load models when API brand is selected
+  const brandId    = formData.marcaId;
+  const isApiBrand = !!brandId && brandId !== "OTRA" && !String(brandId).startsWith("__static__");
+
   useEffect(() => {
-    const id = formData.marcaId;
-    if (!id || id === "OTRA" || String(id).startsWith("__static__")) {
-      setModels([]);
-      return;
-    }
-    let cancelled = false;
-    setLoadingModels(true);
-    setModels([]);
-    catalogCache.get(`/catalog/brands/${id}/models`)
-      .then((data) => { if (!cancelled) setModels(data || []); })
-      .catch(() => { if (!cancelled) setModels([]); })
-      .finally(() => { if (!cancelled) setLoadingModels(false); });
-    return () => { cancelled = true; };
-  }, [formData.marcaId]);
+    if (!isApiBrand) return;
+    let ignore = false;
+    catalogCache.get(`/catalog/brands/${brandId}/models`)
+      .then((data) => { if (!ignore) setModelsState({ brandId: String(brandId), list: data || [] }); })
+      .catch(() => { if (!ignore) setModelsState({ brandId: String(brandId), list: [] }); });
+    return () => { ignore = true; };
+  }, [brandId, isApiBrand]);
+
+  const modelsReady   = isApiBrand && modelsState.brandId === String(brandId);
+  const models        = useMemo(() => (modelsReady ? modelsState.list : []), [modelsReady, modelsState.list]);
+  const loadingModels = isApiBrand && !modelsReady;
 
   const brandOptions = useMemo(() => {
-    const staticNames = getBrandsForCategory(formData.categoria);
+    const staticNames = getVehicleCategory(formData.categoria).brands;
     const apiByName = {};
     apiBrands.forEach((b) => { apiByName[b.name.toLowerCase()] = b; });
     const merged = staticNames.map((name) => {
@@ -74,22 +78,30 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
         ? { value: String(api.id), label: api.name }
         : { value: `__static__${name}`, label: name };
     });
-    apiBrands.forEach((b) => {
-      if (!merged.some((o) => o.value === String(b.id)))
-        merged.push({ value: String(b.id), label: b.name });
-    });
-    merged.sort((a, b) => a.label.localeCompare(b.label));
+    // Principales marcas en el orden del cliente; el resto del catálogo después, alfabético
+    const cat = getVehicleCategory(formData.categoria).api;
+    const extra = apiBrands
+      .filter((b) => (!b.category || b.category === cat) && !merged.some((o) => o.value === String(b.id)))
+      .map((b) => ({ value: String(b.id), label: b.name }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    merged.push(...extra);
     merged.push({ value: "OTRA", label: "Otra marca (escribir)" });
     return merged;
   }, [apiBrands, formData.categoria]);
 
   const modelOptions = useMemo(() => {
     const opts = models.map((m) => ({ value: String(m.id), label: m.name }));
+    // Modelos populares que todavía no están en el catálogo
+    getPopularModels(getVehicleCategory(formData.categoria).id, formData.marca).forEach((name) => {
+      if (!opts.some((o) => o.label.toLowerCase() === name.toLowerCase()))
+        opts.push({ value: `__static__${name}`, label: name });
+    });
     if (opts.length > 0) opts.push({ value: "OTRO", label: "Otro modelo (escribir)" });
     return opts;
-  }, [models]);
+  }, [models, formData.categoria, formData.marca]);
 
-  const isCustomBrand = formData.marcaId === "OTRA" || String(formData.marcaId || "").startsWith("__static__");
+  const applies = getVehicleCategory(formData.categoria).filters;
+
   const isCustomModel = formData.modeloId === "OTRO";
 
   const handleMarcaChange = (val) => {
@@ -105,6 +117,7 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
 
   const handleModeloChange = (val) => {
     if (val === "OTRO") { setValue("modeloId", "OTRO"); setValue("modelo", ""); return; }
+    if (val.startsWith("__static__")) { setValue("modeloId", val); setValue("modelo", val.replace("__static__", "")); return; }
     const model = models.find((m) => String(m.id) === val);
     setValue("modeloId", val); setValue("modelo", model?.name || "");
   };
@@ -149,15 +162,18 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
   const canConfirm0 = !!(formData.marcaId && (formData.marcaId !== "OTRA" || formData.marca));
   const canConfirm1 = !!(formData.modeloId && (formData.modeloId !== "OTRO" || formData.modelo));
   const canConfirm2 = !!formData.anio;
-  const canConfirm3 = !!(formData.condicion && (formData.condicion === "Nuevo" || formData.kilometraje));
+  const canConfirm3 = !!(formData.condicion && (formData.condicion === "Nuevo" || !applies.km || formData.kilometraje));
 
   // Confirmed summaries
   const marcaLabel   = formData.marca || "";
   const modeloLabel  = formData.modelo || "";
   const anioLabel    = [formData.anio, formData.version && `· ${formData.version}`].filter(Boolean).join(" ");
-  const condKmLabel  = formData.condicion === "Nuevo"
-    ? "Nuevo · 0 km"
-    : `Usado · ${Number(formData.kilometraje || 0).toLocaleString("en-US")} km`;
+  const condKmLabel  = [
+    formData.tipoOperacion,
+    formData.condicion === "Nuevo" || !applies.km
+      ? formData.condicion + (applies.km ? " · 0 km" : "")
+      : `Usado · ${Number(formData.kilometraje || 0).toLocaleString("en-US")} km`,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className={styles.flow}>
@@ -251,7 +267,7 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
             <p className={styles.doneValue}>{modeloLabel}</p>
           ) : (
             <>
-              {isCustomBrand || (!loadingModels && modelOptions.length === 0) ? (
+              {formData.marcaId === "OTRA" || (!loadingModels && modelOptions.length === 0) ? (
                 <input
                   type="text"
                   placeholder="Escribí el modelo"
@@ -354,7 +370,7 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
         <div className={`${styles.card} ${styles.fadeIn} ${isEditing(3) ? styles.cardEditing : ""} ${isConfirmed(3) ? styles.cardDone : ""}`}>
           <div className={styles.cardHead}>
             <div>
-              <span className={styles.cardTitle}>Condición <span className={styles.req}>*</span></span>
+              <span className={styles.cardTitle}>Operación y condición <span className={styles.req}>*</span></span>
               {!isConfirmed(3) && <p className={styles.cardSub}>¿Es nuevo o ya fue usado?</p>}
             </div>
             {isConfirmed(3) && (
@@ -369,6 +385,18 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
             <p className={styles.doneValue}>{condKmLabel}</p>
           ) : (
             <>
+              <div className={styles.field}>
+                <label>Tipo de operación <span>*</span></label>
+                <select
+                  name="tipoOperacion"
+                  value={formData.tipoOperacion || "Venta"}
+                  onChange={onChange}
+                >
+                  {OPERATION_TYPES.filter((op) => op !== "Compra").map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+              </div>
               <div className={styles.condKmRow}>
                 <div className={styles.field}>
                   <label>Condición <span>*</span></label>
@@ -389,7 +417,7 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
                   </div>
                 </div>
 
-                {formData.condicion !== "Nuevo" && (
+                {formData.condicion !== "Nuevo" && applies.km && (
                   <div className={styles.field}>
                     <label>Kilometraje <span>*</span></label>
                     <div className={styles.inputSuffix}>

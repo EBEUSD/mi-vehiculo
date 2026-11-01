@@ -9,26 +9,32 @@ import styles from "./Home.module.css";
 const Home = () => {
   return (
     <div className={styles.home}>
+      <title>Mi Vehículo — Comprá y vendé vehículos en El Salvador</title>
+      <meta
+        name="description"
+        content="Comprá y vendé carros, motos, camiones, maquinaria, repuestos y accesorios en El Salvador. Publicá gratis y contactá directo con el vendedor."
+      />
       <Navbar />
 
       <main className={styles.main}>
         <Hero />
 
-        <div className={styles.floatingCategories}>
-          <CategoriesStrip />
-        </div>
-
-        <section className={styles.filtersSection}>
+        {/* El buscador se superpone al final del hero */}
+        <section className={styles.searchSection}>
           <SearchFilters />
         </section>
 
+        <div className={styles.categoriesSection}>
+          <CategoriesStrip />
+        </div>
+
+        {/* Solo se muestra si hay publicaciones destacadas */}
         <section className={styles.featuredSection}>
           <FeaturedCars />
         </section>
+
+        <HomePromo />
       </main>
-
-      <HomePromo />
-
     </div>
   );
 };

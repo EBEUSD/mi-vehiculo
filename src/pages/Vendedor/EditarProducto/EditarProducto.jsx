@@ -6,6 +6,11 @@ import {
 } from "lucide-react";
 import Navbar from "../../../components/Navbar/Navbar";
 import { api } from "../../../lib/api";
+import { formatUSD, isValidPrice, parseMoney } from "../../../lib/money";
+import { formatSvPhone, isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
+import { IMAGE_ACCEPT, validateImageFiles } from "../../../lib/images";
+import useSafeTimeout from "../../../hooks/useSafeTimeout";
+import LocationSelect from "../shared/LocationSelect/LocationSelect";
 import styles from "../EditarVehiculo/EditarVehiculo.module.css";
 
 const STATUS_OPTIONS = [
@@ -19,7 +24,7 @@ const fromApi = (p) => ({
   slug:                p.slug || "",
   titulo:              p.title || "",
   descripcion:         p.description || "",
-  precio:              String(p.price || 0),
+  precio:              p.price ? String(p.price) : "",
   condicion:           p.condition === "NEW" ? "Nuevo" : "Usado",
   categoria:           p.category || "",
   stock:               String(p.stock || 1),
@@ -29,7 +34,7 @@ const fromApi = (p) => ({
   compatibilityBrands: p.compatibilityBrands || "",
   compatibilityModels: p.compatibilityModels || "",
   compatibilityYears:  p.compatibilityYears  || "",
-  phone:               p.contactPhone || "",
+  phone:               formatSvPhone(p.contactPhone),
   provinceId:          String(p.city?.province?.id || ""),
   cityId:              String(p.city?.id || ""),
   status:              p.status || "ACTIVE",
@@ -59,12 +64,11 @@ const EditarProducto = () => {
   const { id }    = useParams();
   const navigate  = useNavigate();
   const fileRef   = useRef(null);
+  const later     = useSafeTimeout();
 
   const [loading, setLoading]           = useState(true);
   const [notFound, setNotFound]         = useState(false);
   const [form, setForm]                 = useState(null);
-  const [provinces, setProvinces]       = useState([]);
-  const [cities, setCities]             = useState([]);
   const [saving, setSaving]             = useState(false);
   const [saved, setSaved]               = useState(false);
   const [saveError, setSaveError]       = useState("");
@@ -72,42 +76,18 @@ const EditarProducto = () => {
   const [uploadingImages, setUploadingImages] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.get(`/products/${id}`),
-      api.get("/location/provinces").catch(() => ({ data: [] })),
-    ])
-      .then(([productRes, provincesRes]) => {
-        const p = productRes.data;
-        const f = fromApi(p);
-        setForm(f);
-        setProvinces(provincesRes.data || []);
-        if (f.provinceId) {
-          api.get(`/location/provinces/${f.provinceId}/cities`)
-            .then((r) => setCities(r.data || []))
-            .catch(() => {});
-        }
-      })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+    let ignore = false;
+    api.get(`/products/${id}`)
+      .then((productRes) => { if (!ignore) setForm(fromApi(productRes.data)); })
+      .catch(() => { if (!ignore) setNotFound(true); })
+      .finally(() => { if (!ignore) setLoading(false); });
+    return () => { ignore = true; };
   }, [id]);
 
-  const handleProvinceChange = (e) => {
-    const pid  = e.target.value;
-    const prov = provinces.find((p) => String(p.id) === pid);
-    setForm((p) => ({ ...p, provinceId: pid, provincia: prov?.name || "", cityId: "", ciudad: "" }));
-    setCities([]);
-    if (pid) {
-      api.get(`/location/provinces/${pid}/cities`)
-        .then((r) => setCities(r.data || []))
-        .catch(() => {});
-    }
-  };
-
-  const handleCityChange = (e) => {
-    const cid  = e.target.value;
-    const city = cities.find((c) => String(c.id) === cid);
-    setForm((p) => ({ ...p, cityId: cid, ciudad: city?.name || "" }));
+  /* Departamento → municipio */
+  const handleLocationChange = (patch) => {
+    setForm((p) => ({ ...p, ...patch }));
+    setSaved(false);
   };
 
   const set = (name, value) => {
@@ -122,7 +102,8 @@ const EditarProducto = () => {
   const validate = () => {
     const errs = {};
     if (!form.titulo?.trim()) errs.titulo = "Ingresá el título.";
-    if (!form.precio || Number(form.precio) <= 0) errs.precio = "Ingresá un precio válido.";
+    if (!isValidPrice(form.precio)) errs.precio = "Ingresá un precio mayor a $0.";
+    if (form.phone && !isValidSvPhone(form.phone)) errs.phone = "El teléfono debe tener 8 dígitos.";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -134,13 +115,13 @@ const EditarProducto = () => {
       await api.patch(`/products/${form.productId}`, {
         title:               form.titulo,
         description:         form.descripcion || undefined,
-        price:               parseFloat(String(form.precio).replace(/[^\d.]/g, "")) || 0,
+        price:               parseMoney(form.precio),
         currency:            "USD",
         stock:               parseInt(form.stock, 10) || 1,
         condition:           form.condicion === "Nuevo" ? "NEW" : "USED",
         category:            form.categoria || undefined,
         cityId:              Number(form.cityId) > 0 ? Number(form.cityId) : undefined,
-        contactPhone:        form.phone || undefined,
+        contactPhone:        normalizeSvPhone(form.phone),
         negotiable:          form.negotiable   === "Si",
         acceptsTrade:        form.acceptsTrade === "Si",
         universal:           !!form.universal,
@@ -149,7 +130,7 @@ const EditarProducto = () => {
         compatibilityYears:  form.compatibilityYears  || undefined,
       });
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      later(() => setSaved(false), 3000);
     } catch (err) {
       setSaveError(err?.message || "No se pudo guardar. Intentá de nuevo.");
     } finally {
@@ -190,8 +171,11 @@ const EditarProducto = () => {
   };
 
   const handleUploadImages = async (e) => {
-    const files = Array.from(e.target.files || []);
+    const picked = Array.from(e.target.files || []);
     e.target.value = "";
+    if (!picked.length) return;
+    const { valid: files, error } = validateImageFiles(picked);
+    if (error) setSaveError(error);
     if (!files.length) return;
     setUploadingImages(true);
     try {
@@ -209,6 +193,7 @@ const EditarProducto = () => {
 
   if (loading) return (
     <div className={styles.page}>
+      <title>Editar publicación | Mi Vehículo</title>
       <Navbar />
       <div className={styles.center}><Loader2 size={28} className={styles.spin} /> Cargando…</div>
     </div>
@@ -229,6 +214,7 @@ const EditarProducto = () => {
 
   return (
     <div className={styles.page}>
+      <title>{`Editar ${form.titulo || "publicación"} | Mi Vehículo`}</title>
       <Navbar />
 
       <header className={styles.topBar}>
@@ -359,7 +345,7 @@ const EditarProducto = () => {
                 <Field label="Precio (USD)" required error={errors.precio}>
                   <div className={styles.inputPrefix}>
                     <span>$</span>
-                    <input type="text" name="precio" value={form.precio} onChange={handleChange} placeholder="Ej: 35" />
+                    <input type="text" inputMode="decimal" name="precio" value={form.precio} onChange={handleChange} placeholder="Ej: 35.00" />
                   </div>
                 </Field>
               </div>
@@ -373,22 +359,16 @@ const EditarProducto = () => {
             <section className={styles.card}>
               <h2 className={styles.cardTitle}>Contacto y ubicación</h2>
               <div className={styles.grid2}>
-                <Field label="Teléfono / WhatsApp">
-                  <input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+503 7000-0000" />
+                <Field label="Teléfono / WhatsApp" error={errors.phone}>
+                  <input type="tel" inputMode="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="+503 7000-0000" />
                 </Field>
                 <div />
-                <Field label="Departamento">
-                  <select value={form.provinceId} onChange={handleProvinceChange}>
-                    <option value="">Seleccioná el departamento</option>
-                    {provinces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </Field>
-                <Field label="Municipio">
-                  <select value={form.cityId} onChange={handleCityChange} disabled={!form.provinceId}>
-                    <option value="">{!form.provinceId ? "Primero elegí el departamento" : "Seleccioná el municipio"}</option>
-                    {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </Field>
+                <LocationSelect
+                  provinceId={form.provinceId}
+                  cityId={form.cityId}
+                  onChange={handleLocationChange}
+                  fieldClassName={styles.field}
+                />
               </div>
             </section>
 
@@ -410,7 +390,7 @@ const EditarProducto = () => {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  accept={IMAGE_ACCEPT}
                   multiple
                   className={styles.hiddenInput}
                   onChange={handleUploadImages}
@@ -466,7 +446,7 @@ const EditarProducto = () => {
               <ul className={styles.infoList}>
                 <li><span>Categoría</span><strong>{form.categoria || "—"}</strong></li>
                 <li><span>Condición</span><strong>{form.condicion}</strong></li>
-                <li><span>Precio</span><strong>{form.precio ? `$${Number(form.precio).toLocaleString("en-US")}` : "—"}</strong></li>
+                <li><span>Precio</span><strong>{formatUSD(form.precio)}</strong></li>
                 <li><span>Stock</span><strong>{form.stock}</strong></li>
                 <li><span>Fotos</span><strong>{form.images.length}</strong></li>
               </ul>

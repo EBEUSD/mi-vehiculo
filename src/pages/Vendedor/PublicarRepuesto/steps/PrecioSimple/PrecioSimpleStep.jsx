@@ -1,25 +1,32 @@
+import { isValidPrice } from "../../../../../lib/money";
 import styles from "./PrecioSimpleStep.module.css";
 
 const OPTS_SI_NO = ["Si", "No"];
 
 const PrecioSimpleStep = ({ formData, onChange }) => {
   const set = (name, value) => onChange({ target: { name, value } });
+  const priceTyped = String(formData.precio || "").trim() !== "";
 
   return (
     <div className={styles.formGrid}>
       <div className={`${styles.field} ${styles.fullWidth}`}>
-        <label>Precio (USD) <span>*</span></label>
+        <label htmlFor="precio-simple">Precio (USD) <span>*</span></label>
         <div className={styles.priceWrap}>
           <span className={styles.currency}>$</span>
           <input
+            id="precio-simple"
             name="precio"
-            type="number"
-            min="0"
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
             value={formData.precio}
             onChange={onChange}
-            placeholder="0.00"
+            placeholder="Ej.: 35.00"
           />
         </div>
+        {priceTyped && !isValidPrice(formData.precio) && (
+          <p className={styles.fieldHint} role="alert">Ingresá un precio mayor a $0.</p>
+        )}
       </div>
 
       <div className={styles.field}>

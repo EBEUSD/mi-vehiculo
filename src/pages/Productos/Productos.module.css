@@ -31,7 +31,7 @@
   background: var(--card-bg, #fff);
   color: inherit;
 }
-.searchInput:focus { border-color: #1570ff; }
+.searchInput:focus { border-color: #1d4ed8; }
 
 .tabs {
   display: flex;
@@ -53,8 +53,8 @@
   margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
 }
-.tab:hover { color: #1570ff; }
-.tabActive  { color: #1570ff; border-bottom-color: #1570ff; font-weight: 600; }
+.tab:hover { color: #1d4ed8; }
+.tabActive  { color: #1d4ed8; border-bottom-color: #1d4ed8; font-weight: 600; }
 
 .msg {
   text-align: center;
@@ -107,7 +107,7 @@
 .category {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #1570ff;
+  color: #1d4ed8;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: block;
@@ -167,19 +167,22 @@
   .grid { grid-template-columns: 1fr; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .page          { --bg: #0f172a; }
-  :root:not([data-theme="light"]) .container     { --card-bg: #1e293b; }
-  :root:not([data-theme="light"]) .card          { border-color: #334155; }
-  :root:not([data-theme="light"]) .price         { color: #f1f5f9; }
-  :root:not([data-theme="light"]) .searchInput   { border-color: #334155; --card-bg: #1e293b; }
-  :root:not([data-theme="light"]) .tabs          { border-color: #334155; }
-  :root:not([data-theme="light"]) .badgeUsed     { background: #1e293b; color: #94a3b8; }
+
+.retryBtn {
+  margin-top: 0.75rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 10px;
+  border: none;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
 }
-:root[data-theme="dark"] .page        { --bg: #0f172a; }
-:root[data-theme="dark"] .container   { --card-bg: #1e293b; }
-:root[data-theme="dark"] .card        { border-color: #334155; }
-:root[data-theme="dark"] .price       { color: #f1f5f9; }
-:root[data-theme="dark"] .searchInput { border-color: #334155; --card-bg: #1e293b; }
-:root[data-theme="dark"] .tabs        { border-color: #334155; }
-:root[data-theme="dark"] .badgeUsed   { background: #1e293b; color: #94a3b8; }
+
+.tab:focus-visible,
+.cardLink:focus-visible,
+.retryBtn:focus-visible,
+.searchInput:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}

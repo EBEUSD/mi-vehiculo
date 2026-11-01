@@ -1,83 +1,44 @@
-import { useEffect, useState } from "react";
-import { Pencil, Check, Gift, Zap, Star } from "lucide-react";
-import { api } from "../../../../../lib/api";
+import { useState } from "react";
+import { Pencil } from "lucide-react";
+import { formatUSD, isValidPrice } from "../../../../../lib/money";
+import { formatSvPhone, isValidSvPhone } from "../../../../../lib/phone";
+import LocationSelect from "../../../shared/LocationSelect/LocationSelect";
+import PlanPublicacionStep from "../PlanPublicacion/PlanPublicacionStep";
 import styles from "./PrecioContactoStep.module.css";
 
-const PLANES = [
-  {
-    id: "gratuito",
-    nombre: "Gratuito",
-    subtitulo: "Para comenzar",
-    precio: null,
-    badge: null,
-    icon: Gift,
-    accent: "#64748b",
-    highlight: false,
-    incluye: ["1 publicación gratis por año", "60 días de duración", "Hasta 10 fotos", "Visible en búsquedas"],
-    noIncluye: ["Posición destacada en resultados", "Aparece en la página principal", "Badge en el aviso", "Estadísticas de visitas"],
-    nota: "Solo 1 publicación gratuita por año calendario",
-  },
-  {
-    id: "basico",
-    nombre: "Básico",
-    subtitulo: "Mayor alcance",
-    precio: 5,
-    badge: "Más popular",
-    icon: Zap,
-    accent: "#1570ff",
-    highlight: true,
-    incluye: ["Publicaciones ilimitadas", "90 días de duración", "Hasta 20 fotos", "Posición destacada en búsquedas", 'Badge "Destacado" en tu aviso', "Estadísticas de visitas"],
-    noIncluye: ["Aparece en la página principal"],
-    nota: null,
-  },
-  {
-    id: "premium",
-    nombre: "Premium",
-    subtitulo: "Máxima visibilidad",
-    precio: 12,
-    badge: "Mayor visibilidad",
-    icon: Star,
-    accent: "#7c3aed",
-    highlight: false,
-    incluye: ["Publicaciones ilimitadas", "120 días de duración", "Hasta 30 fotos", "Aparece en la página principal", "Top de resultados de búsqueda", 'Badge "Premium" en tu aviso', "Estadísticas avanzadas"],
-    noIncluye: [],
-    nota: null,
-  },
-];
-
 const calcReach = (fd) => {
-  if (fd.nombreContacto)                         return 3;
-  if (fd.cityId)                                 return 2;
-  if (String(fd.precio || "").trim() !== "")     return 1;
+  if (fd.nombreContacto)       return 3;
+  if (fd.cityId)               return 2;
+  if (isValidPrice(fd.precio)) return 1;
   return 0;
 };
 
+// Selector Sí/No
+const Toggle = ({ label, value, onSelect }) => (
+  <div className={styles.toggleGroup}>
+    <span className={styles.toggleLabel}>{label}</span>
+    <div className={styles.togglePill}>
+      {["Si", "No"].map((v) => (
+        <button
+          key={v}
+          type="button"
+          className={`${styles.pillBtn} ${value === v ? styles.pillActive : ""}`}
+          aria-pressed={value === v}
+          onClick={() => onSelect(v)}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 const PrecioContactoStep = ({ formData, onChange }) => {
-  const [provinces,     setProvinces]     = useState([]);
-  const [cities,        setCities]        = useState([]);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [maxReached,    setMaxReached]    = useState(() => calcReach(formData));
-  const [currentCard,   setCurrentCard]   = useState(() => calcReach(formData));
-  const [snapshot,      setSnapshot]      = useState(null);
+  const [maxReached,  setMaxReached]  = useState(() => calcReach(formData));
+  const [currentCard, setCurrentCard] = useState(() => calcReach(formData));
+  const [snapshot,    setSnapshot]    = useState(null);
 
   const setValue = (name, value) => onChange({ target: { name, value } });
-
-  useEffect(() => {
-    api.get("/location/provinces")
-      .then((res) => setProvinces(res.data || []))
-      .catch(() => setProvinces([]));
-  }, []);
-
-  useEffect(() => {
-    if (!formData.provinceId) { setCities([]); return; }
-    let cancelled = false;
-    setLoadingCities(true);
-    api.get(`/location/provinces/${formData.provinceId}/cities`)
-      .then((res) => { if (!cancelled) setCities(res.data || []); })
-      .catch(() => { if (!cancelled) setCities([]); })
-      .finally(() => { if (!cancelled) setLoadingCities(false); });
-    return () => { cancelled = true; };
-  }, [formData.provinceId]);
 
   const confirm = (cardIdx) => {
     const next = Math.max(maxReached, cardIdx + 1);
@@ -105,39 +66,14 @@ const PrecioContactoStep = ({ formData, onChange }) => {
   const isConfirmed = (i) => maxReached > i && currentCard !== i;
   const isVisible   = (i) => i <= maxReached;
 
-  const handleProvinciaChange = (e) => {
-    const id   = parseInt(e.target.value, 10);
-    const prov = provinces.find((p) => p.id === id);
-    setValue("provinceId", id       || "");
-    setValue("provincia",  prov?.name || "");
-    setValue("cityId",     "");
-    setValue("ciudad",     "");
+  const handleLocationChange = (patch) => {
+    Object.entries(patch).forEach(([k, v]) => setValue(k, v));
   };
 
-  const handleCiudadChange = (e) => {
-    const id   = parseInt(e.target.value, 10);
-    const city = cities.find((c) => c.id === id);
-    setValue("cityId", id       || "");
-    setValue("ciudad", city?.name || "");
-  };
-
-  const Toggle = ({ name, label }) => (
-    <div className={styles.toggleGroup}>
-      <span className={styles.toggleLabel}>{label}</span>
-      <div className={styles.togglePill}>
-        {["Si", "No"].map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={`${styles.pillBtn} ${formData[name] === v ? styles.pillActive : ""}`}
-            onClick={() => setValue(name, v)}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  const priceTyped = String(formData.precio || "").trim() !== "";
+  const priceOk    = isValidPrice(formData.precio);
+  const phoneTyped = String(formData.whatsapp || "").trim() !== "";
+  const phoneOk    = isValidSvPhone(formData.whatsapp);
 
   // Confirmed summaries
   const priceBadges = [
@@ -148,7 +84,7 @@ const PrecioContactoStep = ({ formData, onChange }) => {
 
   const contactSummary = [
     formData.nombreContacto,
-    formData.whatsapp && `+503 ${formData.whatsapp}`,
+    formatSvPhone(formData.whatsapp),
   ].filter(Boolean).join(" · ");
 
   return (
@@ -175,7 +111,7 @@ const PrecioContactoStep = ({ formData, onChange }) => {
         {isConfirmed(0) ? (
           <div className={styles.donePriceRow}>
             <span className={styles.donePrice}>
-              ${Number(formData.precio).toLocaleString("en-US")} USD
+              {formatUSD(formData.precio, { suffix: true })}
             </span>
             {priceBadges.map((b) => <span key={b} className={styles.doneBadge}>{b}</span>)}
           </div>
@@ -185,18 +121,24 @@ const PrecioContactoStep = ({ formData, onChange }) => {
               <span className={styles.currency}>$</span>
               <input
                 type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                aria-label="Precio en USD"
                 name="precio"
                 value={formData.precio}
                 onChange={onChange}
-                placeholder="0"
+                placeholder="Ej.: 15,000"
                 className={styles.priceInput}
               />
               <span className={styles.priceCurrency}>USD</span>
             </div>
+            {priceTyped && !priceOk && (
+              <p className={styles.fieldHint} role="alert">Ingresá un precio mayor a $0 (ej.: 15,000).</p>
+            )}
             <div className={styles.toggleRow}>
-              <Toggle name="precioNegociable" label="Precio negociable" />
-              <Toggle name="aceptaPermuta"    label="Acepta permuta" />
-              <Toggle name="financiacion"     label="Acepta financiación" />
+              <Toggle label="Precio negociable"   value={formData.precioNegociable} onSelect={(v) => setValue("precioNegociable", v)} />
+              <Toggle label="Acepta permuta"      value={formData.aceptaPermuta}    onSelect={(v) => setValue("aceptaPermuta", v)} />
+              <Toggle label="Acepta financiación" value={formData.financiacion}     onSelect={(v) => setValue("financiacion", v)} />
             </div>
             <div className={styles.cardFooter}>
               {snapshot?.cardIdx === 0 && (
@@ -205,7 +147,7 @@ const PrecioContactoStep = ({ formData, onChange }) => {
               <button
                 type="button"
                 className={styles.confirmBtn}
-                disabled={!formData.precio || formData.precio === "0"}
+                disabled={!priceOk}
                 onClick={() => confirm(0)}
               >
                 Confirmar
@@ -239,32 +181,13 @@ const PrecioContactoStep = ({ formData, onChange }) => {
           ) : (
             <>
               <div className={styles.twoCol}>
-                <div className={styles.field}>
-                  <label>Departamento <span>*</span></label>
-                  <select value={formData.provinceId || ""} onChange={handleProvinciaChange}>
-                    <option value="">Seleccioná el departamento</option>
-                    {provinces.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.field}>
-                  <label>Municipio <span>*</span></label>
-                  <select
-                    value={formData.cityId || ""}
-                    onChange={handleCiudadChange}
-                    disabled={!formData.provinceId || loadingCities}
-                  >
-                    <option value="">
-                      {!formData.provinceId ? "Elegí primero el departamento"
-                        : loadingCities      ? "Cargando municipios…"
-                        : "Seleccioná el municipio"}
-                    </option>
-                    {cities.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <LocationSelect
+                  required
+                  provinceId={formData.provinceId}
+                  cityId={formData.cityId}
+                  onChange={handleLocationChange}
+                  fieldClassName={styles.field}
+                />
               </div>
               <div className={styles.cardFooter}>
                 <button type="button" className={styles.cancelBtn} onClick={cancelEdit}>Cancelar</button>
@@ -307,8 +230,9 @@ const PrecioContactoStep = ({ formData, onChange }) => {
             <>
               <div className={styles.twoCol}>
                 <div className={styles.field}>
-                  <label>Nombre <span>*</span></label>
+                  <label htmlFor="pc-nombre">Nombre <span>*</span></label>
                   <input
+                    id="pc-nombre"
                     type="text"
                     name="nombreContacto"
                     value={formData.nombreContacto}
@@ -317,21 +241,27 @@ const PrecioContactoStep = ({ formData, onChange }) => {
                   />
                 </div>
                 <div className={styles.field}>
-                  <label>WhatsApp <span>*</span></label>
+                  <label htmlFor="pc-whatsapp">WhatsApp <span>*</span></label>
                   <div className={styles.phoneInput}>
                     <span>+503</span>
                     <input
-                      type="text"
+                      id="pc-whatsapp"
+                      type="tel"
+                      inputMode="tel"
                       name="whatsapp"
                       value={formData.whatsapp}
                       onChange={onChange}
                       placeholder="7000-0000"
                     />
                   </div>
+                  {phoneTyped && !phoneOk && (
+                    <p className={styles.fieldHint} role="alert">El número debe tener 8 dígitos.</p>
+                  )}
                 </div>
                 <div className={styles.field}>
-                  <label>Email <span className={styles.opt}>(opcional)</span></label>
+                  <label htmlFor="pc-email">Email <span className={styles.opt}>(opcional)</span></label>
                   <input
+                    id="pc-email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -340,8 +270,8 @@ const PrecioContactoStep = ({ formData, onChange }) => {
                   />
                 </div>
                 <div className={styles.field}>
-                  <label>Horario <span className={styles.opt}>(opcional)</span></label>
-                  <select name="horarioContacto" value={formData.horarioContacto} onChange={onChange}>
+                  <label htmlFor="pc-horario">Horario <span className={styles.opt}>(opcional)</span></label>
+                  <select id="pc-horario" name="horarioContacto" value={formData.horarioContacto} onChange={onChange}>
                     <option value="">Seleccioná un horario</option>
                     <option value="Mañana">Mañana</option>
                     <option value="Tarde">Tarde</option>
@@ -366,7 +296,7 @@ const PrecioContactoStep = ({ formData, onChange }) => {
                 <button
                   type="button"
                   className={styles.confirmBtn}
-                  disabled={!formData.nombreContacto || !formData.whatsapp}
+                  disabled={!formData.nombreContacto?.trim() || !phoneOk}
                   onClick={() => confirm(2)}
                 >
                   Confirmar
@@ -380,87 +310,7 @@ const PrecioContactoStep = ({ formData, onChange }) => {
       {/* ══════ Plan de publicación ══════ */}
       {isVisible(3) && (
         <div className={`${styles.planSection} ${styles.fadeIn}`}>
-          <div className={styles.planIntro}>
-            <h3 className={styles.planTitle}>Elegí cómo querés publicar</h3>
-            <p className={styles.planSub}>
-              Más visibilidad genera más consultas. Podés cambiar de plan en cualquier momento.
-            </p>
-          </div>
-
-          <div className={styles.planGrid}>
-            {PLANES.map((plan) => {
-              const Icon = plan.icon;
-              const isSelected = formData.plan === plan.id;
-              return (
-                <button
-                  key={plan.id}
-                  type="button"
-                  className={[
-                    styles.planCard,
-                    plan.highlight ? styles.planHighlight : "",
-                    isSelected     ? styles.planSelected  : "",
-                  ].join(" ")}
-                  style={{ "--accent": plan.accent }}
-                  onClick={() => onChange({ target: { name: "plan", value: plan.id } })}
-                >
-                  {plan.badge && (
-                    <span className={styles.planBadge} style={{ background: plan.accent }}>
-                      {plan.badge}
-                    </span>
-                  )}
-                  <div className={styles.planTop}>
-                    <span className={styles.planIcon} style={{ background: `${plan.accent}18`, color: plan.accent }}>
-                      <Icon size={22} />
-                    </span>
-                    <div>
-                      <h4 className={styles.planName}>{plan.nombre}</h4>
-                      <p className={styles.planSubtitle}>{plan.subtitulo}</p>
-                    </div>
-                    <div className={`${styles.planRadio} ${isSelected ? styles.planRadioOn : ""}`}>
-                      {isSelected && <Check size={12} strokeWidth={3} />}
-                    </div>
-                  </div>
-
-                  <div className={styles.planPriceRow}>
-                    {plan.precio === null ? (
-                      <span className={styles.planPrice} style={{ color: plan.accent }}>Gratis</span>
-                    ) : (
-                      <>
-                        <span className={styles.planPrice} style={{ color: plan.accent }}>${plan.precio}</span>
-                        <span className={styles.planPer}>por publicación</span>
-                      </>
-                    )}
-                  </div>
-
-                  <ul className={styles.planFeatures}>
-                    {plan.incluye.map((item) => (
-                      <li key={item} className={styles.featureOn}>
-                        <Check size={12} strokeWidth={3} style={{ flexShrink: 0, color: plan.accent }} />
-                        {item}
-                      </li>
-                    ))}
-                    {plan.noIncluye.map((item) => (
-                      <li key={item} className={styles.featureOff}>
-                        <span className={styles.featureDash}>—</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {plan.nota && <p className={styles.planNota}>{plan.nota}</p>}
-                </button>
-              );
-            })}
-          </div>
-
-          {!formData.plan && (
-            <p className={styles.planHint}>Seleccioná un plan para poder publicar</p>
-          )}
-          {formData.plan && formData.plan !== "gratuito" && (
-            <div className={styles.payNote}>
-              El cobro se procesa de forma segura al confirmar. Podés pagar con tarjeta de crédito, débito o transferencia.
-            </div>
-          )}
+          <PlanPublicacionStep formData={formData} onChange={onChange} />
         </div>
       )}
     </div>

@@ -1,11 +1,16 @@
-import { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../lib/api";
 import { redirectToWompiCheckout } from "../../../lib/wompi";
+import { getPlan, publishLabelFor } from "../../../lib/plans";
+import { isValidPrice, parseMoney } from "../../../lib/money";
+import { isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
+import { DRAFT_KEYS, clearDraft, readDraft, revokePreviews, writeDraft } from "../../../lib/publishDrafts";
+import useSafeTimeout from "../../../hooks/useSafeTimeout";
 import {
   AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle,
-  ChevronRight, Save, Trash2,
+  ChevronRight, Save,
 } from "lucide-react";
 import PublicarTopbar from "./components/PublicarTopbar";
 import PublicarStepper from "./components/PublicarStepper";
@@ -13,20 +18,12 @@ import PublicarSidebar from "./components/PublicarSidebar";
 import DatosVehiculoStep from "./steps/DatosVehiculo/DatosVehiculoStep";
 import CaracteristicasCompletasStep from "./steps/CaracteristicasCompletas/CaracteristicasCompletasStep";
 import PrecioContactoStep from "./steps/PrecioContacto/PrecioContactoStep";
+import PhotoLimitNotice from "../shared/PhotoLimitNotice/PhotoLimitNotice";
+import IdentityCard from "../shared/IdentityCard/IdentityCard";
+import { needsIdentity } from "../../../lib/identity";
 import EmailVerificationGate from "../../../components/EmailVerificationGate/EmailVerificationGate";
 import styles from "./PublicarVehiculo.module.css";
-
-const CATEGORIAS = [
-  { id: "autos",        label: "Autos" },
-  { id: "camionetas",   label: "Camionetas y Pickups" },
-  { id: "motos",        label: "Motos" },
-  { id: "camiones",     label: "Camiones" },
-  { id: "nautica",      label: "Náutica" },
-  { id: "chocados",     label: "Autos Chocados y Averiados" },
-  { id: "coleccion",    label: "Autos de Colección" },
-  { id: "colectivos",   label: "Colectivos y Buses" },
-  { id: "otros",        label: "Otros Vehículos" },
-];
+import { VEHICLE_CATEGORIES as CATEGORIAS, getVehicleCategory } from "../../../lib/categories";
 
 const steps = [
   {
@@ -55,6 +52,7 @@ const steps = [
 const initialForm = {
   categoria: "",
   tipoVehiculo: "",
+  tipoOperacion: "Venta",
   // marca/modelo con id numérico para la API + nombre para mostrar
   marcaId: "", marca: "", modeloId: "", modelo: "", anio: "", version: "",
   kilometraje: "", condicion: "Usado",
@@ -76,27 +74,18 @@ const initialForm = {
   fotos: [], plan: "",
 };
 
-const DRAFT_KEY = "miVehiculo_publicarVehiculoDraft";
+const DRAFT_KEY = DRAFT_KEYS.vehicle;
+const AUTOSAVE_MS = 600;
 
 const getInitialDraft = () => {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return initialForm;
-    const parsed = JSON.parse(raw);
-    return { ...initialForm, ...parsed.formData, fotos: [] };
-  } catch { return initialForm; }
+  const draft = readDraft(DRAFT_KEY);
+  return draft?.formData ? { ...initialForm, ...draft.formData, fotos: [] } : initialForm;
 };
 
-const getInitialStep = () => {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed.formData?.categoria) return 1;
-    }
-  } catch {}
-  return 0;
-};
+const getInitialStep = () => (readDraft(DRAFT_KEY)?.formData?.categoria ? 1 : 0);
+
+// Publicación ya creada en un intento anterior: { id, photosUploaded }
+const getInitialCreated = () => readDraft(DRAFT_KEY)?.created || null;
 
 const validators = {
   1: {
@@ -120,17 +109,23 @@ const validators = {
   },
 };
 
+const isCustomId = (id) => id === "OTRA" || id === "OTRO" || String(id).startsWith("__static__");
+
 const PublicarVehiculo = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const later = useSafeTimeout();
 
   const [currentStep, setCurrentStep] = useState(getInitialStep);
   const [formData, setFormData]     = useState(getInitialDraft);
+  const [created, setCreated]       = useState(getInitialCreated);
   const [errors, setErrors]         = useState({});
   const [draftMessage, setDraftMessage] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
-  const errorRef = useRef(null);
+  const errorRef      = useRef(null);
+  const publishingRef = useRef(false);
+  const fotosRef      = useRef([]);
 
   const currentStepData = useMemo(
     () => steps.find((s) => s.id === currentStep) || steps[0],
@@ -138,6 +133,28 @@ const PublicarVehiculo = () => {
   );
   const isFinalStep  = currentStep === 3;
   const currentErrors = Object.values(errors);
+
+  // Autoguardado del borrador (sin fotos) con debounce
+  useEffect(() => {
+    if (!formData.categoria) return;
+    const t = setTimeout(() => writeDraft(DRAFT_KEY, formData, created ? { created } : {}), AUTOSAVE_MS);
+    return () => clearTimeout(t);
+  }, [formData, created]);
+
+  // Liberar vistas previas de fotos al salir de la página
+  useEffect(() => { fotosRef.current = formData.fotos || []; }, [formData.fotos]);
+  useEffect(() => {
+    const ref = fotosRef;
+    return () => revokePreviews(ref.current);
+  }, []);
+
+  const flash = (msg) => {
+    setDraftMessage(msg);
+    later(() => setDraftMessage(""), 3000);
+  };
+
+  const scrollToErrors = () =>
+    later(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -153,7 +170,7 @@ const PublicarVehiculo = () => {
     });
 
     if (stepId === 1) {
-      // Custom brand/model text validation
+      // Marca/modelo escritos a mano
       const isCustomBrand = formData.marcaId === "OTRA" || String(formData.marcaId).startsWith("__static__");
       if (isCustomBrand) {
         delete stepErrors.marcaId;
@@ -168,8 +185,8 @@ const PublicarVehiculo = () => {
       if (formData.anio && (year < 1960 || year > new Date().getFullYear() + 2)) {
         stepErrors.anio = "Ingresá un año válido.";
       }
-      // Nuevo → km field is hidden, remove required validation
-      if (formData.condicion === "Nuevo") {
+      // Nuevo, o categorías sin odómetro (bicicletas, maquinaria…) → sin km
+      if (formData.condicion === "Nuevo" || !getVehicleCategory(formData.categoria).filters.km) {
         delete stepErrors.kilometraje;
       }
       if (!(formData.fotos || []).length) {
@@ -177,14 +194,26 @@ const PublicarVehiculo = () => {
       }
     }
 
+    if (stepId === 2) {
+      const applies = getVehicleCategory(formData.categoria).filters;
+      if (!applies.fuel) delete stepErrors.combustible;
+      if (!applies.transmission) delete stepErrors.transmision;
+    }
+
     if (stepId === 3) {
-      const price = Number(String(formData.precio).replace(/[^\d.]/g, ""));
-      if (formData.precio && (!price || price <= 0)) {
-        stepErrors.precio = "Ingresá un precio válido.";
+      if (formData.precio && !isValidPrice(formData.precio)) {
+        stepErrors.precio = "Ingresá un precio mayor a $0 (ej.: 15,000).";
       }
-      const phone = String(formData.whatsapp).replace(/\D/g, "");
-      if (formData.whatsapp && phone.length < 8) {
-        stepErrors.whatsapp = "Ingresá un WhatsApp válido (mínimo 8 dígitos).";
+      if (formData.whatsapp && !isValidSvPhone(formData.whatsapp)) {
+        stepErrors.whatsapp = "Ingresá un WhatsApp válido de 8 dígitos.";
+      }
+      // Las fotos no viven en el borrador: tras recargar hay que volver a cargarlas
+      if (!(formData.fotos || []).length && !created?.photosUploaded) {
+        stepErrors.fotos = "Volvé a cargar las fotos en el paso 1 (no se guardan en el borrador).";
+      }
+      const planInfo = getPlan(formData.plan);
+      if (planInfo && (formData.fotos || []).length > planInfo.fotos) {
+        stepErrors.fotos = `El plan ${planInfo.nombre} permite hasta ${planInfo.fotos} fotos. Elegí cuáles conservar o un plan mayor.`;
       }
     }
 
@@ -198,19 +227,27 @@ const PublicarVehiculo = () => {
   };
 
   const saveDraft = () => {
-    const { fotos, ...rest } = formData;
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ formData: { ...rest, fotos: [] }, savedAt: new Date().toISOString() }));
-    setDraftMessage("Borrador guardado correctamente.");
-    setTimeout(() => setDraftMessage(""), 3000);
+    writeDraft(DRAFT_KEY, formData, created ? { created } : {});
+    flash("Borrador guardado correctamente.");
   };
 
-  const clearDraft = () => {
-    localStorage.removeItem(DRAFT_KEY);
+  const handleClearDraft = () => {
+    if (!window.confirm("¿Descartar el borrador? Se borrarán todos los datos y fotos cargados en este formulario.")) return;
+    clearDraft(DRAFT_KEY);
+    revokePreviews(formData.fotos);
     setFormData(initialForm);
+    setCreated(null);
     setErrors({});
+    setPublishError("");
     setCurrentStep(0);
-    setDraftMessage("Borrador eliminado.");
-    setTimeout(() => setDraftMessage(""), 3000);
+    flash("Borrador eliminado.");
+  };
+
+  // Plan con menos fotos: conservar solo las elegidas
+  const handleKeepPhotos = (next, removed) => {
+    revokePreviews(removed);
+    setFormData((p) => ({ ...p, fotos: next }));
+    setErrors((p) => { const n = { ...p }; delete n.fotos; return n; });
   };
 
   const goPrev = () => {
@@ -220,10 +257,7 @@ const PublicarVehiculo = () => {
   };
 
   const goNext = () => {
-    if (!validateStep(currentStep)) {
-      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
-      return;
-    }
+    if (!validateStep(currentStep)) { scrollToErrors(); return; }
     setErrors({});
     setCurrentStep((p) => Math.min(p + 1, steps.length));
   };
@@ -234,131 +268,130 @@ const PublicarVehiculo = () => {
     setErrors({}); setCurrentStep(id);
   };
 
-  // Map UI category label → API category enum
-  const CATEGORY_MAP = {
-    "Autos":                     "AUTO",
-    "Camionetas y Pickups":      "CAMIONETA",
-    "Motos":                     "MOTO",
-    "Camiones":                  "CAMION",
-    "Náutica":                   "ACUATICO",
-    "Autos Chocados y Averiados":"AUTO",
-    "Autos de Colección":        "AUTO",
-    "Colectivos y Buses":        "CAMION",
-    "Maquinaria Agrícola":       "OTRO",
-    "Maquinaria Vial":           "OTRO",
-    "Otros Vehículos":           "OTRO",
+  // Guarda el progreso del publish para que un reintento no duplique el aviso
+  const rememberCreated = (next) => {
+    setCreated(next);
+    writeDraft(DRAFT_KEY, formData, { created: next });
+  };
+
+  const buildPayload = (defs) => {
+    const applies = getVehicleCategory(formData.categoria).filters;
+    const customBrand = isCustomId(formData.marcaId);
+    return {
+      category:           getVehicleCategory(formData.categoria).api,
+      ...(customBrand ? { brandName: formData.marca } : { brandId: Number(formData.marcaId) }),
+      ...(isCustomId(formData.modeloId) || customBrand
+        ? { modelName: formData.modelo }
+        : { modelId: Number(formData.modeloId) }),
+      year:               parseInt(formData.anio, 10) || undefined,
+      version:            formData.version   || undefined,
+      condition:          formData.condicion === "Nuevo" ? "NEW" : "USED",
+      mileage:            formData.condicion === "Nuevo" || !applies.km ? undefined : parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || 0,
+      price:              parseMoney(formData.precio),
+      currency:           "USD",
+      acceptsExchange:    formData.aceptaPermuta   === "Si",
+      financingAvailable: formData.financiacion    === "Si",
+      negotiablePrice:    formData.precioNegociable=== "Si",
+      description:        formData.descripcion     || undefined,
+      cityId:             Number(formData.cityId),
+      contactPhone:       normalizeSvPhone(formData.whatsapp),
+      showWhatsapp:       formData.mostrarWhatsapp === "Si",
+      contactHours:       formData.horarioContacto || undefined,
+      attributes: [
+        { definitionId: defs.combustible, value: formData.combustible },
+        { definitionId: defs.transmision, value: formData.transmision },
+        { definitionId: defs.operacion,   value: formData.tipoOperacion },
+      ].filter((a) => a.definitionId && a.value),
+    };
   };
 
   const handlePublish = async () => {
-    if (!validateStep(3)) {
-      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
-      return;
-    }
+    if (publishingRef.current) return; // evita doble envío
+    if (!validateStep(3)) { scrollToErrors(); return; }
+    if (needsIdentity(user)) return;
+    publishingRef.current = true;
     setErrors({}); setPublishError(""); setPublishing(true);
 
-    // Mock users — gratuito: simulate success; paid: redirect to Wompi sandbox with fake ID
-    if (user?.id?.startsWith("mock-")) {
-      if (formData.plan !== "gratuito") {
-        const fakeId = `mock-${Date.now()}`;
-        localStorage.removeItem(DRAFT_KEY);
-        setPublishing(false);
-        redirectToWompiCheckout({ plan: formData.plan, itemId: fakeId, itemType: "vehicle" });
-        return;
-      }
-      await new Promise((r) => setTimeout(r, 1200));
-      localStorage.removeItem(DRAFT_KEY);
-      setPublishing(false);
-      navigate("/vendedor?tab=publicaciones&success=1");
-      return;
-    }
-
     try {
-      // Resolve attribute definition IDs from the catalog
-      let combustibleDefId = null;
-      let transmisionDefId = null;
-      try {
-        const defsRes = await api.get("/catalog/attribute-definitions");
-        const defs = defsRes.data || [];
-        const combustibleDef = defs.find((d) => d.name?.toLowerCase().includes("combustible"));
-        const transmisionDef = defs.find((d) => d.name?.toLowerCase().includes("transm"));
-        if (combustibleDef) combustibleDefId = combustibleDef.id;
-        if (transmisionDef) transmisionDefId = transmisionDef.id;
-      } catch {}
-
-      if (!combustibleDefId || !transmisionDefId) {
-        setPublishError("No se pudieron cargar los atributos del vehículo (combustible/transmisión). Actualizá la página e intentá de nuevo.");
-        setPublishing(false);
+      // Mock users — gratuito: simula éxito; pago: redirige a Wompi sandbox con ID falso
+      if (user?.id?.startsWith("mock-")) {
+        if (formData.plan !== "gratuito") {
+          redirectToWompiCheckout({ plan: formData.plan, itemId: `mock-${Date.now()}`, itemType: "vehicle" });
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1200));
+        clearDraft(DRAFT_KEY);
+        navigate("/vendedor?tab=publicaciones&success=1");
         return;
       }
 
-      // 1. Create vehicle in DRAFT
-      const vehicleRes = await api.post("/vehicles", {
-        category:           CATEGORY_MAP[formData.categoria] || "AUTO",
-        ...(formData.marcaId === "OTRA" || String(formData.marcaId).startsWith("__static__")
-          ? { brandName: formData.marca }
-          : { brandId: Number(formData.marcaId) }),
-        ...(formData.modeloId === "OTRO" || formData.marcaId === "OTRA" || String(formData.marcaId).startsWith("__static__")
-          ? { modelName: formData.modelo }
-          : { modelId: Number(formData.modeloId) }),
-        year:               parseInt(formData.anio, 10) || undefined,
-        version:            formData.version   || undefined,
-        condition:          formData.condicion === "Nuevo" ? "NEW" : "USED",
-        mileage:            formData.condicion === "Nuevo" ? undefined : parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || 0,
-        price:              parseFloat(String(formData.precio).replace(/[^\d.]/g, "")) || 0,
-        currency:           "USD",
-        acceptsExchange:    formData.aceptaPermuta   === "Si",
-        financingAvailable: formData.financiacion    === "Si",
-        negotiablePrice:    formData.precioNegociable=== "Si",
-        description:        formData.descripcion     || undefined,
-        cityId:             Number(formData.cityId),
-        contactPhone:       formData.whatsapp
-          ? `+503${formData.whatsapp.trim().replace(/^\+503/, "").replace(/\D/g, "")}`
-          : undefined,
-        showWhatsapp:       formData.mostrarWhatsapp === "Si",
-        contactHours:       formData.horarioContacto || undefined,
-        attributes: [
-          { definitionId: combustibleDefId, value: formData.combustible },
-          { definitionId: transmisionDefId, value: formData.transmision },
-        ].filter((a) => a.value),
-      });
+      let progress = created;
 
-      const vehicleId = vehicleRes.data.id;
+      // 1. Crear el vehículo en DRAFT (solo la primera vez)
+      if (!progress?.id) {
+        const applies = getVehicleCategory(formData.categoria).filters;
+        const defs = { combustible: null, transmision: null, operacion: null };
+        try {
+          const defsRes = await api.get("/catalog/attribute-definitions");
+          const list = defsRes.data || [];
+          defs.combustible = list.find((d) => d.name?.toLowerCase().includes("combustible"))?.id ?? null;
+          defs.transmision = list.find((d) => d.name?.toLowerCase().includes("transm"))?.id ?? null;
+          // Opcional: solo se envía si el catálogo tiene el atributo "Tipo de operación"
+          defs.operacion   = list.find((d) => d.name?.toLowerCase().includes("operaci"))?.id ?? null;
+        } catch { /* se valida abajo */ }
 
-      // 2. Upload photos via backend (backend uploads to Cloudinary)
-      //    Auto-assign required categories to first 4 photos, rest as OTRA
-      const PHOTO_CATS = ["FRENTE", "LATERAL", "TRASERA", "INTERIOR"];
-      const photos = (formData.fotos || []).filter((p) => p.file);
-      if (photos.length) {
-        const fd = new FormData();
-        photos.forEach((photo, idx) => {
-          fd.append(PHOTO_CATS[idx] || `EXTRA_${idx}`, photo.file);
-        });
-        await api.upload(`/vehicles/${vehicleId}/images`, fd);
+        if ((applies.fuel && !defs.combustible) || (applies.transmission && !defs.transmision)) {
+          setPublishError("No se pudieron cargar los atributos del vehículo (combustible/transmisión). Actualizá la página e intentá de nuevo.");
+          return;
+        }
+
+        const vehicleRes = await api.post("/vehicles", buildPayload(defs));
+        progress = { id: vehicleRes.data.id, photosUploaded: false };
+        rememberCreated(progress);
       }
 
-      // 3. Plans de pago → redirigir a WOMPI; gratuito → publicar directo
+      // 2. Subir fotos (el backend las sube a Cloudinary); la principal va primero
+      if (!progress.photosUploaded) {
+        const PHOTO_CATS = ["FRENTE", "LATERAL", "TRASERA", "INTERIOR"];
+        const photos = (formData.fotos || [])
+          .filter((p) => p.file)
+          .sort((a, b) => Number(b.isMain) - Number(a.isMain));
+        if (photos.length) {
+          const fd = new FormData();
+          photos.forEach((photo, idx) => {
+            fd.append(PHOTO_CATS[idx] || `EXTRA_${idx}`, photo.file);
+          });
+          await api.upload(`/vehicles/${progress.id}/images`, fd);
+        }
+        progress = { ...progress, photosUploaded: true };
+        rememberCreated(progress);
+      }
+
+      // 3. Planes de pago → WOMPI (el borrador se conserva hasta confirmar el pago)
       if (formData.plan !== "gratuito") {
-        redirectToWompiCheckout({ plan: formData.plan, itemId: vehicleId, itemType: "vehicle" });
-        return; // borrador se conserva por si el usuario vuelve de Wompi
+        redirectToWompiCheckout({ plan: formData.plan, itemId: progress.id, itemType: "vehicle" });
+        return;
       }
 
-      await api.post(`/vehicles/${vehicleId}/publish`);
-      localStorage.removeItem(DRAFT_KEY);
+      // Gratuito → publicar directo (409 = ya estaba publicado)
+      try {
+        await api.post(`/vehicles/${progress.id}/publish`);
+      } catch (err) {
+        if (err?.status !== 409) throw err;
+      }
+      clearDraft(DRAFT_KEY);
       navigate("/vendedor?tab=publicaciones&success=1");
     } catch (err) {
       console.error("[publish]", err);
       const msg = err?.message || err?.data?.message || "Error al publicar. Intentá de nuevo.";
       setPublishError(msg);
     } finally {
+      publishingRef.current = false;
       setPublishing(false);
     }
   };
 
-  const publishLabel = publishing ? "Publicando…"
-    : formData.plan === "gratuito" ? "Publicar gratis"
-    : formData.plan === "basico"   ? "Pagar y publicar — $5"
-    : formData.plan === "premium"  ? "Pagar y publicar — $12"
-    : "Publicar";
+  const publishLabel = publishing ? "Publicando…" : publishLabelFor(formData.plan);
 
   const renderStep = () => {
     if (currentStep === 1) return <DatosVehiculoStep formData={formData} onChange={handleChange} />;
@@ -369,15 +402,18 @@ const PublicarVehiculo = () => {
 
   if (!user?.emailConfirmed) return <EmailVerificationGate>{null}</EmailVerificationGate>;
 
+  const pageTitle = <title>Publicar vehículo | Mi Vehículo</title>;
+
   /* ── Category selection screen (step 0) ── */
   if (currentStep === 0) {
     return (
       <div className={styles.page}>
+        {pageTitle}
         <PublicarTopbar onSaveDraft={null} draftSaved={false} />
         <main className={styles.wrapper}>
           <div className={styles.categoryScreen}>
             <div className={styles.categoryHeader}>
-              <p className={styles.categoryStep}>Paso 1 de 3</p>
+              <p className={styles.categoryStep}>Nuevo vehículo</p>
               <h1 className={styles.categoryTitle}>Empezá describiendo el vehículo</h1>
               <p className={styles.categorySub}>Primero, elegí la categoría</p>
             </div>
@@ -409,9 +445,15 @@ const PublicarVehiculo = () => {
     );
   }
 
+  const planInfo = getPlan(formData.plan);
+  const overPhotoLimit = isFinalStep && planInfo && (formData.fotos || []).length > planInfo.fotos;
+  // Primera publicación: faltan los datos de identidad
+  const identityPending = isFinalStep && needsIdentity(user);
+
   /* ── 3-step form ── */
   return (
     <div className={styles.page}>
+      {pageTitle}
       <PublicarTopbar
         onSaveDraft={saveDraft}
         draftSaved={draftMessage === "Borrador guardado correctamente."}
@@ -473,6 +515,18 @@ const PublicarVehiculo = () => {
               </div>
             )}
 
+            {identityPending && <IdentityCard />}
+
+            {overPhotoLimit && (
+              <PhotoLimitNotice
+                key={`${planInfo.id}-${formData.fotos.length}`}
+                photos={formData.fotos}
+                plan={planInfo}
+                onKeep={handleKeepPhotos}
+                onGoToPhotos={() => { setErrors({}); setCurrentStep(1); }}
+              />
+            )}
+
             {/* Navigation */}
             {isFinalStep ? (
               <div className={styles.planActions}>
@@ -483,19 +537,31 @@ const PublicarVehiculo = () => {
                   type="button"
                   className={styles.publishBtn}
                   onClick={handlePublish}
-                  disabled={!formData.plan || publishing}
+                  disabled={!formData.plan || publishing || overPhotoLimit || identityPending}
+                  aria-busy={publishing}
                 >
                   <CheckCircle size={18} />
                   {publishLabel}
                 </button>
+                {identityPending && (
+                  <p className={styles.publishError}>
+                    <AlertCircle size={14} />
+                    <span>Guardá tus datos de identidad para poder publicar.</span>
+                  </p>
+                )}
                 {publishError && (
-                  <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>
-                    <AlertCircle size={13} style={{ verticalAlign: "middle", marginRight: 4 }} />
-                    {publishError}
+                  <p className={styles.publishError} role="alert">
+                    <AlertCircle size={14} />
+                    <span>
+                      {publishError}
+                      {created?.id && " Tu publicación ya quedó creada: al reintentar solo se completan los pasos pendientes."}
+                    </span>
                   </p>
                 )}
                 <p className={styles.termsText}>
-                  Al confirmar, aceptás nuestras <span>Condiciones de uso</span> y <span>Política de privacidad</span>.
+                  Al confirmar, aceptás nuestras{" "}
+                  <Link to="/terminos" target="_blank" rel="noreferrer">Condiciones de uso</Link> y{" "}
+                  <Link to="/privacidad" target="_blank" rel="noreferrer">Política de privacidad</Link>.
                 </p>
               </div>
             ) : (
@@ -507,16 +573,18 @@ const PublicarVehiculo = () => {
                   <button type="button" className={styles.draftBtn} onClick={saveDraft}>
                     <Save size={18} /> Guardar borrador
                   </button>
-                  <button type="button" className={styles.clearDraftBtn} onClick={clearDraft}>
-                    <Trash2 size={17} /> Limpiar borrador
-                  </button>
                   <button type="button" className={styles.primaryBtn} onClick={goNext}>
                     Siguiente <ArrowRight size={18} />
                   </button>
                 </div>
-                <div className={styles.autosave}>
+                <div className={styles.autosave} aria-live="polite">
                   <Check size={16} />
-                  {draftMessage || "Los cambios se guardan automáticamente"}
+                  <span>
+                    {draftMessage || "Los datos se guardan automáticamente en este dispositivo (las fotos no)."}
+                  </span>
+                  <button type="button" className={styles.clearDraftLink} onClick={handleClearDraft}>
+                    Descartar borrador
+                  </button>
                 </div>
               </>
             )}

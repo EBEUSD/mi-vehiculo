@@ -18,17 +18,33 @@ const CATEGORIES = [
 ];
 
 const FAQS = [
-  { id: 1,  cat: "publicaciones", q: "¿Cómo puedo publicar mi vehículo?",                      a: "Para publicar tu vehículo, iniciá sesión en tu cuenta, hacé clic en \"Vender mi vehículo\" y completá el formulario paso a paso. Una vez revisada la información, tu publicación quedará visible para miles de compradores." },
-  { id: 2,  cat: "publicaciones", q: "¿Es gratis publicar mi vehículo?",                        a: "Sí, publicar en Mi Vehículo es completamente gratis. No cobramos comisiones ni cargos ocultos. Podés publicar tu vehículo y recibir consultas sin ningún costo." },
-  { id: 3,  cat: "compradores",   q: "¿Cómo contacto al vendedor?",                             a: "Desde el detalle del vehículo, podés contactar al vendedor haciendo clic en el botón de WhatsApp o en el formulario de contacto. El vendedor recibirá tu mensaje directamente." },
+  { id: 1,  cat: "publicaciones", q: "¿Cómo puedo publicar mi vehículo?",                      a: "Iniciá sesión, hacé clic en \"Ofrecé tu vehículo\" y completá el formulario paso a paso. En el último paso elegís el plan: con el gratuito tu publicación queda visible al instante, y con los planes pagos apenas se confirma el pago. La primera vez que publicás te pedimos tus datos de identidad (DUI, o NIT si sos empresa)." },
+  { id: 2,  cat: "publicaciones", q: "¿Es gratis publicar mi vehículo?",                        a: "Tenemos múltiples opciones: publicaciones gratuitas, destaques, planes premium y suscripciones, para que elijas la que más te guste. No cobramos comisiones sobre la venta." },
+  { id: 3,  cat: "compradores",   q: "¿Cómo contacto al vendedor?",                             a: "Desde el detalle del vehículo, iniciá sesión y vas a ver los botones para llamar o escribirle por WhatsApp al vendedor, o enviarle una consulta con el formulario. Pedimos una cuenta para proteger los datos de los vendedores y evitar el spam." },
   { id: 4,  cat: "compradores",   q: "¿Cómo puedo guardar un vehículo en favoritos?",           a: "Hacé clic en el ícono de corazón que aparece en la tarjeta del vehículo o en su página de detalle. Los vehículos guardados los encontrás en la sección Favoritos de tu cuenta." },
-  { id: 5,  cat: "compradores",   q: "¿Qué debo tener en cuenta al comprar un vehículo usado?", a: "Te recomendamos verificar el estado físico del vehículo, la documentación (título, tarjeta de circulación, SOAT), confirmar que no tenga deudas de gravamen y hacer una prueba de manejo. Si es posible, consultá con un mecánico de confianza antes de cerrar la operación." },
-  { id: 6,  cat: "general",       q: "¿Cómo sé que la información de los vehículos es confiable?", a: "Revisamos las publicaciones para asegurar que cumplan con nuestros estándares de calidad. Además, los usuarios pueden reportar anuncios sospechosos y nuestro equipo actúa rápidamente ante cualquier irregularidad." },
+  { id: 5,  cat: "compradores",   q: "¿Qué debo tener en cuenta al comprar un vehículo usado?", a: "Te recomendamos verificar el estado físico del vehículo, la documentación (título, tarjeta de circulación, placas) y hacer una prueba de manejo. Si es posible, consultá con un mecánico de confianza antes de cerrar la operación. Recordá que para que el traspaso sea exitoso en SERTRACEN, los números de chasis y motor deben coincidir con los de la tarjeta de circulación, y que ni el vehículo ni el vendedor deben tener esquelas pendientes de pago, gravámenes, embargos, inhibiciones ni cualquier impedimento legal (recomendamos hacer la [consulta de estado de vehículo en SERTRACEN](https://www.sertracen.com.sv/index.php/consultas-en-linea-del-registro-publico-de-vehiculos/consulta-de-estado-de-vehiculos) antes de realizar el pago). También se necesita documentación vigente: DUI para salvadoreños; tarjeta de residencia o pasaporte, más NIT, para extranjeros o empresas. No olvides revisar la [web de SERTRACEN](https://www.sertracen.com.sv/index.php/sencillo), ya que según el tipo y uso del vehículo los requisitos pueden variar." },
+  { id: 6,  cat: "general",       q: "¿Cómo sé que la información de los vehículos es confiable?", a: "Para publicar, cada vendedor confirma su email y registra sus datos de identidad (DUI o NIT) en su primera publicación. Nuestro equipo puede pausar o dar de baja los avisos que no cumplan las normas; si ves algo sospechoso, escribinos desde Contacto. De todas formas, revisá siempre el vehículo y su documentación antes de pagar." },
   { id: 7,  cat: "publicaciones", q: "¿Puedo editar o eliminar mi publicación?",                a: "Sí, desde tu panel de vendedor podés editar, pausar o eliminar tus publicaciones en cualquier momento. Los cambios se reflejan de forma inmediata en el sitio." },
   { id: 8,  cat: "cuenta",        q: "¿Cómo cambio mi contraseña?",                            a: "Ingresá a tu cuenta, accedé a Configuración y seleccioná \"Cambiar contraseña\". También podés hacerlo desde el link \"¿Olvidaste tu contraseña?\" en la pantalla de inicio de sesión." },
   { id: 9,  cat: "pagos",         q: "¿Cómo está protegida mi información personal?",          a: "Tu información personal está protegida bajo nuestra Política de Privacidad. Utilizamos encriptación SSL y no compartimos tus datos con terceros sin tu consentimiento, salvo lo requerido por ley." },
-  { id: 10, cat: "vendedores",    q: "¿Cuántas fotos puedo subir en mi publicación?",          a: "Podés subir hasta 20 fotos por publicación. Recomendamos incluir fotos del exterior, interior, motor y cualquier detalle relevante del vehículo para atraer más interesados." },
+  { id: 10, cat: "vendedores",    q: "¿Cuántas fotos puedo subir en mi publicación?",          a: "Depende del plan elegido: Gratuito hasta 5 fotos, Básico hasta 10 fotos y Premium hasta 15 fotos y 1 video. La suscripción anual incluye una mayor cantidad de fotos y videos. Recomendamos incluir fotos del exterior, interior, motor y cualquier detalle relevante del vehículo para atraer más interesados." },
 ];
+
+// Links en las respuestas: [texto](https://...)
+const LINK_RE = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+
+const plainText = (text) => text.replace(LINK_RE, "$1");
+
+const renderAnswer = (text) => {
+  // split con 2 grupos de captura: [texto, label, url, texto, label, url, …]
+  const parts = text.split(LINK_RE);
+  return parts.map((part, i) => {
+    if (i % 3 === 1) {
+      return <a key={i} href={parts[i + 1]} target="_blank" rel="noopener noreferrer">{part}</a>;
+    }
+    return i % 3 === 2 ? null : part;
+  });
+};
 
 const FAQ = () => {
   const [activeCat, setActiveCat] = useState("todas");
@@ -42,12 +58,14 @@ const FAQ = () => {
 
   const filtered = FAQS.filter((f) => {
     const matchCat = activeCat === "todas" || f.cat === activeCat;
-    const matchQ   = !query || f.q.toLowerCase().includes(query.toLowerCase()) || f.a.toLowerCase().includes(query.toLowerCase());
+    const matchQ   = !query || f.q.toLowerCase().includes(query.toLowerCase()) || plainText(f.a).toLowerCase().includes(query.toLowerCase());
     return matchCat && matchQ;
   });
 
   return (
     <div className={styles.page}>
+      <title>Preguntas frecuentes | Mi Vehículo</title>
+      <meta name="description" content="Respuestas sobre cómo publicar, comprar y vender vehículos en Mi Vehículo: planes, pagos, seguridad y trámites en El Salvador." />
       <Navbar />
 
       <main>
@@ -163,7 +181,7 @@ const FAQ = () => {
                       </button>
                       {isOpen && (
                         <div className={styles.accordionAnswer}>
-                          <p>{faq.a}</p>
+                          <p>{renderAnswer(faq.a)}</p>
                         </div>
                       )}
                     </div>

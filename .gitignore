@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generados / material de diseño
+dev-dist
+design-src
+
+# Variables de entorno (las públicas también: se cargan en Vercel)
+.env
+.env.*
+!.env.example

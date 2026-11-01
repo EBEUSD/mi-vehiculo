@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /vendedor
+Disallow: /publicar
+Disallow: /editar
+Disallow: /admin
+Disallow: /pago
+Disallow: /login
+Disallow: /reset-password
+Disallow: /oauth-landing
+
+# Cambiar el dominio cuando esté activo mivehiculosv.com
+Sitemap: https://mi-vehiculo.vercel.app/sitemap.xml

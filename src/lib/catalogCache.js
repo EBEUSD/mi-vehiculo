@@ -15,19 +15,28 @@ const readSS = (path) => {
 };
 
 const writeSS = (path, data) => {
-  try { sessionStorage.setItem(SS_KEY(path), JSON.stringify({ data, ts: Date.now() })); } catch {}
+  try { sessionStorage.setItem(SS_KEY(path), JSON.stringify({ data, ts: Date.now() })); } catch { /* storage lleno o bloqueado */ }
 };
+
+const INFLIGHT = {};
 
 const get = async (path) => {
   if (MEM[path])      return MEM[path];
   const cached = readSS(path);
   if (cached)         { MEM[path] = cached; return cached; }
 
-  const res  = await api.get(path);
-  const data = res.data || [];
-  MEM[path]  = data;
-  writeSS(path, data);
-  return data;
+  // Dos componentes pidiendo lo mismo a la vez comparten la request
+  if (!INFLIGHT[path]) {
+    INFLIGHT[path] = api.get(path)
+      .then((res) => {
+        const data = res.data || [];
+        MEM[path]  = data;
+        writeSS(path, data);
+        return data;
+      })
+      .finally(() => { delete INFLIGHT[path]; });
+  }
+  return INFLIGHT[path];
 };
 
 // Fire-and-forget: wake up the server + pre-cache brands

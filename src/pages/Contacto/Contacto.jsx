@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Mail, Send, HelpCircle, Lock, ArrowUpRight,
   MessageCircle, Clock, ChevronRight, CheckCircle, Home,
-  Phone,
 } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
 import styles from "./Contacto.module.css";
 
 const ASUNTOS = [
   "Consulta general",
+  "Destacar una publicación",
+  "Suscripción anual",
+  "Planes para empresas",
+  "Publicar un servicio",
   "Problema con mi publicación",
   "Problema con mi cuenta",
   "Reportar un aviso",
@@ -19,12 +22,31 @@ const ASUNTOS = [
 
 const MAX_MSG = 1000;
 
+// Links internos llegan con ?asunto=<clave> para precargar el formulario
+const ASUNTO_PARAM = {
+  destacar: "Destacar una publicación",
+  "suscripcion-anual": "Suscripción anual",
+  "planes-empresas": "Planes para empresas",
+  servicio: "Publicar un servicio",
+};
+
+const initialFromParams = (params) => {
+  const asunto = ASUNTO_PARAM[params.get("asunto")] || "";
+  let mensaje = "";
+  if (params.get("asunto") === "destacar") {
+    const pub = params.get("publicacion");
+    const dias = params.get("dias");
+    mensaje = `Quiero destacar mi publicación${pub ? ` (${pub})` : ""}${dias ? ` por ${dias} días` : ""}.`;
+  }
+  return { nombre: "", email: "", asunto, mensaje };
+};
+
 const CHANNELS = [
   {
     icon: <Clock size={20} />,
     title: "Tiempo de respuesta",
     desc: "Respondemos en menos de 24 hs hábiles",
-    color: "#1570ff",
+    color: "#1d4ed8",
   },
   {
     icon: <Mail size={20} />,
@@ -32,19 +54,15 @@ const CHANNELS = [
     desc: "soporte@mivehiculo.com.sv",
     color: "#059669",
   },
-  {
-    icon: <Phone size={20} />,
-    title: "WhatsApp",
-    desc: "+503 7100-1234",
-    color: "#25d366",
-  },
+  // TODO: agregar el canal de WhatsApp cuando exista el número oficial
+  // ({ icon: <Phone size={20} />, title: "WhatsApp", desc: "+503 ....-....", color: "#25d366" }).
 ];
 
 const Contacto = () => {
-  const [form, setForm]         = useState({ nombre: "", email: "", asunto: "", mensaje: "" });
+  const [searchParams]          = useSearchParams();
+  const [form, setForm]         = useState(() => initialFromParams(searchParams));
   const [errors, setErrors]     = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading]   = useState(false);
 
   const set = (field) => (e) => {
     const val = field === "mensaje" ? e.target.value.slice(0, MAX_MSG) : e.target.value;
@@ -52,7 +70,7 @@ const Contacto = () => {
     setErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     const errs = {};
     if (!form.nombre.trim()) errs.nombre  = "Ingresá tu nombre.";
@@ -63,12 +81,15 @@ const Contacto = () => {
 
     const subject = encodeURIComponent(`[${form.asunto}] - ${form.nombre}`);
     const body    = encodeURIComponent(`Nombre: ${form.nombre}\nEmail: ${form.email}\n\nMensaje:\n${form.mensaje}`);
-    window.open(`mailto:soporte@mivehiculo.com.sv?subject=${subject}&body=${body}`, "_blank");
+    // mailto en la misma pestaña: window.open(_blank) deja una pestaña vacía en varios navegadores
+    window.location.href = `mailto:soporte@mivehiculo.com.sv?subject=${subject}&body=${body}`;
     setSubmitted(true);
   };
 
   return (
     <div className={styles.page}>
+      <title>Contacto | Mi Vehículo</title>
+      <meta name="description" content="¿Tenés dudas o necesitás ayuda con tu publicación? Escribinos y te respondemos en menos de 24 horas hábiles." />
       <Navbar />
 
       <main>
@@ -119,8 +140,13 @@ const Contacto = () => {
                 {submitted ? (
                   <div className={styles.successMsg}>
                     <div className={styles.successIcon}><CheckCircle size={36} /></div>
-                    <h3>¡Mensaje enviado!</h3>
-                    <p>Recibimos tu consulta y te responderemos en las próximas 24&nbsp;horas hábiles.</p>
+                    <h3>Tu mensaje está listo para enviar</h3>
+                    <p>
+                      Abrimos tu app de correo con el mensaje listo para enviar. Si no se abrió,
+                      escribinos a{" "}
+                      <a href="mailto:soporte@mivehiculo.com.sv" className={styles.privacyLink}>soporte@mivehiculo.com.sv</a>.
+                      Respondemos en menos de 24&nbsp;horas hábiles.
+                    </p>
                     <button
                       className={styles.resetBtn}
                       onClick={() => { setSubmitted(false); setForm({ nombre: "", email: "", asunto: "", mensaje: "" }); }}
@@ -198,10 +224,8 @@ const Contacto = () => {
                       <Link to="/privacidad" className={styles.privacyLink}>Política de Privacidad</Link>.
                     </p>
 
-                    <button type="submit" className={styles.submitBtn} disabled={loading}>
-                      {loading
-                        ? <><span className={styles.spinner} aria-hidden="true" /> Enviando...</>
-                        : <><Send size={17} /> Enviar mensaje</>}
+                    <button type="submit" className={styles.submitBtn}>
+                      <Send size={17} aria-hidden="true" /> Enviar mensaje
                     </button>
                   </form>
                 )}

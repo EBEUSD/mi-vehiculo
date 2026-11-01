@@ -1,83 +1,111 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiShield } from "react-icons/fi";
-import { FaWhatsapp } from "react-icons/fa";
+import { ArrowLeft, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
+import PageLoader from "../../components/PageLoader/PageLoader";
+import NotFound from "../NotFound/NotFound";
 import { api } from "../../lib/api";
+import { formatUSD, NO_PHOTO } from "../../lib/vehicleImage";
 import styles from "./ProductoDetalle.module.css";
-
-const PLACEHOLDER = "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&auto=format&fit=crop";
-const formatUSD   = (p) => `$${new Intl.NumberFormat("en-US").format(Number(p))}`;
 
 const ProductoDetalle = () => {
   const { slug }  = useParams();
   const navigate  = useNavigate();
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [result, setResult] = useState({ key: null, product: null, error: null });
+  const [reloadTick, setReloadTick] = useState(0);
+  // Índice de foto ligado al slug: al cambiar de producto vuelve a 0
+  const [selected, setSelected] = useState({ slug, index: 0 });
+  const reqKey = `${slug}#${reloadTick}`;
 
   useEffect(() => {
-    setLoading(true);
-    setNotFound(false);
-    setSelectedIndex(0);
-
+    let ignore = false;
     api.get(`/products/${slug}/detail`)
-      .then((res) => setProduct(res.data))
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [slug]);
+      .then((res) => { if (!ignore) setResult({ key: reqKey, product: res.data, error: null }); })
+      .catch((error) => { if (!ignore) setResult({ key: reqKey, product: null, error }); });
+    return () => { ignore = true; };
+  }, [slug, reqKey]);
+
+  const loading = result.key !== reqKey;
+  const product = loading ? null : result.product;
+  const selectedIndex = selected.slug === slug ? selected.index : 0;
+  const setSelectedIndex = (fn) =>
+    setSelected({ slug, index: typeof fn === "function" ? fn(selectedIndex) : fn });
 
   if (loading) {
     return (
       <div className={styles.page}>
+        <title>Cargando producto… | Mi Vehículo</title>
         <Navbar />
-        <main className={styles.centerMsg}><p>Cargando…</p></main>
+        <main><PageLoader fullScreen={false} label="Cargando producto…" /></main>
       </div>
     );
   }
 
-  if (notFound || !product) {
+  if (!product) {
+    const notFound = result.error?.status === 404;
+    // Publicación borrada o link mal escrito: misma 404 que el resto del sitio
+    if (notFound) return <NotFound />;
     return (
       <div className={styles.page}>
+        <title>{notFound ? "Producto no encontrado | Mi Vehículo" : "Error al cargar | Mi Vehículo"}</title>
+        <meta name="robots" content="noindex" />
         <Navbar />
         <main className={styles.centerMsg}>
-          <div className={styles.notFoundCard}>
-            <h1>Producto no encontrado</h1>
-            <p>La publicación que buscás no existe o fue removida.</p>
-            <button onClick={() => navigate("/productos")}>Volver a productos</button>
+          <div className={styles.notFoundCard} role={notFound ? undefined : "alert"}>
+            {notFound ? (
+              <>
+                <h1>Producto no encontrado</h1>
+                <p>La publicación que buscás no existe o fue removida.</p>
+                <button type="button" onClick={() => navigate("/productos")}>Volver a productos</button>
+              </>
+            ) : (
+              <>
+                <h1>No pudimos cargar el producto</h1>
+                <p>Revisá tu conexión e intentá de nuevo.</p>
+                <button type="button" onClick={() => setReloadTick((t) => t + 1)}>Reintentar</button>
+              </>
+            )}
           </div>
         </main>
       </div>
     );
   }
 
-  const images  = (product.images || []).map((i) => i.url);
-  const gallery = images.length > 0 ? images : [PLACEHOLDER];
+  const images  = (product.images || []).map((i) => i.url).filter(Boolean);
+  const gallery = images.length > 0 ? images : [NO_PHOTO];
 
   const prevImage = () => setSelectedIndex((p) => (p === 0 ? gallery.length - 1 : p - 1));
   const nextImage = () => setSelectedIndex((p) => (p === gallery.length - 1 ? 0 : p + 1));
 
-  const sellerName     = product.seller?.fullName || product.seller?.email || "Vendedor";
-  const sellerInitials = sellerName.slice(0, 2).toUpperCase();
+  // Nunca mostrar el email del vendedor como nombre público
+  const rawName        = product.seller?.fullName || "";
+  const sellerName     = rawName && !rawName.includes("@") ? rawName : "Vendedor particular";
+  const sellerInitials = sellerName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+
+  const seoDesc = (product.description
+    ? product.description.replace(/\s+/g, " ").trim()
+    : `${product.title} en venta en El Salvador. Precio: ${formatUSD(product.price)}.`
+  ).slice(0, 160);
 
   return (
     <div className={styles.page}>
+      <title>{`${product.title} – ${formatUSD(product.price)} | Mi Vehículo`}</title>
+      <meta name="description" content={seoDesc} />
       <Navbar />
       <main className={styles.main}>
         <div className={styles.container}>
 
-          <nav className={styles.breadcrumbs}>
+          <nav className={styles.breadcrumbs} aria-label="Migas de pan">
             <Link to="/">Inicio</Link>
-            <span>›</span>
+            <span aria-hidden="true">›</span>
             <Link to="/productos">Repuestos y Accesorios</Link>
-            <span>›</span>
-            <span>{product.title}</span>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">{product.title}</span>
           </nav>
 
-          <button className={styles.backBtn} onClick={() => navigate("/productos")}>
-            <FiArrowLeft /> <span>Volver</span>
+          <button type="button" className={styles.backBtn} onClick={() => navigate("/productos")}>
+            <ArrowLeft size={16} aria-hidden="true" /> <span>Volver</span>
           </button>
 
           <div className={styles.layout}>
@@ -87,13 +115,13 @@ const ProductoDetalle = () => {
                 <img src={gallery[selectedIndex]} alt={product.title} className={styles.mainImage} />
                 {gallery.length > 1 && (
                   <>
-                    <button className={`${styles.arrow} ${styles.arrowLeft}`} onClick={prevImage} type="button">
-                      <FiChevronLeft />
+                    <button className={`${styles.arrow} ${styles.arrowLeft}`} onClick={prevImage} type="button" aria-label="Foto anterior">
+                      <ChevronLeft size={20} aria-hidden="true" />
                     </button>
-                    <button className={`${styles.arrow} ${styles.arrowRight}`} onClick={nextImage} type="button">
-                      <FiChevronRight />
+                    <button className={`${styles.arrow} ${styles.arrowRight}`} onClick={nextImage} type="button" aria-label="Foto siguiente">
+                      <ChevronRight size={20} aria-hidden="true" />
                     </button>
-                    <div className={styles.counter}>{selectedIndex + 1} / {gallery.length}</div>
+                    <div className={styles.counter} aria-live="polite">{selectedIndex + 1} / {gallery.length}</div>
                   </>
                 )}
               </div>
@@ -105,8 +133,10 @@ const ProductoDetalle = () => {
                       className={`${styles.thumb} ${i === selectedIndex ? styles.thumbActive : ""}`}
                       onClick={() => setSelectedIndex(i)}
                       type="button"
+                      aria-label={`Ver foto ${i + 1} de ${gallery.length}`}
+                      aria-current={i === selectedIndex ? "true" : undefined}
                     >
-                      <img src={img} alt={`${product.title} ${i + 1}`} />
+                      <img src={img} alt="" loading="lazy" decoding="async" />
                     </button>
                   ))}
                 </div>
@@ -114,19 +144,19 @@ const ProductoDetalle = () => {
 
               {product.description && (
                 <div className={styles.card}>
-                  <h3>Descripción</h3>
-                  <p style={{ whiteSpace: "pre-line", color: "#374151", lineHeight: 1.6 }}>{product.description}</p>
+                  <h2>Descripción</h2>
+                  <p className={styles.description}>{product.description}</p>
                 </div>
               )}
 
               {product.compatibilities?.length > 0 && (
                 <div className={styles.card}>
-                  <h3>Compatibilidad</h3>
+                  <h2>Compatibilidad</h2>
                   <div className={styles.compatGrid}>
                     {product.compatibilities.map((c) => (
                       <div key={c.id} className={styles.compatRow}>
                         <strong>{c.brand?.name} {c.model?.name}</strong>
-                        <span>{c.fromYear} – {c.toYear}</span>
+                        <span>{[c.fromYear, c.toYear].filter(Boolean).join(" – ")}</span>
                       </div>
                     ))}
                   </div>
@@ -154,17 +184,17 @@ const ProductoDetalle = () => {
                 )}
 
                 <div className={styles.sellerTag}>
-                  <FiShield size={14} />
+                  <Shield size={14} aria-hidden="true" />
                   <span>Vendedor registrado</span>
                 </div>
               </div>
 
               <div className={styles.sellerCard}>
                 <div className={styles.sellerHeader}>
-                  <div className={styles.sellerAvatar}>{sellerInitials}</div>
+                  <div className={styles.sellerAvatar} aria-hidden="true">{sellerInitials}</div>
                   <div>
                     <span className={styles.sellerLabel}>Vendedor</span>
-                    <h3 className={styles.sellerName}>{sellerName}</h3>
+                    <p className={styles.sellerName}>{sellerName}</p>
                   </div>
                 </div>
                 <Link to="/contacto" className={styles.contactLink}>
