@@ -1,7 +1,9 @@
 // Datos de identidad del vendedor (El Salvador).
 // Se piden en dos momentos:
-//   1. Al crear la cuenta (o al entrar por primera vez con Google/Apple): tipo de cuenta y teléfono.
-//   2. Al publicar por primera vez: documento (particular) o datos de la empresa.
+//   1. Al crear la cuenta: teléfono (y tipo de cuenta en el registro con email).
+//      Con Google/Apple, la primera vez se pide solo nombre y teléfono.
+//   2. Al publicar por primera vez: tipo de cuenta si falta, y documento (particular)
+//      o datos de la empresa. La publicación queda pendiente de aprobación.
 
 import { isValidSvPhone } from "./phone";
 
@@ -34,17 +36,17 @@ export const validateNit = (value) =>
 
 export const isEmpresa = (user) => user?.user_metadata?.account_type === "EMPRESA";
 
-// Paso 1: falta elegir tipo de cuenta o cargar un teléfono válido
+// Paso 1: falta un teléfono válido
 export const needsOnboarding = (user) => {
   if (!user || user.role === "ADMIN") return false;
-  const meta = user.user_metadata || {};
-  return !meta.account_type || !isValidSvPhone(meta.phone);
+  return !isValidSvPhone(user.user_metadata?.phone);
 };
 
 // Paso 2: faltan los datos de identidad para publicar
 export const needsIdentity = (user) => {
   if (!user || user.role === "ADMIN") return false;
   const meta = user.user_metadata || {};
+  if (!meta.account_type) return true;
   if (meta.account_type === "EMPRESA") {
     return !meta.company_name || !meta.nit || !meta.company_address || !meta.company_phone;
   }

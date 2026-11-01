@@ -19,7 +19,10 @@ import { isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
 import styles from "./VendedorDashboard.module.css";
 
 /* ── Helpers ──────────────────────────────────── */
-const STATUS_LABEL = { ACTIVE: "activo", DRAFT: "pausado", PAUSED: "pausado", SOLD: "vendido" };
+const STATUS_LABEL = {
+  ACTIVE: "activo", DRAFT: "pausado", PAUSED: "pausado", SOLD: "vendido",
+  PENDING: "pendiente", REJECTED: "rechazado",
+};
 
 // API expects "individual" | "dealer" — map from the 3 internal UI values
 const SELLER_TYPE_TO_API = { particular: "individual", concesionario: "dealer", empresa: "dealer" };
@@ -32,7 +35,12 @@ const STATUS_META = {
   activo:  { label: "Activo",  color: "#059669", bg: "rgba(5,150,105,0.08)"  },
   pausado: { label: "Pausado", color: "#d97706", bg: "rgba(217,119,6,0.08)"  },
   vendido: { label: "Vendido", color: "#6b7a99", bg: "rgba(107,122,153,0.1)" },
+  pendiente: { label: "Pendiente de aprobación", color: "#1d4ed8", bg: "rgba(29,78,216,0.08)" },
+  rechazado: { label: "Rechazada", color: "#dc2626", bg: "rgba(220,38,38,0.08)" },
 };
+
+// Solo activas y pausadas se pueden pausar/activar; pendientes y rechazadas las resuelve el equipo
+const canToggle = (status) => status === "activo" || status === "pausado";
 
 const mapRowToPub = (row) => ({
   id:        row.id,
@@ -218,7 +226,7 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
       </div>
       {!compact && (
         <div className={styles.pubActions}>
-          {pub.slug && (
+          {pub.slug && pub.status === "activo" && (
             <Link
               to={pubPath(pub)}
               target="_blank"
@@ -236,14 +244,16 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
           >
             <Edit2 size={15} />
           </button>
-          <button
-            className={styles.iconBtn}
-            title={pub.status === "activo" ? "Pausar" : "Activar"}
-            onClick={() => onToggle && onToggle(pub)}
-          >
-            {pub.status === "activo" ? <Pause size={15} /> : <Play size={15} />}
-          </button>
-          {pub.slug && (
+          {canToggle(pub.status) && (
+            <button
+              className={styles.iconBtn}
+              title={pub.status === "activo" ? "Pausar" : "Activar"}
+              onClick={() => onToggle && onToggle(pub)}
+            >
+              {pub.status === "activo" ? <Pause size={15} /> : <Play size={15} />}
+            </button>
+          )}
+          {pub.slug && pub.status === "activo" && (
             <button
               className={styles.iconBtn}
               title={copied ? "¡Link copiado!" : "Compartir"}
@@ -342,8 +352,8 @@ function ConsultaRow({ c }) {
   );
 }
 
-const FILTER_TABS = ["Todas", "Activas", "Pausadas", "Vendidas"];
-const FILTER_STATUS = { Todas: null, Activas: "activo", Pausadas: "pausado", Vendidas: "vendido" };
+const FILTER_TABS = ["Todas", "Activas", "Pendientes", "Pausadas", "Vendidas"];
+const FILTER_STATUS = { Todas: null, Activas: "activo", Pendientes: "pendiente", Pausadas: "pausado", Vendidas: "vendido" };
 
 function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit, onHighlight }) {
   const [filter, setFilter] = useState("Todas");
@@ -1196,7 +1206,8 @@ const VendedorDashboard = () => {
   const tabParam = searchParams.get("tab");
   const view     = VALID_TABS.includes(tabParam) ? tabParam : "inicio";
   const setView  = useCallback((id) => setSearchParams({ tab: id }), [setSearchParams]);
-  const [showSuccess, setShowSuccess] = useState(() => searchParams.get("success") === "1");
+  // success=1 → publicada; success=pending → quedó pendiente de aprobación
+  const [showSuccess, setShowSuccess] = useState(() => searchParams.get("success"));
   const [pubs, setPubs]         = useState([]);
   const [loadingPubs, setLoadingPubs] = useState(true);
   const [pubsError, setPubsError]   = useState("");
@@ -1206,9 +1217,9 @@ const VendedorDashboard = () => {
   const [loadingLeads, setLoadingLeads] = useState(true);
   const isMockUser = !!user?.id?.startsWith("mock-");
 
-  // Mostrar el banner una vez y sacar success=1 de la URL
+  // Mostrar el banner una vez y sacar success de la URL
   useEffect(() => {
-    if (searchParams.get("success") !== "1") return;
+    if (!searchParams.get("success")) return;
     const next = new URLSearchParams(searchParams);
     next.delete("success");
     setSearchParams(next, { replace: true });
@@ -1264,12 +1275,16 @@ const VendedorDashboard = () => {
   }, [later]);
 
   const handleToggle = useCallback(async (pub) => {
-    const newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
-    const endpoint  = pub.type === "product"
-      ? `/products/${pub.id}/status`
-      : `/vehicles/${pub.id}/status`;
+    let newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
     try {
-      await api.patch(endpoint, { status: newStatus });
+      if (pub.type !== "product" && newStatus === "ACTIVE") {
+        // Vehículos: reactivar solo por /publish (valida fotos; puede quedar PENDING)
+        const res = await api.post(`/vehicles/${pub.id}/publish`);
+        newStatus = res?.data?.status || "ACTIVE";
+      } else {
+        const endpoint = pub.type === "product" ? `/products/${pub.id}/status` : `/vehicles/${pub.id}/status`;
+        await api.patch(endpoint, { status: newStatus });
+      }
       setPubs((prev) =>
         prev.map((p) =>
           p.id === pub.id ? { ...p, status: STATUS_LABEL[newStatus] || "activo" } : p
@@ -1328,7 +1343,11 @@ const VendedorDashboard = () => {
       {showSuccess && (
         <div className={styles.successBanner}>
           <CheckCircle size={18} />
-          <span>¡Tu publicación fue enviada con éxito!</span>
+          <span>
+            {showSuccess === "pending"
+              ? "¡Listo! Tu publicación quedó pendiente de aprobación: la revisamos y te avisamos cuando esté visible."
+              : "¡Tu publicación fue enviada con éxito!"}
+          </span>
           <button className={styles.successClose} onClick={() => setShowSuccess(false)} aria-label="Cerrar aviso">✕</button>
         </div>
       )}

@@ -1,19 +1,14 @@
 import { useId, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Building2, Phone, User } from "lucide-react";
+import { ArrowRight, Phone } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { formatSvPhone, isValidSvPhone, normalizeSvPhone } from "../../lib/phone";
 import { safeNext } from "../../lib/redirect";
 import logoVehiculo from "../../assets/logo-vehiculo.png";
 import styles from "./CompletarPerfil.module.css";
 
-const ACCOUNT_TYPES = [
-  { value: "PARTICULAR", label: "Particular", hint: "Vendo mis propios vehículos", icon: User },
-  { value: "EMPRESA",    label: "Empresa",    hint: "Agencia, lote o comercio",   icon: Building2 },
-];
-
-// Primer ingreso (sobre todo con Google/Apple): tipo de cuenta y teléfono.
-// El documento se pide recién al publicar por primera vez.
+// Primer ingreso (sobre todo con Google/Apple): nombre y teléfono.
+// Particular/Empresa y el documento se piden recién al publicar por primera vez.
 const CompletarPerfil = () => {
   const { user, updateProfile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -22,7 +17,6 @@ const CompletarPerfil = () => {
 
   const meta = user?.user_metadata || {};
   const [fullName, setFullName]       = useState(meta.full_name || "");
-  const [accountType, setAccountType] = useState(meta.account_type || "");
   const [phone, setPhone]             = useState(meta.phone ? formatSvPhone(meta.phone) : "");
   const [errors, setErrors]           = useState({});
   const [saving, setSaving]           = useState(false);
@@ -34,7 +28,6 @@ const CompletarPerfil = () => {
     e.preventDefault();
     const errs = {};
     if (fullName.trim().length < 2) errs.fullName = "Ingresá tu nombre.";
-    if (!accountType) errs.accountType = "Elegí el tipo de cuenta.";
     if (!isValidSvPhone(phone)) errs.phone = "Ingresá un teléfono válido de 8 dígitos.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
@@ -42,9 +35,8 @@ const CompletarPerfil = () => {
     setSaving(true);
     setGeneralError("");
     const { error } = await updateProfile({
-      full_name:    fullName.trim(),
-      account_type: accountType,
-      phone:        normalizeSvPhone(phone),
+      full_name: fullName.trim(),
+      phone:     normalizeSvPhone(phone),
     });
     setSaving(false);
     if (error) { setGeneralError("No pudimos guardar tus datos. Intentá de nuevo."); return; }
@@ -62,36 +54,13 @@ const CompletarPerfil = () => {
 
       <main className={styles.card}>
         <h1 className={styles.title}>Completá tu perfil</h1>
-        <p className={styles.sub}>Un último paso para terminar de crear tu cuenta.</p>
+        <p className={styles.sub}>Un último paso para terminar de crear tu cuenta: dejanos un teléfono de contacto.</p>
 
         {generalError && <p className={styles.errorMsg} role="alert">{generalError}</p>}
 
         <form onSubmit={handleSubmit} className={styles.form} noValidate>
-          <fieldset className={styles.fieldset}>
-            <legend className={styles.label}>Tipo de cuenta</legend>
-            <div className={styles.typeGrid} role="radiogroup" aria-invalid={!!errors.accountType}>
-              {ACCOUNT_TYPES.map(({ value, label, hint, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={accountType === value}
-                  className={`${styles.typeBtn} ${accountType === value ? styles.typeBtnActive : ""}`}
-                  onClick={() => { setAccountType(value); setErrors((p) => ({ ...p, accountType: undefined })); }}
-                >
-                  <Icon size={20} aria-hidden="true" />
-                  <strong>{label}</strong>
-                  <span>{hint}</span>
-                </button>
-              ))}
-            </div>
-            {errors.accountType && <p className={styles.fieldError}>{errors.accountType}</p>}
-          </fieldset>
-
           <div className={styles.field}>
-            <label htmlFor={`${id}-name`} className={styles.label}>
-              {accountType === "EMPRESA" ? "Nombre de contacto" : "Nombre y apellido"}
-            </label>
+            <label htmlFor={`${id}-name`} className={styles.label}>Nombre y apellido</label>
             <input
               id={`${id}-name`}
               className={`${styles.input} ${errors.fullName ? styles.inputError : ""}`}

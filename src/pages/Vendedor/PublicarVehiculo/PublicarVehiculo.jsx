@@ -373,14 +373,17 @@ const PublicarVehiculo = () => {
         return;
       }
 
-      // Gratuito → publicar directo (409 = ya estaba publicado)
+      // Gratuito → publicar directo (409 = ya estaba publicado).
+      // La primera publicación de un vendedor sin verificar queda PENDING (aprobación manual).
+      let pendingApproval = false;
       try {
-        await api.post(`/vehicles/${progress.id}/publish`);
+        const res = await api.post(`/vehicles/${progress.id}/publish`);
+        pendingApproval = res?.data?.status === "PENDING";
       } catch (err) {
         if (err?.status !== 409) throw err;
       }
       clearDraft(DRAFT_KEY);
-      navigate("/vendedor?tab=publicaciones&success=1");
+      navigate(`/vendedor?tab=publicaciones&success=${pendingApproval ? "pending" : "1"}`);
     } catch (err) {
       console.error("[publish]", err);
       const msg = err?.message || err?.data?.message || "Error al publicar. Intentá de nuevo.";

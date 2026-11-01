@@ -34,6 +34,10 @@ const BRAND = {
   },
 };
 
+// Apple requiere cuenta de Apple Developer (US$99/año) y configurarlo en Supabase.
+// Oculto hasta que el cliente decida activarlo; el resto del flujo ya lo soporta.
+const SHOW_APPLE = false;
+
 /* ── Password strength ── */
 function getStrength(pwd) {
   if (!pwd) return null;
@@ -636,10 +640,12 @@ const Login = () => {
                   <GoogleIcon />
                   Continuar con Google
                 </button>
-                <button type="button" className={`${styles.googleBtn} ${styles.appleBtn}`} onClick={() => handleOAuth("apple")}>
-                  <AppleIcon />
-                  Continuar con Apple
-                </button>
+                {SHOW_APPLE && (
+                  <button type="button" className={`${styles.googleBtn} ${styles.appleBtn}`} onClick={() => handleOAuth("apple")}>
+                    <AppleIcon />
+                    Continuar con Apple
+                  </button>
+                )}
               </div>
 
               <p className={styles.switchRow}>

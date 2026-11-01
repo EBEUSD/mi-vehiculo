@@ -1,20 +1,28 @@
 import { useId, useState } from "react";
-import { BadgeCheck, Building2, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Building2, ShieldCheck, User } from "lucide-react";
 import { useAuth } from "../../../../context/AuthContext";
 import { formatSvPhone, isValidSvPhone, normalizeSvPhone } from "../../../../lib/phone";
 import {
-  DOC_TYPES, formatDui, formatNit, isEmpresa, validateDocNumber, validateNit,
+  DOC_TYPES, formatDui, formatNit, validateDocNumber, validateNit,
 } from "../../../../lib/identity";
 import styles from "./IdentityCard.module.css";
 
+const ACCOUNT_TYPES = [
+  { value: "PARTICULAR", label: "Particular", hint: "Vendo mis propios vehículos", icon: User },
+  { value: "EMPRESA",    label: "Empresa",    hint: "Agencia, lote o comercio",   icon: Building2 },
+];
+
 // Último paso de la primera publicación: verificación de identidad.
+// Si la cuenta no tiene tipo (ingreso con Google/Apple) se elige acá Particular o Empresa.
 // Particular → documento. Empresa → razón social, NIT, dirección y teléfono comercial.
 // Solo se muestra si faltan datos (ver needsIdentity); una vez guardados no vuelve a aparecer.
 const IdentityCard = () => {
   const { user, updateProfile } = useAuth();
   const id = useId();
   const meta = user?.user_metadata || {};
-  const empresa = isEmpresa(user);
+  const askType = !meta.account_type;
+  const [accountType, setAccountType] = useState(meta.account_type || "");
+  const empresa = accountType === "EMPRESA";
 
   const [form, setForm] = useState({
     docType:        meta.document_type || "DUI",
@@ -36,7 +44,9 @@ const IdentityCard = () => {
 
   const validate = () => {
     const errs = {};
-    if (empresa) {
+    if (!accountType) {
+      errs.accountType = "Elegí si publicás como particular o como empresa.";
+    } else if (empresa) {
       if (!form.companyName.trim()) errs.companyName = "Ingresá la razón social.";
       const nitErr = form.nit.trim() ? validateNit(form.nit) : "Ingresá el NIT de la empresa.";
       if (nitErr) errs.nit = nitErr;
@@ -59,6 +69,7 @@ const IdentityCard = () => {
     setSaveError("");
     const data = empresa
       ? {
+          account_type:    accountType,
           company_name:    form.companyName.trim(),
           nit:             form.nit.trim(),
           nrc:             form.nrc.trim() || null,
@@ -66,6 +77,7 @@ const IdentityCard = () => {
           company_phone:   normalizeSvPhone(form.companyPhone),
         }
       : {
+          account_type:    accountType,
           document_type:   form.docType,
           document_number: form.docNumber.trim(),
           nit:             form.nit.trim() || null,
@@ -100,13 +112,37 @@ const IdentityCard = () => {
         <div>
           <h2 id={`${id}-title`}>{empresa ? "Datos de la empresa" : "Verificá tu identidad"}</h2>
           <p>
-            Es tu primera publicación: necesitamos estos datos una sola vez para dar
-            más confianza a los compradores. No se muestran en el aviso.
+            Es tu primera publicación: necesitamos estos datos una sola vez para dar más
+            confianza a los compradores. La revisamos y queda <strong>pendiente de aprobación</strong> hasta
+            entonces. Estos datos no se muestran en el aviso.
           </p>
         </div>
       </div>
 
-      {empresa ? (
+      {askType && (
+        <fieldset className={styles.typeField}>
+          <legend className={styles.label}>¿Cómo vas a publicar?</legend>
+          <div className={styles.typeGrid} role="radiogroup">
+            {ACCOUNT_TYPES.map(({ value, label, hint, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={accountType === value}
+                className={`${styles.typeBtn} ${accountType === value ? styles.typeBtnActive : ""}`}
+                onClick={() => { setAccountType(value); setErrors({}); }}
+              >
+                <Icon size={20} aria-hidden="true" />
+                <strong>{label}</strong>
+                <span>{hint}</span>
+              </button>
+            ))}
+          </div>
+          {errors.accountType && <p className={styles.fieldError}>{errors.accountType}</p>}
+        </fieldset>
+      )}
+
+      {!accountType ? null : empresa ? (
         <div className={styles.grid}>
           {field("companyName", "Razón social",
             <input {...inputProps("companyName")} value={form.companyName} onChange={set("companyName")} autoComplete="organization" />)}

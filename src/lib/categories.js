@@ -27,7 +27,7 @@ export const VEHICLE_CATEGORIES = [
   { id: "acuaticos",  label: "Acuáticos",            short: "Acuáticos",    icon: Sailboat, api: "ACUATICO",  brands: ACUATICO_BRANDS,   filters: { ...MOTOR, km: false, transmission: false } },
   { id: "aeronaves",  label: "Aeronaves",            short: "Aeronaves",    icon: Plane, api: "AEREO",     brands: AERONAVE_BRANDS,   filters: { ...MOTOR, km: false, transmission: false } },
   { id: "bicicletas", label: "Bicicletas / Remolques", short: "Bicicletas", icon: Bike,  api: "BICICLETA", brands: BICICLETA_BRANDS,  filters: SIN_MOTOR },
-  { id: "otros",      label: "Otros vehículos",      short: "Otros",        icon: Scooter, api: "OTRO",      brands: OTROS_BRANDS,      filters: SIN_MOTOR },
+  { id: "otros",      label: "Otros vehículos",      short: "Otros",        icon: Scooter, api: "OTRO",      brands: OTROS_BRANDS,      filters: MOTOR },
 ];
 
 export const PRODUCT_CATEGORIES = [

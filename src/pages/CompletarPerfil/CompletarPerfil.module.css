@@ -42,13 +42,6 @@
   gap: 18px;
 }
 
-.fieldset {
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -60,38 +53,6 @@
   font-size: 0.9rem;
   font-weight: 600;
   color: #1f2a44;
-}
-
-.typeGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.typeBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 14px;
-  border: 1.5px solid #e2e8f4;
-  border-radius: 14px;
-  background: #fff;
-  color: #1f2a44;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-}
-
-.typeBtn span {
-  font-size: 0.8rem;
-  color: #6b7690;
-}
-
-.typeBtnActive {
-  border-color: var(--brand);
-  background: #eef4ff;
-  color: var(--brand);
 }
 
 .inputWrap {
@@ -194,9 +155,5 @@
 @media (max-width: 420px) {
   .card {
     padding: 24px 18px;
-  }
-
-  .typeGrid {
-    grid-template-columns: 1fr;
   }
 }

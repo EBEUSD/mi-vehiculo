@@ -16,7 +16,7 @@ const BUYER_STEPS = [
 const SELLER_STEPS = [
   { icon: <Pencil size={24} />, title: "Publicá", desc: "Completá los datos de tu vehículo y subí fotos de calidad en minutos." },
   { icon: <CheckCircle2 size={24} />, title: "Elegí tu plan", desc: "Publicá gratis o elegí un plan con más fotos, video y mejor posición en los resultados." },
-  { icon: <Megaphone size={24} />, title: "Se publica", desc: "Tu vehículo queda visible para todos los que buscan en Mi Vehículo." },
+  { icon: <Megaphone size={24} />, title: "Se publica", desc: "Tu primera publicación queda pendiente de aprobación mientras verificamos tus datos; después, tus avisos salen al instante." },
   { icon: <MessageCircle size={24} />, title: "Recibí consultas", desc: "Te contactan por WhatsApp u otros medios para coordinar una visita." },
   { icon: <DollarSign size={24} />, title: "Vendé", desc: "Cerrá la venta y marcá tu publicación como vendida." },
 ];

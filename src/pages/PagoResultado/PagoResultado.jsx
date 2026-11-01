@@ -70,6 +70,9 @@ const PagoResultado = () => {
 
         const pending = JSON.parse(raw);
 
+        // La primera publicación de un vendedor sin verificar queda PENDING (aprobación manual)
+        let pendingApproval = false;
+
         // Mock users: skip backend publish (no real vehicle was created)
         if (!isMock) {
           // Publicar el ítem via backend (ya pagado).
@@ -85,7 +88,8 @@ const PagoResultado = () => {
           };
 
           try {
-            await api.post(endpoint, publishBody);
+            const res = await api.post(endpoint, publishBody);
+            pendingApproval = res?.data?.status === "PENDING";
           } catch (pubErr) {
             if (cancelled) return;
             if (pubErr?.status === 409) {
@@ -112,7 +116,7 @@ const PagoResultado = () => {
         if (draftKey) clearDraft(draftKey);
 
         setStatus("success");
-        timer = setTimeout(() => navigate("/vendedor?tab=publicaciones&success=1"), 2500);
+        timer = setTimeout(() => navigate(`/vendedor?tab=publicaciones&success=${pendingApproval ? "pending" : "1"}`), 2500);
       } catch (err) {
         if (cancelled) return;
         const isNetwork = err instanceof TypeError || !err?.status;

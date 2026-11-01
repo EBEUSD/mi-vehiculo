@@ -137,3 +137,49 @@
     justify-content: center;
   }
 }
+
+/* Particular / Empresa (cuentas creadas con Google/Apple) */
+.typeField {
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.typeBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px;
+  border: 1.5px solid #dbe3f2;
+  border-radius: 14px;
+  background: #fff;
+  color: #1f2a44;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.typeBtn span {
+  font-size: 0.8rem;
+  color: #6b7690;
+}
+
+.typeBtnActive {
+  border-color: var(--brand);
+  background: #eef4ff;
+  color: var(--brand);
+}
+
+@media (max-width: 420px) {
+  .typeGrid {
+    grid-template-columns: 1fr;
+  }
+}

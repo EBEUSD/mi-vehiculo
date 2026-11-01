@@ -77,7 +77,7 @@ function AppRoutes() {
   const { user } = useAuth();
   const showFooter = !matchesPrefix(pathname, NO_FOOTER_PREFIXES);
 
-  // Cuenta sin tipo ni teléfono (típico al entrar con Google/Apple): completar antes de seguir
+  // Cuenta sin teléfono (típico al entrar con Google/Apple): completar antes de seguir
   if (needsOnboarding(user) && !matchesPrefix(pathname, ONBOARDING_EXEMPT)) {
     const next = encodeURIComponent(pathname + search);
     return <Navigate to={`/completar-perfil?next=${next}`} replace />;
