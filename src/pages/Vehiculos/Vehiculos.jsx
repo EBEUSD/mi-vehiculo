@@ -10,13 +10,13 @@ import { api } from "../../lib/api";
 import { catalogCache } from "../../lib/catalogCache";
 import { findVehicleCategory, DEPARTAMENTOS, VEHICLE_CATEGORIES } from "../../lib/categories";
 import { getPopularModels, mergeNames } from "../../lib/vehicleBrands";
-import { attrValue, formatNumber, formatUSD, mapVehicleCard } from "../../lib/vehicleImage";
+import { formatNumber, formatUSD, mapVehicleCard } from "../../lib/vehicleImage";
 import styles from "./Vehiculos.module.css";
 
 const ITEMS_PER_PAGE = 9;
 
-// Orden soportado por GET /vehicles (orderBy). "Menor km" no existe en la API.
-const SORT_TO_API = { recent: "newest", priceAsc: "price_asc", priceDesc: "price_desc" };
+// Orden soportado por GET /vehicles (orderBy). Los vehículos sin km van al final.
+const SORT_TO_API = { recent: "newest", priceAsc: "price_asc", priceDesc: "price_desc", kmAsc: "mileage_asc", kmDesc: "mileage_desc" };
 
 const norm = (s) => String(s || "").trim().toLowerCase();
 
@@ -172,9 +172,8 @@ const Vehiculos = () => {
     if (filters.priceMax !== "") params.set("maxPrice", String(filters.priceMax));
     if (filters.yearMin !== "") params.set("minYear", String(filters.yearMin));
     if (filters.yearMax !== "") params.set("maxYear", String(filters.yearMax));
+    if (filters.kmMin !== "") params.set("minMileage", String(filters.kmMin));
     if (filters.kmMax !== "") params.set("maxMileage", String(filters.kmMax));
-    // La API no tiene kilometraje mínimo
-    if (filters.kmMin !== "") client.push({ label: "Km mínimo", test: (r) => (r.mileage ?? 0) >= filters.kmMin });
 
     if (filters.location) {
       if (!lookups.ready) waiting = true;
@@ -199,20 +198,10 @@ const Vehiculos = () => {
       else ignored.push(label);
     });
 
-    // Tipo de vendedor / origen: la API no lo filtra. Solo se descarta lo que se sabe que no coincide.
-    if (filters.sellerType.length > 0) {
-      client.push({
-        label: "Tipo de vendedor",
-        test: (r) => {
-          if (r.dealership === undefined && !r.attributes) return true;
-          const types = [
-            r.dealership ? "Agencia/Lote" : "Particular",
-            attrValue(r, "origen").toLowerCase().startsWith("import") && "Importado",
-          ].filter(Boolean);
-          return filters.sellerType.some((t) => types.includes(t));
-        },
-      });
-    }
+    // Tipo de vendedor (uno solo: con los dos marcados no se filtra) y origen
+    const sellers = filters.sellerType.filter((t) => t !== "Importado");
+    if (sellers.length === 1) params.set("sellerType", sellers[0] === "Particular" ? "particular" : "agencia");
+    if (filters.sellerType.includes("Importado")) params.set("origen", "IMPORTADO");
 
     const apiSort = SORT_TO_API[sortBy];
     if (apiSort) params.set("orderBy", apiSort);
@@ -224,7 +213,6 @@ const Vehiculos = () => {
       waiting,
       impossible,
       blocked,
-      clientSort: sortBy === "kmAsc",
     };
   }, [filters, category, currentPage, sortBy, brandsState, brandId, modelsReady, modelsState, lookups]);
 
@@ -251,7 +239,6 @@ const Vehiculos = () => {
     if (plan.impossible || !fetchable || result.key !== reqKey) return [];
     const rows = result.rows.filter((r) => plan.client.every((c) => c.test(r)));
     const cards = rows.map(mapVehicleCard);
-    if (plan.clientSort) cards.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
     return cards;
   }, [plan, fetchable, result, reqKey]);
 
@@ -260,8 +247,8 @@ const Vehiculos = () => {
     ? 1
     : result.meta?.totalPages ?? Math.max(1, Math.ceil(serverTotal / ITEMS_PER_PAGE));
   // Filtros u orden aplicados solo en esta página: el total del servidor no es exacto
-  const partial = plan.client.length > 0 || plan.clientSort;
-  const partialLabels = [...plan.client.map((c) => c.label), plan.clientSort && "Orden por km"].filter(Boolean);
+  const partial = plan.client.length > 0;
+  const partialLabels = plan.client.map((c) => c.label);
 
   const updateParams = (updates, resetPage = true) => {
     const next = new URLSearchParams(searchParams);

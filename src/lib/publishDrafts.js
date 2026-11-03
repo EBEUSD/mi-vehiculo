@@ -1,6 +1,7 @@
 // Claves de localStorage de los borradores de publicación.
 export const DRAFT_KEYS = {
   vehicle:   "miVehiculo_publicarVehiculoDraft",
+  servicio:  "miVehiculo_publicarServicioDraft",
   repuesto:  "miVehiculo_publicarRepuestoDraft",
   accesorio: "miVehiculo_publicarAccesorioDraft",
 };

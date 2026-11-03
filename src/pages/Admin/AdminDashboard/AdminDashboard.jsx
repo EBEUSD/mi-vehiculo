@@ -5,10 +5,11 @@ import {
   LayoutDashboard, Users, Car, MessageCircle, LogOut,
   Search, Eye, Pause, Play, Trash2,
   UserCheck, UserX, CheckCircle, X, ShieldCheck, Phone, Mail, Calendar,
-  DollarSign, TrendingUp, CreditCard, Award, Menu, Ban, AlertTriangle,
+  DollarSign, TrendingUp, CreditCard, Award, Menu, Ban, AlertTriangle, BadgeCheck, XCircle,
 } from "lucide-react";
 import { api } from "../../../lib/api";
 import { supabase } from "../../../lib/supabase";
+import { serviceTypeLabel } from "../../../lib/categories";
 import styles from "./AdminDashboard.module.css";
 
 /* ── Badge helpers ──────────────────────────── */
@@ -20,7 +21,20 @@ const VEHICLE_STATUS = {
   SOLD:     { label: "Vendido",    cls: "gray"   },
   DELETED:  { label: "Eliminado",  cls: "gray"   },
   DRAFT:    { label: "Borrador",   cls: "gray"   },
+  EXPIRED:  { label: "Vencido",    cls: "gray"   },
 };
+
+const DOC_LABEL = { DUI: "DUI", TARJETA_RESIDENCIA: "Tarjeta de residencia", PASAPORTE: "Pasaporte" };
+
+// GET /admin/profiles trae los datos de identidad para verificar la cuenta
+const mapProfile = (u) => ({
+  ...u,
+  fullName:  u.fullName ?? u.full_name ?? "",
+  createdAt: u.createdAt ?? u.created_at,
+  dui:       u.dui || (u.documentType === "DUI" ? u.documentNumber : "") || "",
+  blocked:   !!u.blocked,
+  verified:  !!u.verified,
+});
 
 const LEAD_STATUS = {
   NEW:         { label: "Nueva",      cls: "blue"   },
@@ -60,7 +74,7 @@ const NAV = [
 ];
 
 /* ── User Drawer ────────────────────────────── */
-function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
+function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onVerify, onDelete }) {
   const rb = roleBadge(user.role);
   const [saving, setSaving]               = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -99,16 +113,31 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
     if (!data?.length) throw new Error("Sin permisos para modificar este usuario.");
   };
 
+  // Al bloquear, el backend pausa las publicaciones activas del usuario
   const toggleBlock = async () => {
     if (saving) return;
     setSaving(true);
     setActionError("");
     try {
       const blocked = !user.blocked;
-      await runProfileWrite(supabase.from("profiles").update({ blocked }).eq("id", user.id));
+      await api.patch(`/admin/profiles/${user.id}/blocked`, { blocked });
       onBlock(user.id, blocked);
     } catch (err) {
       setActionError(err.message || "No se pudo actualizar el bloqueo.");
+    } finally { setSaving(false); }
+  };
+
+  // Verificada: sus próximas publicaciones salen activas sin revisión y la identidad queda fija
+  const toggleVerified = async () => {
+    if (saving) return;
+    setSaving(true);
+    setActionError("");
+    try {
+      const verified = !user.verified;
+      await api.patch(`/admin/profiles/${user.id}/verified`, { verified });
+      onVerify(user.id, verified);
+    } catch (err) {
+      setActionError(err.message || "No se pudo actualizar la verificación.");
     } finally { setSaving(false); }
   };
 
@@ -156,6 +185,11 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
                     <Ban size={11} style={{ marginRight: 4 }} />Bloqueado
                   </span>
                 )}
+                {user.verified && (
+                  <span className={`${styles.badge} ${styles.green}`}>
+                    <BadgeCheck size={11} style={{ marginRight: 4 }} />Verificado
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -177,11 +211,68 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
                   {new Date(user.createdAt).toLocaleDateString("es-SV")}
                 </span>
               </div>
-              <div className={styles.drawerField}>
-                <span className={styles.drawerFieldLabel}>DUI</span>
-                <span className={styles.drawerFieldValue}>{user.dui || "—"}</span>
-              </div>
             </div>
+          </div>
+
+          {/* ── Identidad ── */}
+          <div className={styles.drawerSection}>
+            <h4 className={styles.drawerSectionTitle}>Identidad</h4>
+            <div className={styles.drawerGrid}>
+              <div className={styles.drawerField}>
+                <span className={styles.drawerFieldLabel}>Tipo de cuenta</span>
+                <span className={styles.drawerFieldValue}>
+                  {user.accountType === "EMPRESA" ? "Empresa" : user.accountType === "PARTICULAR" ? "Particular" : "Sin completar"}
+                </span>
+              </div>
+              {user.accountType === "EMPRESA" ? (
+                <>
+                  <div className={styles.drawerField}>
+                    <span className={styles.drawerFieldLabel}>Razón social</span>
+                    <span className={styles.drawerFieldValue}>{user.companyName || "—"}</span>
+                  </div>
+                  <div className={styles.drawerField}>
+                    <span className={styles.drawerFieldLabel}>NRC</span>
+                    <span className={styles.drawerFieldValue}>{user.nrc || "—"}</span>
+                  </div>
+                  <div className={styles.drawerField}>
+                    <span className={styles.drawerFieldLabel}>Teléfono de la empresa</span>
+                    <span className={styles.drawerFieldValue}>{user.companyPhone || "—"}</span>
+                  </div>
+                  <div className={styles.drawerField}>
+                    <span className={styles.drawerFieldLabel}>Dirección</span>
+                    <span className={styles.drawerFieldValue}>{user.companyAddress || "—"}</span>
+                  </div>
+                </>
+              ) : (
+                <div className={styles.drawerField}>
+                  <span className={styles.drawerFieldLabel}>{DOC_LABEL[user.documentType] || "Documento"}</span>
+                  <span className={styles.drawerFieldValue}>{user.documentNumber || user.dui || "—"}</span>
+                </div>
+              )}
+              <div className={styles.drawerField}>
+                <span className={styles.drawerFieldLabel}>NIT</span>
+                <span className={styles.drawerFieldValue}>{user.nit || "—"}</span>
+              </div>
+              {user.verifiedAt && (
+                <div className={styles.drawerField}>
+                  <span className={styles.drawerFieldLabel}>Verificado el</span>
+                  <span className={styles.drawerFieldValue}>{new Date(user.verifiedAt).toLocaleDateString("es-SV")}</span>
+                </div>
+              )}
+            </div>
+            <div className={styles.docActions} style={{ marginTop: 10 }}>
+              <button
+                className={`${styles.actionBtn} ${user.verified ? styles.danger : styles.success}`}
+                onClick={toggleVerified}
+                disabled={saving || (!user.verified && !user.accountType)}
+                title={!user.verified && !user.accountType ? "El usuario todavía no cargó sus datos de identidad" : undefined}
+              >
+                {user.verified ? <><XCircle size={14} /> Quitar verificación</> : <><BadgeCheck size={14} /> Verificar identidad</>}
+              </button>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: "0.76rem", color: "#6b7280" }}>
+              Con la cuenta verificada, sus publicaciones nuevas salen activas sin revisión y ya no puede cambiar sus datos de identidad.
+            </p>
           </div>
 
           {/* ── Publicaciones ── */}
@@ -273,7 +364,7 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onDelete }) {
                   <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#6b7280" }}>
                     {user.blocked
                       ? "Restaura el acceso del usuario a la plataforma."
-                      : "Impide que el usuario inicie sesión. Reversible."}
+                      : "Impide que el usuario inicie sesión y pausa sus publicaciones activas. Reversible."}
                   </p>
                 </div>
                 <button
@@ -380,8 +471,8 @@ function Overview() {
 
   useEffect(() => {
     const fetchStats = api.get("/admin/stats").then((res) => setStats(res.data)).catch(() => {});
-    const fetchUsers = supabase.from("profiles").select("id", { count: "exact", head: true })
-      .then(({ count }) => setUserCount(count ?? 0)).catch(() => {});
+    const fetchUsers = api.get("/admin/profiles?limit=1")
+      .then((res) => setUserCount(res.meta?.total ?? (res.data || []).length)).catch(() => {});
     Promise.allSettled([fetchStats, fetchUsers]).finally(() => setLoading(false));
   }, []);
 
@@ -396,7 +487,7 @@ function Overview() {
   const cards = [
     { label: "Usuarios registrados",  value: userCount                 ?? 0, icon: Users,         color: "blue"   },
     { label: "Publicaciones activas", value: stats?.vehicles?.active   ?? 0, icon: Car,           color: "green"  },
-    { label: "En revisión",           value: stats?.vehicles?.pending  ?? 0, icon: CheckCircle,   color: "yellow" },
+    { label: "En revisión",           value: (stats?.vehicles?.pending ?? 0) + (stats?.products?.pending ?? 0) + (stats?.services?.pending ?? 0), icon: CheckCircle, color: "yellow" },
     { label: "Consultas recibidas",   value: stats?.leads?.total       ?? 0, icon: MessageCircle, color: "purple" },
   ];
 
@@ -450,29 +541,26 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
   const [profiles, setProfiles] = useState([]);
   const [search, setSearch]     = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  // "" | "unverified" | "verified" | "blocked"
+  const [stateFilter, setStateFilter] = useState("");
   const [loadedKey, setLoadedKey] = useState(null);
-  const queryKey = `${roleFilter}|${refreshKey}`;
+  const [loadError, setLoadError] = useState("");
+  const queryKey = `${roleFilter}|${stateFilter}|${refreshKey}`;
   const loading  = loadedKey !== queryKey;
 
   useEffect(() => {
-    let query = supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200);
-    if (roleFilter) query = query.eq("role", roleFilter);
+    const params = new URLSearchParams({ limit: "200" });
+    if (roleFilter) params.set("role", roleFilter);
+    if (stateFilter === "unverified") params.set("verified", "false");
+    if (stateFilter === "verified") params.set("verified", "true");
+    if (stateFilter === "blocked") params.set("blocked", "true");
     let ignore = false;
-    query
-      .then(({ data }) => !ignore && setProfiles(
-        (data || []).map((u) => ({
-          ...u,
-          fullName:  u.full_name,
-          createdAt: u.created_at,
-          dui:       u.dui || "",
-          blocked:   u.blocked || false,
-          _count:    { vehicles: 0, leads: 0 },
-        }))
-      ))
-      .catch(() => {})
-      .finally(() => { if (!ignore) setLoadedKey(`${roleFilter}|${refreshKey}`); });
+    api.get(`/admin/profiles?${params}`)
+      .then((res) => { if (!ignore) { setProfiles((res.data || []).map(mapProfile)); setLoadError(""); } })
+      .catch((err) => { if (!ignore) setLoadError(err?.message || "No se pudieron cargar los usuarios."); })
+      .finally(() => { if (!ignore) setLoadedKey(queryKey); });
     return () => { ignore = true; };
-  }, [roleFilter, refreshKey]);
+  }, [roleFilter, stateFilter, refreshKey, queryKey]);
 
   const filtered = profiles.filter((u) => {
     const q = search.toLowerCase();
@@ -502,11 +590,23 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
             <option value="USER">Usuarios</option>
             <option value="ADMIN">Admins</option>
           </select>
+          <select
+            className={styles.select}
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+          >
+            <option value="">Cualquier estado</option>
+            <option value="unverified">Sin verificar</option>
+            <option value="verified">Verificados</option>
+            <option value="blocked">Bloqueados</option>
+          </select>
         </div>
       </div>
 
       {loading ? (
         <p style={{ padding: "2rem", color: "#6b7280", textAlign: "center" }}>Cargando usuarios…</p>
+      ) : loadError ? (
+        <p className={styles.empty} role="alert">{loadError}</p>
       ) : filtered.length === 0 ? (
         <p className={styles.empty}>Sin resultados</p>
       ) : (
@@ -547,6 +647,11 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
                         <Ban size={10} /> Bloqueado
                       </span>
                     )}
+                    {u.verified && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#ecfdf5", color: "#047857", border: "1px solid #a7f3d0", borderRadius: 20, padding: "2px 8px", fontSize: "0.72rem", fontWeight: 600 }}>
+                        <BadgeCheck size={10} /> Verificado
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: "1rem", marginTop: 3, flexWrap: "wrap" }}>
                     <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>{u.email}</span>
@@ -578,35 +683,60 @@ function ViewUsuarios({ onViewProfile, refreshKey }) {
 }
 
 /* ── ViewPublicaciones ──────────────────────── */
+const PUB_KINDS = [
+  { id: "vehicles", label: "Vehículos" },
+  { id: "products", label: "Repuestos y accesorios" },
+  { id: "services", label: "Servicios" },
+];
+
+const pubTitle = (kind, v) => kind === "vehicles"
+  ? v.title || `${v.brand?.name || ""} ${v.model?.name || ""} ${v.year || ""}`.trim()
+  : v.title || "Sin título";
+
 function ViewPublicaciones() {
+  const [kind, setKind]             = useState("vehicles");
   const [vehicles, setVehicles]     = useState([]);
   const [search, setSearch]         = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [loadedFilter, setLoadedFilter] = useState(null);
-  const loading = loadedFilter !== statusFilter;
+  const [loadedKey, setLoadedKey]   = useState(null);
+  const [actionError, setActionError] = useState("");
+  const queryKey = `${kind}|${statusFilter}`;
+  const loading = loadedKey !== queryKey;
 
   useEffect(() => {
     const params = statusFilter ? `?status=${statusFilter}&limit=100` : "?limit=100";
     let ignore = false;
-    api.get(`/admin/vehicles${params}`)
+    api.get(`/admin/${kind}${params}`)
       .then((res) => { if (!ignore) setVehicles(res.data || []); })
-      .catch(() => {})
-      .finally(() => { if (!ignore) setLoadedFilter(statusFilter); });
+      .catch(() => { if (!ignore) setVehicles([]); })
+      .finally(() => { if (!ignore) setLoadedKey(queryKey); });
     return () => { ignore = true; };
-  }, [statusFilter]);
+  }, [kind, statusFilter, queryKey]);
 
+  // ACTIVE sobre una pendiente la aprueba y arranca el vencimiento del plan
   const changeStatus = async (id, status, extra = {}) => {
+    setActionError("");
     try {
-      await api.patch(`/admin/vehicles/${id}/status`, { status, ...extra });
-      setVehicles((prev) => prev.map((v) => v.id === id ? { ...v, status } : v));
-    } catch { /* ignore */ }
+      await api.patch(`/admin/${kind}/${id}/status`, { status, ...extra });
+      setVehicles((prev) => prev.map((v) => v.id === id ? { ...v, status, ...extra } : v));
+    } catch (err) {
+      setActionError(err?.message || "No se pudo cambiar el estado.");
+    }
+  };
+
+  // El motivo le llega al vendedor (moderationNotes)
+  const reject = (id) => {
+    const notes = window.prompt("Motivo del rechazo (lo ve el vendedor):");
+    if (notes === null) return;
+    if (!notes.trim()) { setActionError("Escribí un motivo para rechazar la publicación."); return; }
+    changeStatus(id, "REJECTED", { notes: notes.trim() });
   };
 
   const filtered = vehicles.filter((v) => {
     const q = search.toLowerCase();
     return (
       !q ||
-      (v.title || "").toLowerCase().includes(q) ||
+      pubTitle(kind, v).toLowerCase().includes(q) ||
       (v.seller?.fullName || "").toLowerCase().includes(q) ||
       (v.seller?.email || "").toLowerCase().includes(q)
     );
@@ -620,11 +750,19 @@ function ViewPublicaciones() {
           <div className={styles.searchBox}>
             <Search size={15} />
             <input
-              placeholder="Buscar vehículo o vendedor…"
+              placeholder="Buscar publicación o vendedor…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <select
+            className={styles.select}
+            value={kind}
+            onChange={(e) => setKind(e.target.value)}
+            aria-label="Tipo de publicación"
+          >
+            {PUB_KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+          </select>
           <select
             className={styles.select}
             value={statusFilter}
@@ -635,10 +773,13 @@ function ViewPublicaciones() {
             <option value="PENDING">Pendientes</option>
             <option value="PAUSED">Pausados</option>
             <option value="REJECTED">Rechazados</option>
-            <option value="SOLD">Vendidos</option>
+            <option value="EXPIRED">Vencidos</option>
+            {kind !== "services" && <option value="SOLD">Vendidos</option>}
           </select>
         </div>
       </div>
+
+      {actionError && <p role="alert" style={{ margin: "0 1.25rem 0.75rem", color: "#b91c1c", fontSize: "0.85rem" }}>{actionError}</p>}
 
       {loading ? (
         <p style={{ padding: "2rem", color: "#6b7280", textAlign: "center" }}>Cargando publicaciones…</p>
@@ -646,7 +787,7 @@ function ViewPublicaciones() {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Vehículo</th><th>Vendedor</th><th>Precio</th><th>Vistas</th><th>Estado</th><th>Fecha</th><th></th>
+              <th>{kind === "vehicles" ? "Vehículo" : "Publicación"}</th><th>Vendedor</th><th>Precio</th><th>Vistas</th><th>Estado</th><th>Fecha</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -655,11 +796,15 @@ function ViewPublicaciones() {
               const price = v.price ? `$${Number(v.price).toLocaleString("en-US")}` : "—";
               return (
                 <tr key={v.id}>
-                  <td><span className={styles.vehicleCell}>{v.title || `${v.brand?.name || ""} ${v.year || ""}`}</span></td>
+                  <td>
+                    <span className={styles.vehicleCell}>{pubTitle(kind, v)}</span>
+                    {kind === "services" && v.serviceType && <span className={styles.muted} style={{ display: "block", fontSize: "0.75rem" }}>{serviceTypeLabel(v.serviceType)}</span>}
+                    {kind === "products" && v.category?.name && <span className={styles.muted} style={{ display: "block", fontSize: "0.75rem" }}>{v.category.name}</span>}
+                  </td>
                   <td className={styles.muted}>{v.seller?.fullName || v.seller?.email || "—"}</td>
                   <td className={styles.price}>{price}</td>
                   <td className={styles.muted}>
-                    <Eye size={13} style={{ marginRight: 4 }} />{v._count?.vehicleViews ?? 0}
+                    <Eye size={13} style={{ marginRight: 4 }} />{v._count?.vehicleViews ?? v.views ?? 0}
                   </td>
                   <td><span className={`${styles.badge} ${styles[b.cls]}`}>{b.label}</span></td>
                   <td className={styles.muted}>{new Date(v.createdAt).toLocaleDateString("es-SV")}</td>
@@ -672,6 +817,15 @@ function ViewPublicaciones() {
                           title="Aprobar"
                         >
                           <CheckCircle size={14} /> Aprobar
+                        </button>
+                      )}
+                      {v.status === "PENDING" && (
+                        <button
+                          className={`${styles.actionBtn} ${styles.danger}`}
+                          onClick={() => reject(v.id)}
+                          title="Rechazar"
+                        >
+                          <XCircle size={14} /> Rechazar
                         </button>
                       )}
                       {v.status === "ACTIVE" && (
@@ -1071,6 +1225,11 @@ const AdminDashboard = () => {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleVerify = (id, verified) => {
+    setSelectedUser((prev) => (prev?.id === id ? { ...prev, verified, verifiedAt: verified ? new Date().toISOString() : null } : prev));
+    setRefreshKey((k) => k + 1);
+  };
+
   const handleDelete = () => {
     setSelectedUser(null);
     setRefreshKey((k) => k + 1);
@@ -1156,6 +1315,7 @@ const AdminDashboard = () => {
             onClose={() => setSelectedUser(null)}
             onChangeRole={handleRoleChange}
             onBlock={handleBlock}
+            onVerify={handleVerify}
             onDelete={handleDelete}
           />
         )}

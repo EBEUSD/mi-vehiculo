@@ -10,6 +10,7 @@ import { formatUSD, isValidPrice, parseMoney } from "../../../lib/money";
 import { formatSvPhone, isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
 import { IMAGE_ACCEPT, validateImageFiles } from "../../../lib/images";
 import useSafeTimeout from "../../../hooks/useSafeTimeout";
+import { apiErrorMessage, errorCode, productItemType, publishItem } from "../../../lib/publishing";
 import LocationSelect from "../shared/LocationSelect/LocationSelect";
 import styles from "../EditarVehiculo/EditarVehiculo.module.css";
 
@@ -21,6 +22,7 @@ const STATUS_OPTIONS = [
 
 const fromApi = (p) => ({
   productId:           p.id,
+  itemType:            productItemType(p),
   slug:                p.slug || "",
   titulo:              p.title || "",
   descripcion:         p.description || "",
@@ -138,13 +140,23 @@ const EditarProducto = () => {
     }
   };
 
+  // Activar solo por /publish (PATCH status ACTIVE responde 403): si el plan sigue
+  // vigente no se cobra; si venció hay que volver a publicarla desde el panel.
   const handleStatusChange = async (newStatus) => {
     if (newStatus === form.status) return;
     try {
+      if (newStatus === "ACTIVE") {
+        const data = await publishItem({ itemType: form.itemType, itemId: form.productId });
+        setForm((p) => ({ ...p, status: data.status || "ACTIVE" }));
+        return;
+      }
       await api.patch(`/products/${form.productId}/status`, { status: newStatus });
       setForm((p) => ({ ...p, status: newStatus }));
-    } catch {
-      setSaveError("No se pudo cambiar el estado.");
+    } catch (err) {
+      const code = errorCode(err);
+      setSaveError(code === "INVALID_PLAN" || code === "PAYMENT_REQUIRED"
+        ? "La publicación venció. Volvé a publicarla desde tu panel eligiendo un plan."
+        : apiErrorMessage(err, "No se pudo cambiar el estado."));
     }
   };
 

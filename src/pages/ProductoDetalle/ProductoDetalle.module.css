@@ -267,6 +267,22 @@
 }
 .contactLink:hover { background: #f8fafc; }
 
+.contactPrimary,
+.contactWhatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.contactPrimary { background: #0b3c92; color: #fff; }
+.contactWhatsapp { border: 1px solid #8fddb0; background: #effcf4; color: #166534; }
+
 
 .card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
 .description { white-space: pre-line; color: #374151; line-height: 1.6; margin: 0; }
@@ -275,6 +291,8 @@
 .thumb:focus-visible,
 .backBtn:focus-visible,
 .contactLink:focus-visible,
+.contactPrimary:focus-visible,
+.contactWhatsapp:focus-visible,
 .notFoundCard button:focus-visible {
   outline: 3px solid #1d4ed8;
   outline-offset: 2px;

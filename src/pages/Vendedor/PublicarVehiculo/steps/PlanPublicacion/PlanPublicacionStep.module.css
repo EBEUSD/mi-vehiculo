@@ -59,6 +59,11 @@
   box-shadow: 0 0 0 1px #1d4ed8, 0 8px 32px rgba(29, 78, 216, 0.1);
 }
 
+.cardDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .cardSelected {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 1px var(--accent), 0 8px 32px rgba(0, 0, 0, 0.12) !important;

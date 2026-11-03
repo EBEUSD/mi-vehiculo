@@ -25,18 +25,8 @@ import { useFavorites } from "../../hooks/useFavorites";
 import { useAuth } from "../../context/AuthContext";
 import { loginHref } from "../../lib/redirect";
 import { formatSvPhone } from "../../lib/phone";
+import { labelForApiCategory } from "../../lib/categories";
 import styles from "./VehiculoDetalle.module.css";
-
-const CATEGORY_LABEL = {
-  AUTO:      "Carro / Pickup / SUV",
-  MOTO:      "Moto",
-  CAMION:    "Camión / Bus",
-  CAMIONETA: "Panel / Microbús",
-  ACUATICO:  "Acuáticos",
-  AEREO:     "Aeronaves",
-  BICICLETA: "Bicicletas / Remolques",
-  OTRO:      "Otros",
-};
 
 const mapVehicle = (v) => ({
   id:           v.id,
@@ -58,12 +48,13 @@ const mapVehicle = (v) => ({
   tag:          v.condition === "NEW" ? "NUEVO" : v.condition === "USED" ? "USADO" : "",
   description:  v.description  || "",
   contactPhone: v.contactPhone || "",
-  // La API devuelve showWhatsapp: si el vendedor lo desactivó no se muestra su número
-  showContact:  v.showWhatsapp !== false,
+  // contactAvailable: el vendedor tiene un contacto visible. Sin sesión el
+  // teléfono llega en null, así que se pide login solo si hay algo que mostrar.
+  showContact:  v.contactAvailable ?? v.showWhatsapp !== false,
   seller:       v.seller       || null,
   dealership:   v.dealership   || null,
   category:     v.category,
-  type:         CATEGORY_LABEL[v.category] || "",
+  type:         v.category ? labelForApiCategory(v.category) : "",
 });
 
 // Nombre público del vendedor: nunca el email
@@ -332,7 +323,8 @@ const VehiculoDetalle = () => {
   const [result, setResult]         = useState({ key: null, raw: null, error: null });
   const [reloadTick, setReloadTick] = useState(0);
   const [shareLabel, setShareLabel] = useState("Compartir");
-  const reqKey = `${slug}#${reloadTick}`;
+  // Con sesión el detalle trae el teléfono: se vuelve a pedir al loguearse
+  const reqKey = `${slug}#${reloadTick}#${user?.id || ""}`;
 
   useEffect(() => {
     let ignore = false;
@@ -606,7 +598,7 @@ const VehiculoDetalle = () => {
                 </div>
 
                 <div className={styles.actions}>
-                  {!user && (
+                  {!user && vehicle.showContact && (
                     <Link to={loginTo} className={styles.primaryBtn}>
                       <LogIn size={18} aria-hidden="true" />
                       <span>Iniciá sesión para contactar</span>
@@ -634,7 +626,7 @@ const VehiculoDetalle = () => {
                 </div>
 
                 <p className={styles.helperText}>
-                  {user
+                  {user || !vehicle.showContact
                     ? "Verificá el vehículo y coordiná una visita antes de cerrar el trato."
                     : <>Para ver el teléfono o escribirle al vendedor necesitás una cuenta. <Link to={registerTo}>Creala gratis</Link>.</>}
                 </p>
@@ -692,7 +684,7 @@ const VehiculoDetalle = () => {
           <strong>{formatUSD(vehicle.price)}</strong>
           <span>{vehicle.title}</span>
         </div>
-        {!user ? (
+        {!user && vehicle.showContact ? (
           <Link to={loginTo} className={styles.mobileCtaPrimary}>
             <LogIn size={16} aria-hidden="true" />
             <span>Contactar</span>

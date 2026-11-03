@@ -1,5 +1,6 @@
 // Planes de publicación — única fuente de verdad para precios, límites y textos.
-// `amountCents` debe coincidir con lo que valida el backend en el webhook/publish de Wompi.
+// Los precios y la duración vigentes los define el servidor (GET /payments/pricing, ver
+// pricing.js); los de acá son el respaldo si el endpoint no responde.
 
 export const PLANS = [
   {
@@ -119,8 +120,8 @@ export const getPlan = (id) => PLANS.find((p) => p.id === id) || null;
 export const MAX_PLAN_PHOTOS = Math.max(...PLANS.map((p) => p.fotos));
 export const getMaxPhotos = (planId) => getPlan(planId)?.fotos ?? MAX_PLAN_PHOTOS;
 
-export const publishLabelFor = (planId) => {
-  const plan = getPlan(planId);
+export const publishLabelFor = (planId, plans = PLANS) => {
+  const plan = plans.find((p) => p.id === planId);
   if (!plan) return "Publicar";
   return plan.precio === null ? "Publicar gratis" : `Pagar y publicar — $${plan.precio}`;
 };

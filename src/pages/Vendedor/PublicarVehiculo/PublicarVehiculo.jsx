@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../lib/api";
 import { redirectToWompiCheckout } from "../../../lib/wompi";
+import { publishItem, errorCode, apiErrorMessage } from "../../../lib/publishing";
+import { usePricing } from "../../../lib/pricing";
 import { getPlan, publishLabelFor } from "../../../lib/plans";
 import { isValidPrice, parseMoney } from "../../../lib/money";
 import { isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
@@ -55,7 +57,7 @@ const initialForm = {
   tipoOperacion: "Venta",
   // marca/modelo con id numérico para la API + nombre para mostrar
   marcaId: "", marca: "", modeloId: "", modelo: "", anio: "", version: "",
-  kilometraje: "", condicion: "Usado",
+  kilometraje: "", condicion: "Usado", origen: "",
 
   precio: "", moneda: "USD",
   aceptaPermuta: "Si", precioNegociable: "Si", financiacion: "Si", infoFinanciacion: "",
@@ -113,6 +115,7 @@ const isCustomId = (id) => id === "OTRA" || id === "OTRO" || String(id).startsWi
 
 const PublicarVehiculo = () => {
   const { user } = useAuth();
+  const { plans } = usePricing();
   const navigate = useNavigate();
   const later = useSafeTimeout();
 
@@ -286,6 +289,7 @@ const PublicarVehiculo = () => {
       year:               parseInt(formData.anio, 10) || undefined,
       version:            formData.version   || undefined,
       condition:          formData.condicion === "Nuevo" ? "NEW" : "USED",
+      origin:             formData.origen || undefined,
       mileage:            formData.condicion === "Nuevo" || !applies.km ? undefined : parseInt(String(formData.kilometraje).replace(/\D/g, ""), 10) || 0,
       price:              parseMoney(formData.precio),
       currency:           "USD",
@@ -316,7 +320,7 @@ const PublicarVehiculo = () => {
       // Mock users — gratuito: simula éxito; pago: redirige a Wompi sandbox con ID falso
       if (user?.id?.startsWith("mock-")) {
         if (formData.plan !== "gratuito") {
-          redirectToWompiCheckout({ plan: formData.plan, itemId: `mock-${Date.now()}`, itemType: "vehicle" });
+          await redirectToWompiCheckout({ plan: formData.plan, itemId: `mock-${Date.now()}`, itemType: "vehicle" });
           return;
         }
         await new Promise((r) => setTimeout(r, 1200));
@@ -369,32 +373,32 @@ const PublicarVehiculo = () => {
 
       // 3. Planes de pago → WOMPI (el borrador se conserva hasta confirmar el pago)
       if (formData.plan !== "gratuito") {
-        redirectToWompiCheckout({ plan: formData.plan, itemId: progress.id, itemType: "vehicle" });
+        await redirectToWompiCheckout({ plan: formData.plan, itemId: progress.id, itemType: "vehicle" });
         return;
       }
 
-      // Gratuito → publicar directo (409 = ya estaba publicado).
-      // La primera publicación de un vendedor sin verificar queda PENDING (aprobación manual).
+      // Gratuito → publicar directo (consume el cupo anual).
+      // Si el vendedor no está verificado queda PENDING hasta que el equipo la apruebe.
       let pendingApproval = false;
       try {
-        const res = await api.post(`/vehicles/${progress.id}/publish`);
-        pendingApproval = res?.data?.status === "PENDING";
+        const res = await publishItem({ itemType: "vehicle", itemId: progress.id, plan: "gratuito" });
+        pendingApproval = res.status === "PENDING";
       } catch (err) {
-        if (err?.status !== 409) throw err;
+        if (errorCode(err) === "PENDING_REVIEW") pendingApproval = true;
+        else if (err?.status !== 409) throw err; // ALREADY_ACTIVE
       }
       clearDraft(DRAFT_KEY);
       navigate(`/vendedor?tab=publicaciones&success=${pendingApproval ? "pending" : "1"}`);
     } catch (err) {
       console.error("[publish]", err);
-      const msg = err?.message || err?.data?.message || "Error al publicar. Intentá de nuevo.";
-      setPublishError(msg);
+      setPublishError(apiErrorMessage(err, "Error al publicar. Intentá de nuevo."));
     } finally {
       publishingRef.current = false;
       setPublishing(false);
     }
   };
 
-  const publishLabel = publishing ? "Publicando…" : publishLabelFor(formData.plan);
+  const publishLabel = publishing ? "Publicando…" : publishLabelFor(formData.plan, plans);
 
   const renderStep = () => {
     if (currentStep === 1) return <DatosVehiculoStep formData={formData} onChange={handleChange} />;

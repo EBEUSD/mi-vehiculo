@@ -1,0 +1,27 @@
+.tipoRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #12214b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.changeBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1a6eff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.changeBtn:hover { background: #f5f9ff; }
+
+.optional { color: #94a2b8; font-weight: 600; }
+
+.localBlock { margin-top: 28px; }
