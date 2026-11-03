@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api, setTokens, clearTokens, getAccessToken } from "../lib/api";
 import { supabase } from "../lib/supabase";
+import { apiErrorMessage, errorCode } from "../lib/publishing";
 import PageLoader from "../components/PageLoader/PageLoader";
 
 const AuthContext = createContext(null);
@@ -27,24 +28,57 @@ const normalizeSupabase = (u) => ({
   },
 });
 
-// El rol real vive en la base (profiles.role) y lo expone el backend.
-// El teléfono del registro también: /auth/register lo guarda en el perfil, no en user_metadata.
-const resolveRole = async (u) => {
-  try {
-    const res = await api.get("/profile");
-    const role  = res?.data?.role;
-    const phone = u.user_metadata?.phone || res?.data?.phone || null;
-    return { ...u, ...(role ? { role } : {}), user_metadata: { ...u.user_metadata, phone } };
-  } catch { return u; }
+// Campos de identidad de GET/PATCH /profile ↔ claves que usa la app en user_metadata
+const PROFILE_FIELDS = {
+  accountType: "account_type", documentType: "document_type", documentNumber: "document_number",
+  dui: "dui", nit: "nit", nrc: "nrc",
+  companyName: "company_name", companyAddress: "company_address", companyPhone: "company_phone",
 };
 
-// Bloqueo de cuenta. El backend también debe rechazar a los bloqueados:
-// este chequeo solo evita mostrar la app a una cuenta suspendida.
-const isBlocked = async (userId) => {
-  try {
-    const { data } = await supabase.from("profiles").select("blocked").eq("id", userId).single();
-    return !!data?.blocked;
-  } catch { return false; }
+// Datos de la app → body de PATCH /profile (role, verified y blocked nunca se envían)
+const toProfilePatch = (meta) => {
+  const body = {};
+  if (meta.full_name) body.fullName = meta.full_name;
+  if (meta.phone) body.phone = meta.phone;
+  Object.entries(PROFILE_FIELDS).forEach(([key, metaKey]) => {
+    if (meta[metaKey] !== undefined) body[key] = meta[metaKey];
+  });
+  return body;
+};
+
+// Rol, teléfono, identidad y verificación viven en la base (profiles) y los expone
+// el backend. user_metadata de Supabase lo edita el propio usuario: solo es respaldo.
+// Una cuenta bloqueada recibe 403 en todo endpoint autenticado.
+const fetchProfile = async () => {
+  try { return { profile: (await api.get("/profile"))?.data || null, blocked: false }; }
+  catch (err) { return { profile: null, blocked: err?.status === 403 }; }
+};
+
+const withProfile = (u, p) => {
+  if (!p) return u;
+  const meta = {
+    ...u.user_metadata,
+    full_name: p.fullName || u.user_metadata.full_name,
+    phone:     u.user_metadata.phone || p.phone || null,
+  };
+  Object.entries(PROFILE_FIELDS).forEach(([key, metaKey]) => {
+    if (p[key]) meta[metaKey] = p[key];
+  });
+  return { ...u, ...(p.role ? { role: p.role } : {}), verified: !!p.verified, user_metadata: meta };
+};
+
+// Cuentas viejas: la identidad quedó en user_metadata. Se copia una vez al perfil.
+const migrateIdentity = async (u, p) => {
+  const meta = u.user_metadata || {};
+  if (!p || p.accountType || p.verified || !meta.account_type) return p;
+  const { fullName: _fn, phone: _ph, ...identity } = toProfilePatch(meta);
+  try { return (await api.patch("/profile", identity))?.data || { ...p, ...identity }; }
+  catch { return p; }
+};
+
+const resolveRole = async (u) => {
+  const { profile } = await fetchProfile();
+  return withProfile(u, await migrateIdentity(u, profile));
 };
 
 const BLOCKED_ERROR = { message: "Tu cuenta fue suspendida. Contactá al soporte para más información." };
@@ -60,19 +94,30 @@ const clearLocalSession = () => {
   if ("caches" in window) caches.delete("api-cache").catch(() => {});
 };
 
-// Metadata extra del registro (tipo de cuenta, documento, NIT) que /auth/register
-// no recibe: se guarda en user_metadata de Supabase apenas hay sesión.
+// Datos extra del registro (tipo de cuenta, documento, NIT) que /auth/register
+// no recibe: se guardan con PATCH /profile apenas hay sesión.
 const PENDING_META_KEY = (email) => `mv_pending_meta_${(email || "").toLowerCase()}`;
 
 const applyPendingMetadata = async (email) => {
   try {
     const raw = localStorage.getItem(PENDING_META_KEY(email));
-    if (!raw) return null;
-    const { data, error } = await supabase.auth.updateUser({ data: JSON.parse(raw) });
-    if (error) return null;
+    if (!raw) return;
+    await api.patch("/profile", toProfilePatch(JSON.parse(raw)));
     localStorage.removeItem(PENDING_META_KEY(email));
-    return data.user;
-  } catch { return null; }
+  } catch { /* se reintenta en el próximo login */ }
+};
+
+// Sesión de Supabase recién iniciada: rechaza cuentas bloqueadas y arma el usuario
+const startSession = async (session) => {
+  setTokens(session.access_token, session.refresh_token);
+  const { blocked } = await fetchProfile();
+  if (blocked) {
+    clearTokens();
+    await supabase.auth.signOut().catch(() => {});
+    return null;
+  }
+  await applyPendingMetadata(session.user.email);
+  return resolveRole(normalizeSupabase(session.user));
 };
 
 // Mock users — solo disponibles en desarrollo, excluidos del bundle de producción
@@ -118,9 +163,9 @@ export function AuthProvider({ children }) {
           } else {
             // Validate the Supabase session — catches expired tokens
             const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              setTokens(session.access_token, session.refresh_token);
-              persistUser(await resolveRole(normalizeSupabase(session.user)));
+            const u = session ? await startSession(session) : null;
+            if (u) {
+              persistUser(u);
             } else {
               clearTokens();
               localStorage.removeItem("mv_user");
@@ -138,13 +183,8 @@ export function AuthProvider({ children }) {
     // No backend session: check for a pending Supabase OAuth session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
-      if (await isBlocked(session.user.id)) {
-        await supabase.auth.signOut().catch(() => {});
-        return;
-      }
-      setTokens(session.access_token, session.refresh_token);
-      const updated = await applyPendingMetadata(session.user.email);
-      persistUser(await resolveRole(normalizeSupabase(updated || session.user)));
+      const u = await startSession(session);
+      if (u) persistUser(u);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -154,13 +194,8 @@ export function AuthProvider({ children }) {
       if (event === "SIGNED_IN" && session && !getAccessToken()) {
         // Login con Google/Apple: mismo chequeo de bloqueo que con contraseña
         (async () => {
-          if (await isBlocked(session.user.id)) {
-            await supabase.auth.signOut().catch(() => {});
-            return;
-          }
-          setTokens(session.access_token, session.refresh_token);
-          const updated = await applyPendingMetadata(session.user.email);
-          persistUser(await resolveRole(normalizeSupabase(updated || session.user)));
+          const u = await startSession(session);
+          if (u) persistUser(u);
         })();
       }
       if (event === "TOKEN_REFRESHED" && session) {
@@ -189,14 +224,8 @@ export function AuthProvider({ children }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      if (await isBlocked(data.user.id)) {
-        await supabase.auth.signOut();
-        return { data: null, error: BLOCKED_ERROR };
-      }
-
-      setTokens(data.session.access_token, data.session.refresh_token);
-      const updated = await applyPendingMetadata(email);
-      const u = await resolveRole(normalizeSupabase(updated || data.user));
+      const u = await startSession(data.session);
+      if (!u) return { data: null, error: BLOCKED_ERROR };
       persistUser(u);
       return { data: { user: u }, error: null };
     } catch (err) {
@@ -242,9 +271,8 @@ export function AuthProvider({ children }) {
       // está desactivada o el backend auto-confirmó en modo development.
       const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
       if (!loginError && loginData?.session) {
-        setTokens(loginData.session.access_token, loginData.session.refresh_token);
-        const updated = await applyPendingMetadata(email);
-        const u = await resolveRole(normalizeSupabase(updated || loginData.user));
+        const u = await startSession(loginData.session);
+        if (!u) return { data: null, error: BLOCKED_ERROR };
         persistUser(u);
         return { data: { user: u, session: loginData.session }, error: null };
       }
@@ -274,24 +302,21 @@ export function AuthProvider({ children }) {
     if (u) persistUser(await resolveRole(normalizeSupabase(u)));
   };
 
-  // Guarda datos de la cuenta (tipo, teléfono, documento, empresa) en user_metadata.
-  // Nombre y teléfono además se sincronizan con el perfil del backend.
+  // Guarda datos de la cuenta (nombre, teléfono, tipo, documento, empresa) con PATCH /profile.
+  // Con la cuenta verificada la identidad queda bloqueada (409 IDENTITY_LOCKED).
   const updateProfile = async (meta) => {
     if (user?.id?.startsWith("mock-")) {
       persistUser({ ...user, user_metadata: { ...user.user_metadata, ...meta } });
       return { error: null };
     }
-    const { data, error } = await supabase.auth.updateUser({ data: meta });
-    if (error) return { error };
-    const patch = {
-      ...(meta.full_name ? { fullName: meta.full_name } : {}),
-      ...(meta.phone ? { phone: meta.phone } : {}),
-    };
-    if (Object.keys(patch).length) {
-      try { await api.patch("/profile", patch); } catch (err) { console.warn("[profile]", err?.message); }
+    try {
+      const res  = await api.patch("/profile", toProfilePatch(meta));
+      const base = meta.phone ? { ...user, user_metadata: { ...user.user_metadata, phone: meta.phone } } : user;
+      persistUser(res?.data ? withProfile(base, res.data) : await resolveRole(base));
+      return { error: null };
+    } catch (err) {
+      return { error: { message: apiErrorMessage(err, "No se pudieron guardar los datos."), code: errorCode(err) } };
     }
-    persistUser(await resolveRole(normalizeSupabase(data.user)));
-    return { error: null };
   };
 
   const resetPassword = async (email) => {

@@ -12,9 +12,12 @@ const TYPE_FILTERS = [
   { key: "todos",      icon: <Folder size={16} aria-hidden="true" />,    label: "Todos" },
   { key: "AUTO",       icon: <Car size={16} aria-hidden="true" />,       label: "Carros" },
   { key: "MOTO",       icon: <Motorbike size={16} aria-hidden="true" />, label: "Motos" },
-  { key: "CAMIONETA",  icon: <Van size={16} aria-hidden="true" />,       label: "Panel / Microbús" },
+  { key: "PANEL",      icon: <Van size={16} aria-hidden="true" />,       label: "Panel / Microbús" },
   { key: "CAMION",     icon: <Truck size={16} aria-hidden="true" />,     label: "Camión / Bus" },
 ];
+
+// Los paneles viejos quedaron guardados como CAMIONETA
+const matchesType = (v, key) => v.category === key || (key === "PANEL" && v.category === "CAMIONETA");
 
 const Favoritos = () => {
   const { ids, items, loading: favLoading, error: favError, isServer, clear, reload } = useFavorites();
@@ -37,7 +40,6 @@ const Favoritos = () => {
     if (!missingKey) return;
     let ignore = false;
     const pending = missingKey.split(",");
-    // TODO backend: GET /vehicles/:id no está documentado (solo /vehicles/:slug/detail)
     Promise.allSettled(pending.map((id) => api.get(`/vehicles/${id}`))).then((results) => {
       if (ignore) return;
       setCache((prev) => {
@@ -75,7 +77,7 @@ const Favoritos = () => {
   const favoriteVehicles = useMemo(() => {
     const filtered = typeFilter === "todos"
       ? allVehicles
-      : allVehicles.filter((v) => v.category === typeFilter);
+      : allVehicles.filter((v) => matchesType(v, typeFilter));
 
     switch (sortBy) {
       case "priceAsc":  return [...filtered].sort((a, b) => a.price - b.price);
@@ -87,7 +89,7 @@ const Favoritos = () => {
   }, [allVehicles, sortBy, typeFilter]);
 
   const countFor = (key) =>
-    key === "todos" ? allVehicles.length : allVehicles.filter((v) => v.category === key).length;
+    key === "todos" ? allVehicles.length : allVehicles.filter((v) => matchesType(v, key)).length;
 
   const handleClear = () => {
     if (!window.confirm("¿Quitar todos tus favoritos?")) return;

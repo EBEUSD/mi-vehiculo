@@ -397,6 +397,14 @@ const DatosVehiculoStep = ({ formData, onChange }) => {
                   ))}
                 </select>
               </div>
+              <div className={styles.field}>
+                <label>Origen</label>
+                <select name="origen" value={formData.origen || ""} onChange={onChange}>
+                  <option value="">Sin especificar</option>
+                  <option value="NACIONAL">Nacional (agencia local)</option>
+                  <option value="IMPORTADO">Importado</option>
+                </select>
+              </div>
               <div className={styles.condKmRow}>
                 <div className={styles.field}>
                   <label>Condición <span>*</span></label>

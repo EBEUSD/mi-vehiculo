@@ -15,14 +15,17 @@ const Vehiculos = lazy(() => import("./pages/Vehiculos/Vehiculos"));
 const VehiculoDetalle = lazy(() => import("./pages/VehiculoDetalle/VehiculoDetalle"));
 const Productos = lazy(() => import("./pages/Productos/Productos"));
 const ProductoDetalle = lazy(() => import("./pages/ProductoDetalle/ProductoDetalle"));
+const ServicioDetalle = lazy(() => import("./pages/ServicioDetalle/ServicioDetalle"));
 const Favoritos = lazy(() => import("./pages/Favoritos/Favoritos"));
 const VendedorDashboard = lazy(() => import("./pages/Vendedor/Dashboard/VendedorDashboard"));
 const PublicarCategoria = lazy(() => import("./pages/Vendedor/PublicarCategoria/PublicarCategoria"));
 const PublicarVehiculo = lazy(() => import("./pages/Vendedor/PublicarVehiculo/PublicarVehiculo"));
 const PublicarRepuesto = lazy(() => import("./pages/Vendedor/PublicarRepuesto/PublicarRepuesto"));
 const PublicarAccesorio = lazy(() => import("./pages/Vendedor/PublicarAccesorio/PublicarAccesorio"));
+const PublicarServicio = lazy(() => import("./pages/Vendedor/PublicarServicio/PublicarServicio"));
 const EditarVehiculo = lazy(() => import("./pages/Vendedor/EditarVehiculo/EditarVehiculo"));
 const EditarProducto = lazy(() => import("./pages/Vendedor/EditarProducto/EditarProducto"));
+const EditarServicio = lazy(() => import("./pages/Vendedor/EditarServicio/EditarServicio"));
 const Login = lazy(() => import("./pages/Login/Login"));
 const ComoFunciona = lazy(() => import("./pages/ComoFunciona/ComoFunciona"));
 const Contacto = lazy(() => import("./pages/Contacto/Contacto"));
@@ -93,6 +96,7 @@ function AppRoutes() {
         <Route path="/vehiculo/:slug" element={<VehiculoDetalle />} />
         <Route path="/productos" element={<Productos />} />
         <Route path="/producto/:slug" element={<ProductoDetalle />} />
+        <Route path="/servicio/:slug" element={<ServicioDetalle />} />
         <Route path="/favoritos" element={<Favoritos />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -147,6 +151,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/publicar/servicio"
+          element={
+            <PrivateRoute>
+              <PublicarServicio />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/editar/vehiculo/:slug"
           element={
             <PrivateRoute>
@@ -159,6 +171,14 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <EditarProducto />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/editar/servicio/:id"
+          element={
+            <PrivateRoute>
+              <EditarServicio />
             </PrivateRoute>
           }
         />

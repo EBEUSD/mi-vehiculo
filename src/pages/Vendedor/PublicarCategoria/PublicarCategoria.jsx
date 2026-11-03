@@ -40,8 +40,7 @@ const CATEGORIAS = [
     icon: <UserCog size={36} />,
     titulo: "Servicio",
     sub: "Talleres, grúas, detailing, trámites, seguros y más",
-    // Todavía no hay alta de servicios en el backend: por ahora se gestiona por contacto
-    ruta: "/contacto?asunto=servicio",
+    ruta: "/publicar/servicio",
     color: "#d97706",
     bg: "#fffbeb",
     items: ["Taller mecánico", "CarWash", "Grúas", "Trámites SERTRACEN", "Seguros"],

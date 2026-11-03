@@ -1,8 +1,7 @@
 // Catálogo central de categorías de la plataforma (home, búsqueda, publicar).
 //
-// `api` es el enum VehicleCategory del backend. El backend todavía no tiene
-// enums propios para Panel/Microbús ni Maquinaria, así que por ahora se
-// guardan como CAMIONETA y OTRO. Cuando el backend los agregue, cambiar acá.
+// `api` es el enum VehicleCategory del backend. Las publicaciones viejas de
+// maquinaria o panel pueden haber quedado como OTRO o CAMIONETA.
 
 import {
   Car, Motorbike, Truck, Van, Tractor, Sailboat, Plane, Bike, Scooter, Cog, Package, Wrench,
@@ -22,10 +21,10 @@ export const VEHICLE_CATEGORIES = [
   { id: "carros",     label: "Carro / Pickup / SUV", short: "Carros",       icon: Car,   api: "AUTO",      brands: AUTO_BRANDS,       filters: MOTOR },
   { id: "motos",      label: "Moto",                 short: "Motos",        icon: Motorbike, api: "MOTO",      brands: MOTO_BRANDS,       filters: MOTOR },
   { id: "camiones",   label: "Camión / Bus",         short: "Camión / Bus", icon: Truck, api: "CAMION",    brands: TRUCK_BRANDS,      filters: MOTOR },
-  { id: "panel",      label: "Panel / Microbús",     short: "Panel",        icon: Van,   api: "CAMIONETA", brands: PANEL_BRANDS,      filters: MOTOR },
-  { id: "maquinaria", label: "Maquinaria",           short: "Maquinaria",   icon: Tractor, api: "OTRO",      brands: MAQUINARIA_BRANDS, filters: { ...MOTOR, km: false } },
+  { id: "panel",      label: "Panel / Microbús",     short: "Panel",        icon: Van,   api: "PANEL",     brands: PANEL_BRANDS,      filters: MOTOR },
+  { id: "maquinaria", label: "Maquinaria",           short: "Maquinaria",   icon: Tractor, api: "MAQUINARIA", brands: MAQUINARIA_BRANDS, filters: { ...MOTOR, km: false } },
   { id: "acuaticos",  label: "Acuáticos",            short: "Acuáticos",    icon: Sailboat, api: "ACUATICO",  brands: ACUATICO_BRANDS,   filters: { ...MOTOR, km: false, transmission: false } },
-  { id: "aeronaves",  label: "Aeronaves",            short: "Aeronaves",    icon: Plane, api: "AEREO",     brands: AERONAVE_BRANDS,   filters: { ...MOTOR, km: false, transmission: false } },
+  { id: "aeronaves",  label: "Aeronaves",            short: "Aeronaves",    icon: Plane, api: "AERONAVE",  brands: AERONAVE_BRANDS,   filters: { ...MOTOR, km: false, transmission: false } },
   { id: "bicicletas", label: "Bicicletas / Remolques", short: "Bicicletas", icon: Bike,  api: "BICICLETA", brands: BICICLETA_BRANDS,  filters: SIN_MOTOR },
   { id: "otros",      label: "Otros vehículos",      short: "Otros",        icon: Scooter, api: "OTRO",      brands: OTROS_BRANDS,      filters: MOTOR },
 ];
@@ -61,6 +60,13 @@ export const SERVICE_TYPES = [
   "Soldadura industrial y torno",
 ];
 
+// serviceType que se guarda en el backend (/services): slug estable por tipo
+const slugify = (label) => label.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+  .replace(/\(.*?\)/g, "").replace(/&/g, "y").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+export const SERVICE_TYPE_OPTIONS = SERVICE_TYPES.map((label) => ({ value: slugify(label), label }));
+export const serviceTypeLabel = (slug) =>
+  SERVICE_TYPE_OPTIONS.find((o) => o.value === slug)?.label || "Servicio";
+
 export const OPERATION_TYPES = ["Venta", "Compra", "Alquiler", "Leasing", "Permuta", "Servicios"];
 
 export const SELLER_TYPES = ["Particular", "Agencia/Lote", "Importado"];
@@ -88,7 +94,8 @@ export const getBrandsForCategory = (idOrLabel) => getVehicleCategory(idOrLabel)
 // Etiqueta a mostrar para un enum del backend
 const API_LABEL = {
   AUTO: "Carro / Pickup / SUV", MOTO: "Moto", CAMION: "Camión / Bus",
-  CAMIONETA: "Panel / Microbús", ACUATICO: "Acuáticos", AEREO: "Aeronaves",
+  CAMIONETA: "Panel / Microbús", PANEL: "Panel / Microbús", MAQUINARIA: "Maquinaria",
+  ACUATICO: "Acuáticos", AERONAVE: "Aeronaves",
   BICICLETA: "Bicicletas / Remolques", OTRO: "Otros vehículos",
 };
 export const labelForApiCategory = (api) => API_LABEL[api] || "Otros vehículos";

@@ -1,12 +1,16 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Building2, CalendarClock, Check, Gift, Zap, Star } from "lucide-react";
-import { PLANS, CONSULT_PLANS } from "../../../../../lib/plans";
+import { CONSULT_PLANS } from "../../../../../lib/plans";
+import { usePricing } from "../../../../../lib/pricing";
 import styles from "./PlanPublicacionStep.module.css";
 
 const ICONS = { gratuito: Gift, basico: Zap, premium: Star };
 
 export default function PlanPublicacionStep({ formData, onChange }) {
   const selected = formData.plan || null;
+  // Precios del servidor; el gratuito es 1 por año entre todas las publicaciones
+  const { plans, freeQuota } = usePricing();
+  const freeUsed = freeQuota ? freeQuota.remaining <= 0 : false;
 
   const handleSelect = (planId) => {
     onChange({ target: { name: "plan", value: planId } });
@@ -22,9 +26,10 @@ export default function PlanPublicacionStep({ formData, onChange }) {
       </div>
 
       <div className={styles.grid}>
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const Icon = ICONS[plan.id];
           const isSelected = selected === plan.id;
+          const disabled = plan.precio === null && freeUsed;
 
           return (
             <button
@@ -34,9 +39,11 @@ export default function PlanPublicacionStep({ formData, onChange }) {
                 styles.card,
                 plan.highlight ? styles.cardHighlight : "",
                 isSelected ? styles.cardSelected : "",
+                disabled ? styles.cardDisabled : "",
               ].join(" ")}
               style={{ "--accent": plan.accent }}
               onClick={() => handleSelect(plan.id)}
+              disabled={disabled}
             >
               {plan.badge && (
                 <span className={styles.badge} style={{ background: plan.accent }}>
@@ -85,7 +92,9 @@ export default function PlanPublicacionStep({ formData, onChange }) {
                 ))}
               </ul>
 
-              {plan.nota && <p className={styles.nota}>{plan.nota}</p>}
+              {disabled
+                ? <p className={styles.nota}>Ya usaste tu publicación gratuita de este año.</p>
+                : plan.nota && <p className={styles.nota}>{plan.nota}</p>}
             </button>
           );
         })}

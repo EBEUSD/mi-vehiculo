@@ -6,6 +6,8 @@ import {
 import { useAuth } from "../../../context/AuthContext";
 import { api } from "../../../lib/api";
 import { redirectToWompiCheckout } from "../../../lib/wompi";
+import { publishItem, errorCode, apiErrorMessage } from "../../../lib/publishing";
+import { usePricing } from "../../../lib/pricing";
 import { getPlan, publishLabelFor } from "../../../lib/plans";
 import { isValidPrice, parseMoney } from "../../../lib/money";
 import { isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
@@ -47,6 +49,7 @@ const PublicarProducto = ({ config }) => {
   } = config;
 
   const { user } = useAuth();
+  const { plans } = usePricing();
   const navigate = useNavigate();
   const later = useSafeTimeout();
 
@@ -234,19 +237,23 @@ const PublicarProducto = ({ config }) => {
 
       // 3. Pago → WOMPI (el borrador se limpia al confirmar el pago)
       if (formData.plan !== "gratuito") {
-        redirectToWompiCheckout({ plan: formData.plan, itemId: progress.id, itemType });
+        await redirectToWompiCheckout({ plan: formData.plan, itemId: progress.id, itemType });
         return;
       }
 
+      // Gratuito: consume el cupo anual; sin verificar queda PENDING
+      let pendingApproval = false;
       try {
-        await api.post(`/products/${progress.id}/publish`, { plan: "gratuito" });
+        const res = await publishItem({ itemType, itemId: progress.id, plan: "gratuito" });
+        pendingApproval = res.status === "PENDING";
       } catch (err) {
-        if (err?.status !== 409) throw err; // 409 = ya publicado
+        if (errorCode(err) === "PENDING_REVIEW") pendingApproval = true;
+        else if (err?.status !== 409) throw err; // ALREADY_ACTIVE
       }
       clearDraft(draftKey);
-      navigate("/vendedor?tab=publicaciones&success=1");
+      navigate(`/vendedor?tab=publicaciones&success=${pendingApproval ? "pending" : "1"}`);
     } catch (err) {
-      setPublishError(err?.message || "Error al publicar. Intentá de nuevo.");
+      setPublishError(apiErrorMessage(err, "Error al publicar. Intentá de nuevo."));
     } finally {
       publishingRef.current = false;
       setPublishing(false);
@@ -403,7 +410,7 @@ const PublicarProducto = ({ config }) => {
                   aria-busy={publishing}
                 >
                   <CheckCircle size={18} />
-                  {publishing ? "Publicando…" : publishLabelFor(formData.plan)}
+                  {publishing ? "Publicando…" : publishLabelFor(formData.plan, plans)}
                 </button>
                 {identityPending && (
                   <p className={styles.publishError}>

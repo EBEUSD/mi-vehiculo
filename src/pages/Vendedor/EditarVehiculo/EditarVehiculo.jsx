@@ -10,6 +10,8 @@ import { formatUSD, isValidPrice, parseMoney } from "../../../lib/money";
 import { formatSvPhone, isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
 import { IMAGE_ACCEPT, validateImageFiles } from "../../../lib/images";
 import useSafeTimeout from "../../../hooks/useSafeTimeout";
+import { VEHICLE_CATEGORIES } from "../../../lib/categories";
+import { apiErrorMessage, errorCode, publishItem } from "../../../lib/publishing";
 import LocationSelect from "../shared/LocationSelect/LocationSelect";
 import styles from "./EditarVehiculo.module.css";
 
@@ -17,15 +19,10 @@ import styles from "./EditarVehiculo.module.css";
 const CY = new Date().getFullYear();
 const YEARS = Array.from({ length: CY - 1959 }, (_, i) => CY + 1 - i);
 
-const CATEGORY_OPTIONS = [
-  { value: "AUTO",      label: "Auto" },
-  { value: "MOTO",      label: "Moto" },
-  { value: "CAMIONETA", label: "Camioneta / Pick-up" },
-  { value: "CAMION",    label: "Camión" },
-  { value: "ACUATICO",  label: "Náutica" },
-  { value: "BICICLETA", label: "Bicicleta" },
-  { value: "OTRO",      label: "Otro" },
-];
+const CATEGORY_OPTIONS = VEHICLE_CATEGORIES
+  .filter((c) => c.id !== "otros")
+  .map((c) => ({ value: c.api, label: c.label }))
+  .concat({ value: "OTRO", label: "Otros vehículos" });
 
 const COMBUSTIBLE_OPTIONS = ["Gasolina", "Diésel", "Híbrido", "Eléctrico", "Gas Natural", "Otro"];
 const TRANSMISION_OPTIONS = ["Manual", "Automático", "CVT", "Semiautomático", "Doble embrague"];
@@ -50,7 +47,9 @@ const fromApi = (v, attrDefs) => {
     version:           v.version            || "",
     km:                String(v.mileage     || 0),
     condicion:         v.condition === "NEW" ? "Nuevo" : "Usado",
-    categoria:         v.category           || "AUTO",
+    origen:            v.origin || "",
+    // Antes de tener enum propio, los paneles se guardaban como CAMIONETA
+    categoria:         (v.category === "CAMIONETA" ? "PANEL" : v.category) || "AUTO",
     precio:            v.price ? String(v.price) : "",
     aceptaPermuta:     v.acceptsExchange    ? "Si" : "No",
     precioNegociable:  v.negotiablePrice    ? "Si" : "No",
@@ -192,6 +191,7 @@ const EditarVehiculo = () => {
         year:               parseInt(form.anio)     || undefined,
         version:            form.version            || undefined,
         condition:          form.condicion === "Nuevo" ? "NEW" : "USED",
+        origin:             form.origen || undefined,
         mileage:            parseInt(String(form.km).replace(/\D/g, "")) || 0,
         price:              parseMoney(form.precio),
         currency:           "USD",
@@ -215,14 +215,23 @@ const EditarVehiculo = () => {
     }
   };
 
-  /* Change status */
+  // Activar solo por /publish (PATCH status ACTIVE responde 403): si el plan sigue
+  // vigente no se cobra; si venció hay que volver a publicarla desde el panel.
   const handleStatusChange = async (newStatus) => {
     if (newStatus === form.status) return;
     try {
+      if (newStatus === "ACTIVE") {
+        const data = await publishItem({ itemType: "vehicle", itemId: form.vehicleId });
+        setForm((p) => ({ ...p, status: data.status || "ACTIVE" }));
+        return;
+      }
       await api.patch(`/vehicles/${form.vehicleId}/status`, { status: newStatus });
       setForm((p) => ({ ...p, status: newStatus }));
-    } catch {
-      setSaveError("No se pudo cambiar el estado.");
+    } catch (err) {
+      const code = errorCode(err);
+      setSaveError(code === "INVALID_PLAN" || code === "PAYMENT_REQUIRED"
+        ? "La publicación venció. Volvé a publicarla desde tu panel eligiendo un plan."
+        : apiErrorMessage(err, "No se pudo cambiar el estado."));
     }
   };
 
@@ -412,6 +421,14 @@ const EditarVehiculo = () => {
                       </button>
                     ))}
                   </div>
+                </Field>
+
+                <Field label="Origen">
+                  <select value={form.origen} onChange={(e) => set("origen", e.target.value)}>
+                    <option value="">Sin especificar</option>
+                    <option value="NACIONAL">Nacional (agencia local)</option>
+                    <option value="IMPORTADO">Importado</option>
+                  </select>
                 </Field>
               </div>
             </section>

@@ -49,7 +49,7 @@ export const mapVehicleCard = (row) => ({
   fuel:         attrValue(row, "combustible"),
   transmission: attrValue(row, "transm"),
   operation:    attrValue(row, "operaci"),
-  origin:       attrValue(row, "origen"),
+  origin:       row.origin === "IMPORTADO" ? "Importado" : row.origin === "NACIONAL" ? "Nacional" : attrValue(row, "origen"),
   condition:    row.condition === "NEW" ? "new" : row.condition === "USED" ? "used" : "",
   location:     [row.city?.name, row.city?.province?.name].filter(Boolean).join(", "),
   image:        primaryImage(row.images),

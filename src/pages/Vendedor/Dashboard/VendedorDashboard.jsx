@@ -1,18 +1,20 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { api, clearTokens } from "../../../lib/api";
-import { supabase } from "../../../lib/supabase";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Home, Car, MessageCircle, Heart, PlusCircle,
   Headphones, ArrowRight, Eye, Edit2, Trash2, Pause,
   Play, CheckCircle, User, Save, ChevronRight, AlertCircle,
   Camera, Building2, TrendingUp, Bell, ShieldAlert, Lock,
-  Share2, Sparkles,
+  Share2, Sparkles, BadgeCheck, RotateCcw,
 } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import Navbar from "../../../components/Navbar/Navbar";
-import { HIGHLIGHT_OPTIONS } from "../../../lib/plans";
-import { DEPARTAMENTOS } from "../../../lib/categories";
+import { usePricing } from "../../../lib/pricing";
+import { redirectToFeatureCheckout, redirectToWompiCheckout } from "../../../lib/wompi";
+import { apiErrorMessage, errorCode, productItemType, publishItem } from "../../../lib/publishing";
+import { DEPARTAMENTOS, serviceTypeLabel } from "../../../lib/categories";
+import { ITEM_RESOURCE } from "../../../lib/wompi";
 import { validateImageFiles } from "../../../lib/images";
 import useSafeTimeout from "../../../hooks/useSafeTimeout";
 import { isValidSvPhone, normalizeSvPhone } from "../../../lib/phone";
@@ -20,8 +22,8 @@ import styles from "./VendedorDashboard.module.css";
 
 /* ── Helpers ──────────────────────────────────── */
 const STATUS_LABEL = {
-  ACTIVE: "activo", DRAFT: "pausado", PAUSED: "pausado", SOLD: "vendido",
-  PENDING: "pendiente", REJECTED: "rechazado",
+  ACTIVE: "activo", DRAFT: "borrador", PAUSED: "pausado", SOLD: "vendido",
+  PENDING: "pendiente", REJECTED: "rechazado", EXPIRED: "vencido",
 };
 
 // API expects "individual" | "dealer" — map from the 3 internal UI values
@@ -37,41 +39,68 @@ const STATUS_META = {
   vendido: { label: "Vendido", color: "#6b7a99", bg: "rgba(107,122,153,0.1)" },
   pendiente: { label: "Pendiente de aprobación", color: "#1d4ed8", bg: "rgba(29,78,216,0.08)" },
   rechazado: { label: "Rechazada", color: "#dc2626", bg: "rgba(220,38,38,0.08)" },
+  vencido:   { label: "Vencida",   color: "#6b7a99", bg: "rgba(107,122,153,0.1)" },
+  borrador:  { label: "Borrador",  color: "#6b7a99", bg: "rgba(107,122,153,0.1)" },
 };
 
 // Solo activas y pausadas se pueden pausar/activar; pendientes y rechazadas las resuelve el equipo
 const canToggle = (status) => status === "activo" || status === "pausado";
+// Borradores y vencidas se publican eligiendo un plan otra vez
+const needsPlan = (status) => status === "borrador" || status === "vencido";
+// Se puede destacar una publicación activa, pendiente o pausada
+const canFeature = (status) => status === "activo" || status === "pendiente" || status === "pausado";
+const isFeatured = (pub) => Boolean(pub.featuredUntil) && new Date(pub.featuredUntil) > new Date();
+const shortDate = (iso) => new Date(iso).toLocaleDateString("es-SV", { day: "numeric", month: "short" });
+
+// Campos comunes de vehículos, productos y servicios
+const pubBase = (row) => ({
+  id:             row.id,
+  slug:           row.slug || "",
+  status:         STATUS_LABEL[row.status] || "activo",
+  vistas:         row.views || 0,
+  consultas:      0,
+  favoritos:      0,
+  image:          row.images?.find((i) => i.isPrimary)?.url || row.images?.[0]?.url || null,
+  featuredUntil:  row.featuredUntil || null,
+  expiresAt:      row.expiresAt || null,
+  moderationNotes: row.moderationNotes || "",
+});
+
+const money = (n) => `${new Intl.NumberFormat("en-US").format(n || 0)}`;
 
 const mapRowToPub = (row) => ({
-  id:        row.id,
-  slug:      row.slug || "",
+  ...pubBase(row),
   titulo:    [row.brand?.name, row.model?.name, row.version].filter(Boolean).join(" "),
   año:       row.year || 0,
   km:        (row.mileage || 0).toLocaleString("en-US"),
-  precio:    `$${new Intl.NumberFormat("en-US").format(row.price || 0)}`,
-  status:    STATUS_LABEL[row.status] || "activo",
-  vistas:    row.views || 0,
-  consultas: 0,
-  favoritos: 0,
-  image:     row.images?.find((i) => i.isPrimary)?.url || row.images?.[0]?.url || null,
+  precio:    money(row.price),
   type:      "vehicle",
+  itemType:  "vehicle",
 });
 
 const mapProductToPub = (row) => ({
-  id:        row.id,
-  slug:      row.slug || "",
+  ...pubBase(row),
   titulo:    row.title || "—",
   tipo:      row.category?.name || "Producto",
   año:       "",
   km:        "",
-  precio:    `$${new Intl.NumberFormat("en-US").format(row.price || 0)}`,
-  status:    STATUS_LABEL[row.status] || "activo",
-  vistas:    row.views || 0,
-  consultas: 0,
-  favoritos: 0,
-  image:     row.images?.find((i) => i.isPrimary)?.url || row.images?.[0]?.url || null,
+  precio:    money(row.price),
   type:      "product",
+  itemType:  productItemType(row),
 });
+
+const mapServiceToPub = (row) => ({
+  ...pubBase(row),
+  titulo:    row.title || "—",
+  tipo:      serviceTypeLabel(row.serviceType),
+  año:       "",
+  km:        "",
+  precio:    row.price ? `${row.priceNote ? `${row.priceNote} ` : ""}${money(row.price)}` : "A convenir",
+  type:      "service",
+  itemType:  "servicio",
+});
+
+const statusEndpoint = (pub) => `/${ITEM_RESOURCE[pub.itemType]}/${pub.id}/status`;
 
 const relTime = (iso) => {
   if (!iso) return "";
@@ -175,9 +204,10 @@ function ViewInicio({ stats, pubs, leads, unread, onNavigate }) {
   );
 }
 
-const pubPath = (pub) => (pub.type === "product" ? `/producto/${pub.slug}` : `/vehiculo/${pub.slug}`);
+const PUB_PATH = { product: "producto", service: "servicio", vehicle: "vehiculo" };
+const pubPath = (pub) => `/${PUB_PATH[pub.type]}/${pub.slug}`;
 
-function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
+function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight, onRepublish }) {
   const meta = STATUS_META[pub.status] || STATUS_META.activo;
   const [copied, setCopied] = useState(false);
   const later = useSafeTimeout();
@@ -213,11 +243,20 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
           </span>
         </div>
         <span className={styles.pubMeta}>
-          {pub.type === "product"
+          {pub.type !== "vehicle"
             ? `${pub.tipo || "Producto"} · ${pub.precio}`
             : `${pub.año} · ${pub.km} km · ${pub.precio}`
           }
         </span>
+        {!compact && (isFeatured(pub) || (pub.expiresAt && pub.status === "activo")) && (
+          <span className={styles.pubDates}>
+            {isFeatured(pub) && <span className={styles.pubFeatured}><Sparkles size={12} /> Destacada hasta el {shortDate(pub.featuredUntil)}</span>}
+            {pub.expiresAt && pub.status === "activo" && <span>Vence el {shortDate(pub.expiresAt)}</span>}
+          </span>
+        )}
+        {!compact && pub.status === "rechazado" && pub.moderationNotes && (
+          <span className={styles.pubNotes}>Motivo: {pub.moderationNotes}</span>
+        )}
         <div className={styles.pubStats}>
           <span><Eye size={13} /> {pub.vistas}</span>
           <span><MessageCircle size={13} /> {pub.consultas}</span>
@@ -262,10 +301,19 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
               {copied ? <CheckCircle size={15} /> : <Share2 size={15} />}
             </button>
           )}
-          {pub.status === "activo" && (
+          {needsPlan(pub.status) && (
             <button
               className={styles.iconBtn}
-              title="Destacar"
+              title={pub.status === "vencido" ? "Volver a publicar" : "Publicar"}
+              onClick={() => onRepublish && onRepublish(pub)}
+            >
+              <RotateCcw size={15} />
+            </button>
+          )}
+          {canFeature(pub.status) && (
+            <button
+              className={styles.iconBtn}
+              title={isFeatured(pub) ? "Extender destaque" : "Destacar"}
               onClick={() => onHighlight && onHighlight(pub)}
             >
               <Sparkles size={15} />
@@ -284,12 +332,25 @@ function PubCard({ pub, compact, onToggle, onDelete, onEdit, onHighlight }) {
   );
 }
 
-// Destacar: el backend todavía no tiene endpoint/cobro de destaque,
-// así que la opción elegida se envía como solicitud por contacto.
+// Destacar: se paga con Wompi y el backend aplica el destaque (POST /:id/feature).
+// Si ya estaba destacada, los días se suman desde la fecha de fin actual.
 function HighlightModal({ pub, onClose }) {
-  const [dias, setDias] = useState(HIGHLIGHT_OPTIONS[0].dias);
-  const opt = HIGHLIGHT_OPTIONS.find((o) => o.dias === dias);
-  const contactUrl = `/contacto?asunto=destacar&publicacion=${encodeURIComponent(pub.slug || pub.id)}&dias=${dias}`;
+  const { highlights } = usePricing();
+  const [dias, setDias] = useState(highlights[0]?.dias);
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState("");
+  const opt = highlights.find((o) => o.dias === dias) || highlights[0];
+
+  const handlePay = async () => {
+    setPaying(true);
+    setError("");
+    try {
+      await redirectToFeatureCheckout({ days: opt.dias, itemId: pub.id, itemType: pub.itemType });
+    } catch (err) {
+      setError(err?.message || "No se pudo iniciar el pago. Intentá de nuevo.");
+      setPaying(false);
+    }
+  };
 
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -297,16 +358,17 @@ function HighlightModal({ pub, onClose }) {
         <div className={styles.modalIconWrap} style={{ background: "#eef4ff" }}>
           <Sparkles size={26} style={{ color: "#1d4ed8" }} />
         </div>
-        <h3 className={styles.modalTitle}>Destacar publicación</h3>
+        <h3 className={styles.modalTitle}>{isFeatured(pub) ? "Extender destaque" : "Destacar publicación"}</h3>
         <p className={styles.modalDesc}>
           <strong>{pub.titulo}</strong> se resaltará y aparecerá en las primeras posiciones de búsqueda.
+          {isFeatured(pub) && <> Hoy está destacada hasta el {shortDate(pub.featuredUntil)}: los días se suman a partir de esa fecha.</>}
         </p>
         <div className={styles.highlightOptions}>
-          {HIGHLIGHT_OPTIONS.map((o) => (
+          {highlights.map((o) => (
             <button
               key={o.dias}
               type="button"
-              className={`${styles.highlightOption} ${o.dias === dias ? styles.highlightOptionActive : ""}`}
+              className={`${styles.highlightOption} ${o.dias === opt?.dias ? styles.highlightOptionActive : ""}`}
               onClick={() => setDias(o.dias)}
             >
               <strong>${o.precio}</strong>
@@ -314,14 +376,90 @@ function HighlightModal({ pub, onClose }) {
             </button>
           ))}
         </div>
-        <p className={styles.modalDesc} style={{ fontSize: 12.5 }}>
-          El pago online de destaques estará disponible próximamente. Por ahora envianos la solicitud y te contactamos para activarlo.
-        </p>
+        {error && <p className={styles.inlineError} role="alert">{error}</p>}
         <div className={styles.modalActions}>
           <button className={styles.modalCancelBtn} onClick={onClose} type="button">Cancelar</button>
-          <Link to={contactUrl} className={`${styles.modalConfirmBtn} ${styles.modalConfirmBlue}`}>
-            Solicitar destaque — ${opt.precio}
-          </Link>
+          <button
+            type="button"
+            className={`${styles.modalConfirmBtn} ${styles.modalConfirmBlue}`}
+            onClick={handlePay}
+            disabled={paying || !opt}
+          >
+            {paying ? "Redirigiendo…" : `Pagar destaque — $${opt?.precio}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Borrador o vencida: se vuelve a elegir plan. El gratuito consume el cupo anual.
+function RepublishModal({ pub, onClose, onPublished }) {
+  const { plans, freeQuota } = usePricing();
+  const freeLeft = freeQuota ? freeQuota.remaining > 0 : true;
+  const [planId, setPlanId] = useState(freeLeft ? "gratuito" : "basico");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const plan = plans.find((p) => p.id === planId);
+
+  const handleConfirm = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      if (plan.precio !== null) {
+        await redirectToWompiCheckout({ plan: planId, itemId: pub.id, itemType: pub.itemType });
+        return;
+      }
+      const res = await publishItem({ itemType: pub.itemType, itemId: pub.id, plan: planId });
+      onPublished(pub, res);
+    } catch (err) {
+      setError(apiErrorMessage(err, "No se pudo publicar. Intentá de nuevo."));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalIconWrap} style={{ background: "#eef4ff" }}>
+          <RotateCcw size={26} style={{ color: "#1d4ed8" }} />
+        </div>
+        <h3 className={styles.modalTitle}>{pub.status === "vencido" ? "Volver a publicar" : "Publicar"}</h3>
+        <p className={styles.modalDesc}>
+          Elegí el plan para <strong>{pub.titulo}</strong>. La duración empieza a contar cuando la publicación queda activa.
+        </p>
+        <div className={styles.highlightOptions}>
+          {plans.map((p) => {
+            const disabled = p.precio === null && !freeLeft;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                className={`${styles.highlightOption} ${p.id === planId ? styles.highlightOptionActive : ""}`}
+                onClick={() => setPlanId(p.id)}
+                disabled={disabled}
+                title={disabled ? "Ya usaste tu publicación gratuita de este año" : undefined}
+              >
+                <strong>{p.precio === null ? "Gratis" : `$${p.precio}`}</strong>
+                <span>{p.nombre} · {p.dias} días</span>
+              </button>
+            );
+          })}
+        </div>
+        {!freeLeft && (
+          <p className={styles.modalDesc} style={{ fontSize: 12.5 }}>Ya usaste tu publicación gratuita de este año.</p>
+        )}
+        {error && <p className={styles.inlineError} role="alert">{error}</p>}
+        <div className={styles.modalActions}>
+          <button className={styles.modalCancelBtn} onClick={onClose} type="button">Cancelar</button>
+          <button
+            type="button"
+            className={`${styles.modalConfirmBtn} ${styles.modalConfirmBlue}`}
+            onClick={handleConfirm}
+            disabled={busy || !plan}
+          >
+            {busy ? "Procesando…" : plan?.precio === null ? "Publicar gratis" : `Pagar y publicar — $${plan?.precio}`}
+          </button>
         </div>
       </div>
     </div>
@@ -352,10 +490,10 @@ function ConsultaRow({ c }) {
   );
 }
 
-const FILTER_TABS = ["Todas", "Activas", "Pendientes", "Pausadas", "Vendidas"];
-const FILTER_STATUS = { Todas: null, Activas: "activo", Pendientes: "pendiente", Pausadas: "pausado", Vendidas: "vendido" };
+const FILTER_TABS = ["Todas", "Activas", "Pendientes", "Pausadas", "Vencidas", "Vendidas"];
+const FILTER_STATUS = { Todas: null, Activas: "activo", Pendientes: "pendiente", Pausadas: "pausado", Vencidas: "vencido", Vendidas: "vendido" };
 
-function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit, onHighlight }) {
+function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit, onHighlight, onRepublish }) {
   const [filter, setFilter] = useState("Todas");
 
   const visible = FILTER_STATUS[filter]
@@ -387,7 +525,7 @@ function ViewPublicaciones({ pubs, loading, onToggle, onDelete, onEdit, onHighli
         ) : visible.length === 0 ? (
           <p style={{ padding: "1.5rem", color: "#6b7280", textAlign: "center" }}>No hay publicaciones en esta categoría.</p>
         ) : (
-          visible.map((p) => <PubCard key={p.id} pub={p} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onHighlight={onHighlight} />)
+          visible.map((p) => <PubCard key={p.id} pub={p} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} onHighlight={onHighlight} onRepublish={onRepublish} />)
         )}
       </div>
     </div>
@@ -586,6 +724,8 @@ function ViewPerfil({ onPausedAll }) {
   const [companyPhone, setCompanyPhone]     = useState(meta0.company_phone || "");
   const [companyDesc, setCompanyDesc] = useState("");
   const [website, setWebsite]         = useState("");
+  // Cuenta verificada por el equipo: tipo, documento, NIT, NRC y razón social quedan fijos
+  const [verified, setVerified]       = useState(!!user?.verified);
 
   // Plan
   const [plan, setPlan] = useState(null);
@@ -629,9 +769,14 @@ function ViewPerfil({ onPausedAll }) {
         });
         setEmail(d.email || "");
         setAvatar(d.avatarUrl || null);
-        if (d.sellerType) setSellerType(SELLER_TYPE_FROM_API(d.sellerType));
-        else if (meta.account_type === "EMPRESA") setSellerType("empresa");
+        const accountType = d.accountType || meta.account_type;
+        const fromApi = d.sellerType ? SELLER_TYPE_FROM_API(d.sellerType) : "particular";
+        setSellerType(accountType === "EMPRESA" && fromApi === "particular" ? "empresa" : fromApi);
         setCompanyName(d.companyName || meta.company_name || "");
+        setCompanyNrc(d.nrc || meta.nrc || "");
+        setCompanyAddress(d.companyAddress || meta.company_address || "");
+        setCompanyPhone(d.companyPhone || meta.company_phone || "");
+        setVerified(!!d.verified);
         setCompanyDesc(d.companyDescription || "");
         setWebsite(d.website || "");
         setPlan(d.plan || null);
@@ -700,36 +845,34 @@ function ViewPerfil({ onPausedAll }) {
     if (isMock) { setSaved(true); later(() => setSaved(false), 2000); return; }
     setSaving(true); setFormError("");
     const { docType, docNumber, nit, ...personal } = form;
+    // Con la cuenta verificada el backend rechaza cambios de identidad (IDENTITY_LOCKED): no se envían
+    const identity = verified ? {} : {
+      accountType:    isBusiness ? "EMPRESA" : "PARTICULAR",
+      documentType:   docType,
+      documentNumber: docNumber,
+      dui:            docType === "DUI" ? docNumber : "",
+      nit,
+      ...(isBusiness ? { companyName: companyName.trim(), nrc: companyNrc.trim() } : {}),
+    };
     try {
       await api.patch("/profile", {
         ...personal,
-        dui:                docType === "DUI" ? docNumber : "",
+        ...identity,
         sellerType:         SELLER_TYPE_TO_API[sellerType] || "individual",
-        companyName:        sellerType !== "particular" ? companyName : undefined,
-        companyDescription: sellerType !== "particular" ? companyDesc  : undefined,
-        website:            sellerType !== "particular" ? website      : undefined,
+        companyDescription: isBusiness ? companyDesc : undefined,
+        website:            isBusiness ? website     : undefined,
+        ...(isBusiness ? {
+          companyAddress: companyAddress.trim(),
+          companyPhone:   normalizeSvPhone(companyPhone) || "",
+        } : {}),
       });
-      // Tipo de cuenta, documento, NIT y datos de empresa viven en user_metadata hasta que /profile los soporte
-      await supabase.auth.updateUser({
-        data: {
-          account_type: isBusiness ? "EMPRESA" : "PARTICULAR",
-          document_type: docType, document_number: docNumber, nit,
-          ...(docType === "DUI" ? { dui: docNumber } : {}),
-          ...(isBusiness ? {
-            company_name:    companyName.trim() || null,
-            nrc:             companyNrc.trim() || null,
-            company_address: companyAddress.trim() || null,
-            company_phone:   normalizeSvPhone(companyPhone) || null,
-          } : {}),
-        },
-      }).catch(() => {});
       // Refrescar el usuario del contexto (nombre en navbar, metadata)
       if (typeof refreshUser === "function") {
         try { await refreshUser(); } catch { /* no bloquea el guardado */ }
       }
       setSaved(true);
       later(() => setSaved(false), 3000);
-    } catch (err) { setFormError(err?.message || "No se pudo guardar. Intentá de nuevo."); }
+    } catch (err) { setFormError(apiErrorMessage(err, "No se pudo guardar. Intentá de nuevo.")); }
     finally { setSaving(false); }
   };
 
@@ -868,6 +1011,7 @@ function ViewPerfil({ onPausedAll }) {
               {sellerType === "empresa" ? companyName || "Empresa"
                 : sellerType === "concesionario" ? "Agencia/Lote"
                 : "Vendedor particular"}
+              {verified && <span className={styles.verifiedBadge}><BadgeCheck size={13} /> Verificada</span>}
             </p>
             {avatarError && <p className={styles.inlineError} role="alert">{avatarError}</p>}
           </div>
@@ -878,6 +1022,12 @@ function ViewPerfil({ onPausedAll }) {
           {/* Datos personales */}
           <div className={styles.profileSection}>
             <h3 className={styles.profileSectionTitle}><User size={15} /> Datos personales</h3>
+            {verified && (
+              <p className={styles.lockedNote}>
+                <Lock size={13} /> Tu cuenta está verificada: el tipo de cuenta, el documento, el NIT y la razón social
+                ya no se pueden cambiar desde acá. Si necesitás corregirlos, <Link to="/contacto">contactá a soporte</Link>.
+              </p>
+            )}
             <div className={styles.profileGrid}>
               <div className={styles.profileField}>
                 <label>Nombre completo *</label>
@@ -900,6 +1050,7 @@ function ViewPerfil({ onPausedAll }) {
                 <select
                   value={form.docType}
                   onChange={(e) => setForm((p) => ({ ...p, docType: e.target.value, docNumber: "" }))}
+                  disabled={verified}
                 >
                   {DOC_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                 </select>
@@ -920,6 +1071,7 @@ function ViewPerfil({ onPausedAll }) {
                   placeholder={DOC_TYPES.find((d) => d.value === form.docType)?.placeholder}
                   maxLength={form.docType === "DUI" ? 10 : 20}
                   inputMode={form.docType === "DUI" ? "numeric" : "text"}
+                  disabled={verified}
                 />
               </div>
               <div className={styles.profileField}>
@@ -933,6 +1085,7 @@ function ViewPerfil({ onPausedAll }) {
                   placeholder="0614-010190-101-1"
                   maxLength={17}
                   inputMode="numeric"
+                  disabled={verified}
                 />
               </div>
               <div className={styles.profileField}>
@@ -982,6 +1135,7 @@ function ViewPerfil({ onPausedAll }) {
                   type="button"
                   className={`${styles.sellerPill} ${sellerType === t.id ? styles.sellerPillActive : ""}`}
                   onClick={() => setSellerType(t.id)}
+                  disabled={verified && (t.id === "particular") !== (sellerType === "particular")}
                 >
                   {t.label}
                 </button>
@@ -991,7 +1145,7 @@ function ViewPerfil({ onPausedAll }) {
               <div className={styles.profileGrid} style={{ marginTop: 14 }}>
                 <div className={styles.profileField}>
                   <label>Nombre comercial</label>
-                  <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nombre de tu empresa o agencia" />
+                  <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Nombre de tu empresa o agencia" disabled={verified} />
                 </div>
                 <div className={styles.profileField}>
                   <label>Sitio web</label>
@@ -999,7 +1153,7 @@ function ViewPerfil({ onPausedAll }) {
                 </div>
                 <div className={styles.profileField}>
                   <label>NRC (opcional)</label>
-                  <input value={companyNrc} onChange={(e) => setCompanyNrc(e.target.value.replace(/[^0-9-]/g, "").slice(0, 10))} placeholder="123456-7" inputMode="numeric" />
+                  <input value={companyNrc} onChange={(e) => setCompanyNrc(e.target.value.replace(/[^0-9-]/g, "").slice(0, 10))} placeholder="123456-7" inputMode="numeric" disabled={verified} />
                 </div>
                 <div className={styles.profileField}>
                   <label>Teléfono de la empresa</label>
@@ -1213,6 +1367,7 @@ const VendedorDashboard = () => {
   const [pubsError, setPubsError]   = useState("");
   const [actionError, setActionError] = useState("");
   const [highlightPub, setHighlightPub] = useState(null);
+  const [republishPub, setRepublishPub] = useState(null);
   const [leads, setLeads]       = useState([]);
   const [loadingLeads, setLoadingLeads] = useState(true);
   const isMockUser = !!user?.id?.startsWith("mock-");
@@ -1232,21 +1387,19 @@ const VendedorDashboard = () => {
       setLoadingPubs(true);
       setPubsError("");
       try {
-        const [vehiclesRes, productsRes] = await Promise.allSettled([
+        const results = await Promise.allSettled([
           api.get("/profile/vehicles"),
           api.get("/profile/products"),
+          api.get("/services/me"),
         ]);
         if (ignore) return;
-        const vehicles = vehiclesRes.status === "fulfilled"
-          ? (vehiclesRes.value.data || []).map(mapRowToPub)
-          : [];
-        const products = productsRes.status === "fulfilled"
-          ? (productsRes.value.data || []).map(mapProductToPub)
-          : [];
-        if (vehiclesRes.status !== "fulfilled" && productsRes.status !== "fulfilled") {
+        const mappers = [mapRowToPub, mapProductToPub, mapServiceToPub];
+        const rows = results.flatMap((r, i) =>
+          r.status === "fulfilled" ? (r.value.data || []).map(mappers[i]) : []);
+        if (results.every((r) => r.status !== "fulfilled")) {
           setPubsError("No se pudieron cargar las publicaciones. Revisá tu conexión.");
         }
-        setPubs([...vehicles, ...products]);
+        setPubs(rows);
       } catch {
         if (ignore) return;
         setPubsError("Error al cargar las publicaciones. Intentá recargar la página.");
@@ -1274,42 +1427,54 @@ const VendedorDashboard = () => {
     later(() => setActionError(""), 4000);
   }, [later]);
 
+  const updatePub = useCallback((id, data) => {
+    setPubs((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
+  }, []);
+
   const handleToggle = useCallback(async (pub) => {
-    let newStatus = pub.status === "activo" ? "PAUSED" : "ACTIVE";
     try {
-      if (pub.type !== "product" && newStatus === "ACTIVE") {
-        // Vehículos: reactivar solo por /publish (valida fotos; puede quedar PENDING)
-        const res = await api.post(`/vehicles/${pub.id}/publish`);
-        newStatus = res?.data?.status || "ACTIVE";
-      } else {
-        const endpoint = pub.type === "product" ? `/products/${pub.id}/status` : `/vehicles/${pub.id}/status`;
-        await api.patch(endpoint, { status: newStatus });
+      if (pub.status === "activo") {
+        await api.patch(statusEndpoint(pub), { status: "PAUSED" });
+        updatePub(pub.id, { status: "pausado" });
+        return;
       }
-      setPubs((prev) =>
-        prev.map((p) =>
-          p.id === pub.id ? { ...p, status: STATUS_LABEL[newStatus] || "activo" } : p
-        )
-      );
+      // Reactivar solo por /publish: si sigue vigente no se cobra; puede quedar PENDING
+      const res = await publishItem({ itemType: pub.itemType, itemId: pub.id });
+      updatePub(pub.id, {
+        status: STATUS_LABEL[res.status] || "activo",
+        ...(res.expiresAt ? { expiresAt: res.expiresAt } : {}),
+      });
     } catch (err) {
-      showActionError(err?.message || "No se pudo cambiar el estado. Intentá de nuevo.");
+      const code = errorCode(err);
+      // Pausada con el plan vencido: hay que elegir un plan otra vez
+      if (code === "INVALID_PLAN" || code === "PAYMENT_REQUIRED") {
+        updatePub(pub.id, { status: "vencido" });
+        setRepublishPub({ ...pub, status: "vencido" });
+        return;
+      }
+      if (code === "PENDING_REVIEW") { updatePub(pub.id, { status: "pendiente" }); return; }
+      showActionError(apiErrorMessage(err, "No se pudo cambiar el estado. Intentá de nuevo."));
     }
-  }, [showActionError]);
+  }, [showActionError, updatePub]);
+
+  const handlePublished = useCallback((pub, res) => {
+    setRepublishPub(null);
+    updatePub(pub.id, {
+      status: STATUS_LABEL[res.status] || "activo",
+      expiresAt: res.expiresAt || null,
+    });
+  }, [updatePub]);
 
   const handleEdit = useCallback((pub) => {
-    if (pub.type === "product") {
-      navigate(`/editar/producto/${pub.id}`);
-    } else {
-      navigate(`/editar/vehiculo/${pub.slug || pub.id}`);
-    }
+    if (pub.type === "product") navigate(`/editar/producto/${pub.id}`);
+    else if (pub.type === "service") navigate(`/editar/servicio/${pub.id}`);
+    else navigate(`/editar/vehiculo/${pub.slug || pub.id}`);
   }, [navigate]);
 
   const handleDelete = useCallback(async (pub) => {
     if (!window.confirm(`¿Eliminar "${pub.titulo}"? Esta acción no se puede deshacer.`)) return;
-    const endpoint = pub.type === "product"
-      ? `/products/${pub.id}/status`
-      : `/vehicles/${pub.id}/status`;
     try {
-      await api.patch(endpoint, { status: "DELETED" });
+      await api.patch(statusEndpoint(pub), { status: "DELETED" });
       setPubs((prev) => prev.filter((p) => p.id !== pub.id));
     } catch (err) {
       showActionError(err?.message || "No se pudo eliminar la publicación. Intentá de nuevo.");
@@ -1346,7 +1511,9 @@ const VendedorDashboard = () => {
           <span>
             {showSuccess === "pending"
               ? "¡Listo! Tu publicación quedó pendiente de aprobación: la revisamos y te avisamos cuando esté visible."
-              : "¡Tu publicación fue enviada con éxito!"}
+              : showSuccess === "featured"
+                ? "¡Listo! Tu publicación ya está destacada."
+                : "¡Tu publicación fue enviada con éxito!"}
           </span>
           <button className={styles.successClose} onClick={() => setShowSuccess(false)} aria-label="Cerrar aviso">✕</button>
         </div>
@@ -1415,13 +1582,14 @@ const VendedorDashboard = () => {
             </div>
           )}
           {view === "inicio"        && <ViewInicio stats={stats} pubs={pubs} leads={leads} unread={unread} onNavigate={setView} />}
-          {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs && !isMockUser} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEdit} onHighlight={setHighlightPub} />}
+          {view === "publicaciones" && <ViewPublicaciones pubs={pubs} loading={loadingPubs && !isMockUser} onToggle={handleToggle} onDelete={handleDelete} onEdit={handleEdit} onHighlight={setHighlightPub} onRepublish={setRepublishPub} />}
           {view === "consultas"     && <ViewConsultas leads={leads} loading={loadingLeads && !isMockUser} />}
           {view === "perfil"        && <ViewPerfil onPausedAll={handlePausedAll} />}
         </main>
       </div>
 
       {highlightPub && <HighlightModal pub={highlightPub} onClose={() => setHighlightPub(null)} />}
+      {republishPub && <RepublishModal pub={republishPub} onClose={() => setRepublishPub(null)} onPublished={handlePublished} />}
     </div>
   );
 };

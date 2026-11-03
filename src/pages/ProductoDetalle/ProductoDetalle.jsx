@@ -1,22 +1,27 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronLeft, ChevronRight, Shield } from "lucide-react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronLeft, ChevronRight, LogIn, MessageCircle, Shield } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
 import PageLoader from "../../components/PageLoader/PageLoader";
 import NotFound from "../NotFound/NotFound";
 import { api } from "../../lib/api";
 import { formatUSD, NO_PHOTO } from "../../lib/vehicleImage";
+import { loginHref } from "../../lib/redirect";
+import { useAuth } from "../../context/AuthContext";
 import styles from "./ProductoDetalle.module.css";
 
 const ProductoDetalle = () => {
   const { slug }  = useParams();
   const navigate  = useNavigate();
+  const location  = useLocation();
+  const { user }  = useAuth();
 
   const [result, setResult] = useState({ key: null, product: null, error: null });
   const [reloadTick, setReloadTick] = useState(0);
   // Índice de foto ligado al slug: al cambiar de producto vuelve a 0
   const [selected, setSelected] = useState({ slug, index: 0 });
-  const reqKey = `${slug}#${reloadTick}`;
+  // Con sesión el detalle trae el WhatsApp: se vuelve a pedir al loguearse
+  const reqKey = `${slug}#${reloadTick}#${user?.id || ""}`;
 
   useEffect(() => {
     let ignore = false;
@@ -82,6 +87,13 @@ const ProductoDetalle = () => {
   const rawName        = product.seller?.fullName || "";
   const sellerName     = rawName && !rawName.includes("@") ? rawName : "Vendedor particular";
   const sellerInitials = sellerName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+
+  // Sin sesión el WhatsApp llega en null; contactAvailable dice si hay uno para mostrar
+  const whatsappDigits = String(product.whatsapp || product.contactPhone || "").replace(/\D/g, "");
+  const canAskLogin    = !user && product.contactAvailable !== false;
+  const whatsappHref   = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(`Hola, vi tu publicación de ${product.title} en Mi Vehículo`)}`
+    : null;
 
   const seoDesc = (product.description
     ? product.description.replace(/\s+/g, " ").trim()
@@ -197,6 +209,16 @@ const ProductoDetalle = () => {
                     <p className={styles.sellerName}>{sellerName}</p>
                   </div>
                 </div>
+                {canAskLogin && (
+                  <Link to={loginHref(location.pathname)} className={styles.contactPrimary}>
+                    <LogIn size={16} aria-hidden="true" /> Iniciá sesión para contactar
+                  </Link>
+                )}
+                {user && whatsappHref && (
+                  <a href={whatsappHref} target="_blank" rel="noreferrer" className={styles.contactWhatsapp}>
+                    <MessageCircle size={16} aria-hidden="true" /> WhatsApp
+                  </a>
+                )}
                 <Link to="/contacto" className={styles.contactLink}>
                   Contactar a soporte
                 </Link>
