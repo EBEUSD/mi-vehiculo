@@ -1,6 +1,6 @@
-// Precios que define el servidor (GET /payments/pricing). El backend rechaza
-// cualquier pago cuyo monto no coincida con esta tabla, así que el monto de
-// Wompi siempre sale de acá. plans.js queda como respaldo si el endpoint falla.
+// Precios que define el servidor (GET /payments/pricing), solo para mostrar: el
+// monto que se cobra lo fija el backend al crear el enlace de Wompi.
+// plans.js queda como respaldo si el endpoint falla.
 
 import { useEffect, useState } from "react";
 import { api, getAccessToken } from "./api";
@@ -30,17 +30,6 @@ const mergeHighlights = (server) =>
   server?.featured?.length
     ? server.featured.map((f) => ({ dias: f.days, precio: f.amountInCents / 100, amountCents: f.amountInCents }))
     : HIGHLIGHT_OPTIONS.map((o) => ({ ...o, amountCents: o.precio * 100 }));
-
-export const planAmountCents = async (planId) => {
-  try { return mergePlans(await fetchPricing()).find((p) => p.id === planId)?.amountCents; }
-  catch { return PLANS.find((p) => p.id === planId)?.amountCents; }
-};
-
-export const featuredAmountCents = async (days) => {
-  let server = null;
-  try { server = await fetchPricing(); } catch { /* respaldo local */ }
-  return mergeHighlights(server).find((o) => o.dias === days)?.amountCents;
-};
 
 // Cupo gratuito: 1 publicación por año calendario, compartida entre vehículos, productos y servicios
 export const fetchFreeQuota = () =>

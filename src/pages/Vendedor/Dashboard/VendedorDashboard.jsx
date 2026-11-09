@@ -347,7 +347,7 @@ function HighlightModal({ pub, onClose }) {
     try {
       await redirectToFeatureCheckout({ days: opt.dias, itemId: pub.id, itemType: pub.itemType });
     } catch (err) {
-      setError(err?.message || "No se pudo iniciar el pago. Intentá de nuevo.");
+      setError(apiErrorMessage(err, "No se pudo iniciar el pago. Intentá de nuevo."));
       setPaying(false);
     }
   };
