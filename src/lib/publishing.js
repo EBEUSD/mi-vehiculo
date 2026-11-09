@@ -30,19 +30,26 @@ export const apiErrorMessage = (err, fallback = "Ocurrió un error. Intentá de 
  * POST /{recurso}/:id/publish.
  * - Publicación nueva (borrador o vencida): `plan` obligatorio y `transactionId` en los pagos.
  * - Pausada vigente o rechazada con plan pago: sin `plan`, no se vuelve a cobrar.
+ * - `hash` y `monto` van tal cual vinieron en la URL de redirect de Wompi: con eso el
+ *   backend ata la transacción al enlace de pago.
  * Devuelve `{ id, status, plan, expiresAt, … }`.
  */
-export const publishItem = async ({ itemType, itemId, plan, transactionId, reference }) => {
+export const publishItem = async ({ itemType, itemId, plan, transactionId, reference, hash, monto }) => {
   const body = {};
   if (plan) body.plan = PLAN_API[plan] || plan;
   if (transactionId) body.transactionId = transactionId;
   if (reference) body.reference = reference;
+  if (hash) body.hash = hash;
+  if (monto) body.monto = monto;
   const res = await api.post(`/${ITEM_RESOURCE[itemType]}/${itemId}/publish`, body);
   return res?.data || {};
 };
 
-export const featureItem = async ({ itemType, itemId, days, transactionId, reference }) => {
-  const res = await api.post(`/${ITEM_RESOURCE[itemType]}/${itemId}/feature`, { days, transactionId, reference });
+export const featureItem = async ({ itemType, itemId, days, transactionId, reference, hash, monto }) => {
+  const body = { days, transactionId, reference };
+  if (hash) body.hash = hash;
+  if (monto) body.monto = monto;
+  const res = await api.post(`/${ITEM_RESOURCE[itemType]}/${itemId}/feature`, body);
   return res?.data || {};
 };
 

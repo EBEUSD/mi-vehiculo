@@ -1,12 +1,9 @@
-const WOMPI_BASE = import.meta.env.VITE_WOMPI_ENV === "production"
-  ? "https://production.wompi.sv/v1"
-  : "https://sandbox.wompi.sv/v1";
+// Wompi El Salvador: el backend crea el enlace de pago (POST /payments/checkout) con la
+// referencia y el monto de su tabla de precios. El front solo redirige a esa URL y, al
+// volver, le reenvía al backend lo que Wompi puso en la URL de redirect.
 
-const CHECKOUT_URL = "https://checkout.wompi.sv/p/";
-
-export const WOMPI_PUBLIC_KEY = import.meta.env.VITE_WOMPI_PUBLIC_KEY || "";
-
-import { planAmountCents, featuredAmountCents } from "./pricing";
+import { api } from "./api";
+import { PLAN_API } from "./pricing";
 
 export const PENDING_PAYMENT_KEY = "mv_pending_payment";
 
@@ -18,51 +15,34 @@ export const ITEM_RESOURCE = {
   servicio:  "services",
 };
 
-const goToCheckout = ({ amountCents, reference, context }) => {
-  if (!amountCents) throw new Error("No se pudo obtener el precio. Actualizá la página e intentá de nuevo.");
-  sessionStorage.setItem(PENDING_PAYMENT_KEY, JSON.stringify({ ...context, reference }));
+const goToCheckout = async ({ body, context }) => {
+  // Usuarios mock (dev): no hay ítem real en el backend, se simula la vuelta de Wompi
+  if (String(body.itemId).startsWith("mock-")) {
+    sessionStorage.setItem(PENDING_PAYMENT_KEY, JSON.stringify(context));
+    window.location.href = `/pago/resultado?idTransaccion=mock-${Date.now()}`;
+    return;
+  }
 
-  const params = new URLSearchParams({
-    "public-key":       WOMPI_PUBLIC_KEY,
-    currency:           "USD",
-    "amount-in-cents":  String(amountCents),
-    reference,
-    "redirect-url":     `${window.location.origin}/pago/resultado`,
-  });
-  window.location.href = `${CHECKOUT_URL}?${params}`;
+  const res = await api.post("/payments/checkout", body);
+  const { url, reference } = res?.data || {};
+  if (!url) throw new Error("No se pudo iniciar el pago. Intentá de nuevo.");
+  sessionStorage.setItem(PENDING_PAYMENT_KEY, JSON.stringify({ ...context, reference }));
+  window.location.href = url;
 };
 
 /**
- * Pago de una publicación. El backend valida que la referencia sea
- * `mv-{itemType}-{uuid}-{timestamp}` y que el monto sea el de /payments/pricing.
+ * Pago de una publicación.
  * @param {{ plan: string, itemId: string, itemType: "vehicle"|"repuesto"|"accesorio"|"servicio" }} opts
  */
-export const redirectToWompiCheckout = async ({ plan, itemId, itemType }) => {
+export const redirectToWompiCheckout = ({ plan, itemId, itemType }) =>
   goToCheckout({
-    amountCents: await planAmountCents(plan),
-    reference:   `mv-${itemType}-${itemId}-${Date.now()}`,
-    context:     { kind: "publish", itemId, itemType, plan },
+    body:    { itemType, itemId, plan: PLAN_API[plan] || plan },
+    context: { kind: "publish", itemId, itemType, plan },
   });
-};
 
-/** Pago de un destaque: referencia `mv-destaque-{itemType}-{uuid}-{timestamp}`. */
-export const redirectToFeatureCheckout = async ({ days, itemId, itemType }) => {
+/** Pago de un destaque. */
+export const redirectToFeatureCheckout = ({ days, itemId, itemType }) =>
   goToCheckout({
-    amountCents: await featuredAmountCents(days),
-    reference:   `mv-destaque-${itemType}-${itemId}-${Date.now()}`,
-    context:     { kind: "feature", itemId, itemType, days },
+    body:    { itemType, itemId, days },
+    context: { kind: "feature", itemId, itemType, days },
   });
-};
-
-/**
- * Verifica el estado de una transacción de WOMPI directamente con su API.
- * Retorna el objeto `data` de la respuesta.
- */
-export const verifyTransaction = async (transactionId) => {
-  const res = await fetch(`${WOMPI_BASE}/transactions/${transactionId}`, {
-    headers: { Authorization: `Bearer ${WOMPI_PUBLIC_KEY}` },
-  });
-  if (!res.ok) throw new Error("No se pudo verificar el pago con WOMPI.");
-  const json = await res.json();
-  return json.data || json; // WOMPI envuelve en { data: {...} }
-};
