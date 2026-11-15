@@ -8,7 +8,6 @@ import {
   DollarSign, TrendingUp, CreditCard, Award, Menu, Ban, AlertTriangle, BadgeCheck, XCircle,
 } from "lucide-react";
 import { api } from "../../../lib/api";
-import { supabase } from "../../../lib/supabase";
 import { serviceTypeLabel } from "../../../lib/categories";
 import styles from "./AdminDashboard.module.css";
 
@@ -106,13 +105,6 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onVerify, onD
     } finally { setSaving(false); }
   };
 
-  // Supabase no lanza excepción si RLS rechaza: devuelve { error } o 0 filas afectadas
-  const runProfileWrite = async (query) => {
-    const { data, error } = await query.select("id");
-    if (error) throw error;
-    if (!data?.length) throw new Error("Sin permisos para modificar este usuario.");
-  };
-
   // Al bloquear, el backend pausa las publicaciones activas del usuario
   const toggleBlock = async () => {
     if (saving) return;
@@ -146,7 +138,7 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onVerify, onD
     setSaving(true);
     setActionError("");
     try {
-      await runProfileWrite(supabase.from("profiles").delete().eq("id", user.id));
+      await api.delete(`/admin/profiles/${user.id}`);
       onDelete(user.id);
       onClose();
     } catch (err) {
@@ -395,7 +387,7 @@ function UserProfileDrawer({ user, onClose, onChangeRole, onBlock, onVerify, onD
                   <div>
                     <p style={{ margin: 0, fontWeight: 600, fontSize: "0.85rem", color: "#111827" }}>Eliminar cuenta</p>
                     <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#6b7280" }}>
-                      Borra al usuario del sistema. No se puede deshacer.
+                      Borra al usuario y todas sus publicaciones. No se puede deshacer.
                     </p>
                   </div>
                   <button

@@ -56,8 +56,12 @@ export const featureItem = async ({ itemType, itemId, days, transactionId, refer
   return res?.data || {};
 };
 
-// Repuesto o accesorio según la categoría del producto (la referencia de Wompi lo distingue)
+// Repuesto o accesorio según la raíz del árbol de categorías: Repuestos (id 1) o Accesorios (id 2)
+const ACCESORIOS_ROOT_ID = 2;
 export const productItemType = (product) => {
+  const cat = product?.category;
+  const rootId = cat?.parentId ?? cat?.parent?.id ?? (cat?.id <= ACCESORIOS_ROOT_ID ? cat?.id : null);
+  if (rootId != null) return Number(rootId) === ACCESORIOS_ROOT_ID ? "accesorio" : "repuesto";
   const names = [product?.category?.name, product?.category?.slug, product?.category?.parent?.name, product?.category?.parent?.slug]
     .filter(Boolean).join(" ").toLowerCase();
   return names.includes("accesorio") ? "accesorio" : "repuesto";
