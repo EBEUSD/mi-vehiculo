@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { CheckCircle, XCircle, Loader2, AlertTriangle, Clock } from "lucide-react";
 import Navbar from "../../components/Navbar/Navbar";
 import { PENDING_PAYMENT_KEY } from "../../lib/wompi";
-import { publishItem, featureItem, errorCode } from "../../lib/publishing";
+import { publishItem, featureItem, errorCode, apiErrorMessage } from "../../lib/publishing";
 import { DRAFT_KEYS, clearDraft } from "../../lib/publishDrafts";
 import { useAuth } from "../../context/AuthContext";
 import styles from "./PagoResultado.module.css";
@@ -25,7 +25,23 @@ const STATUS = {
 };
 
 // Estados finales que muestran "Volver atrás / Ir al panel"
-const WITH_ACTIONS = ["declined", "error", "networkerror", "noref", "notapproved", "wrongitem", "planinvalid", "processing"];
+// Respuestas de /publish y /feature que significan "el webhook ya aplicó este pago"
+const APPLIED_CODES = ["PAYMENT_ALREADY_USED", "ALREADY_ACTIVE"];
+
+const ERROR_STATUS = {
+  PAYMENT_NOT_APPROVED:       "notapproved",
+  PAYMENT_AMOUNT_MISMATCH:    "mismatch",
+  PAYMENT_CURRENCY_MISMATCH:  "mismatch",
+  PAYMENT_REFERENCE_MISMATCH: "mismatch",
+  PAYMENT_ITEM_MISMATCH:      "wrongitem",
+  INVALID_PLAN:               "planinvalid",
+  INVALID_FEATURED_DAYS:      "planinvalid",
+  // Wompi no respondió o no se pudo atar la transacción: el pago queda sin consumir y lo aplica el webhook
+  WOMPI_ERROR:                "processing",
+  PAYMENT_NOT_FOUND:          "processing",
+};
+
+const WITH_ACTIONS =["declined", "error", "networkerror", "noref", "notapproved", "wrongitem", "planinvalid", "processing"];
 
 const PagoResultado = () => {
   const navigate = useNavigate();
@@ -40,6 +56,7 @@ const PagoResultado = () => {
   const isMock = !!user?.id?.startsWith("mock-");
 
   const [status, setStatus] = useState(!transactionId ? "noref" : rejected ? "declined" : "loading");
+  const [detail, setDetail] = useState("");
 
   useEffect(() => {
     if (!transactionId || rejected) return;
@@ -80,22 +97,18 @@ const PagoResultado = () => {
             pendingApproval = data?.status === "PENDING";
           } catch (pubErr) {
             if (cancelled) return;
+            // Se decide por code: el mismo status HTTP cubre casos distintos
             const code = errorCode(pubErr);
             if (code === "PENDING_REVIEW") {
               pendingApproval = true;
-            } else if (pubErr?.status === 409) {
-              // ALREADY_ACTIVE / PAYMENT_ALREADY_USED: lo aplicó el webhook
-            } else if (code === "PAYMENT_NOT_APPROVED") {
-              setStatus("notapproved");
+            } else if (APPLIED_CODES.includes(code)) {
+              // Lo aplicó el webhook antes de que volviera el usuario
+            } else if (ERROR_STATUS[code]) {
+              setStatus(ERROR_STATUS[code]);
               return;
-            } else if (pubErr?.status === 402) {
-              setStatus("mismatch");
-              return;
-            } else if (pubErr?.status === 403) {
-              setStatus("wrongitem");
-              return;
-            } else if (pubErr?.status === 422) {
-              setStatus("planinvalid");
+            } else if (pubErr?.status >= 400 && pubErr?.status < 500) {
+              setDetail(apiErrorMessage(pubErr));
+              setStatus("error");
               return;
             } else {
               throw pubErr;
@@ -137,7 +150,7 @@ const PagoResultado = () => {
           </div>
 
           <h1 className={styles.title}>{title}</h1>
-          <p className={styles.sub}>{sub}</p>
+          <p className={styles.sub}>{detail || sub}</p>
 
           {transactionId && status !== "loading" && (
             <div className={styles.txInfo}>
